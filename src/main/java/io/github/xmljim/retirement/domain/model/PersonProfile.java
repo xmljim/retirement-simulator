@@ -23,7 +23,7 @@ import java.util.UUID;
  *     .build();
  * }</pre>
  */
-public class PersonProfile {
+public final class PersonProfile {
 
     private final String id;
     private final String name;
