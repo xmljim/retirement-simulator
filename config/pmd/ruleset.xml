@@ -97,16 +97,10 @@
     <rule ref="category/java/security.xml"/>
 
     <!-- ==================== Documentation ==================== -->
-    <rule ref="category/java/documentation.xml/CommentRequired">
-        <properties>
-            <property name="methodWithOverrideCommentRequirement" value="Ignored"/>
-            <property name="accessorCommentRequirement" value="Ignored"/>
-            <property name="fieldCommentRequirement" value="Ignored"/>
-            <property name="publicMethodCommentRequirement" value="Required"/>
-            <property name="protectedMethodCommentRequirement" value="Ignored"/>
-            <property name="enumCommentRequirement" value="Ignored"/>
-            <property name="serialPersistentFieldsCommentRequirement" value="Ignored"/>
-        </properties>
+    <!-- Exclude CommentRequired - enforced via Checkstyle Javadoc rules -->
+    <rule ref="category/java/documentation.xml">
+        <exclude name="CommentRequired"/>
+        <exclude name="CommentSize"/>
     </rule>
 
 </ruleset>
