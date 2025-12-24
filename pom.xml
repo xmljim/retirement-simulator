@@ -103,6 +103,12 @@
                     <includeTests>true</includeTests>
                     <!-- Fail on priority 1-2 violations (severe) -->
                     <failurePriority>2</failurePriority>
+                    <!-- Exclude legacy code (to be refactored in issues #7 and #8) -->
+                    <excludes>
+                        <exclude>**/io/github/xmljim/retirement/model/**</exclude>
+                        <exclude>**/io/github/xmljim/retirement/functions/**</exclude>
+                        <exclude>**/io/github/xmljim/Main.java</exclude>
+                    </excludes>
                 </configuration>
                 <executions>
                     <execution>
