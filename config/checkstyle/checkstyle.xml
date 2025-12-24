@@ -1,0 +1,259 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+    "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+    "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<!--
+    Retirement Portfolio Simulator - Checkstyle Configuration
+
+    Code style rules:
+    - 4 space indentation (no tabs)
+    - K&R brace style (opening brace on same line)
+    - 120 character line limit
+    - No wildcard imports
+-->
+<module name="Checker">
+    <property name="charset" value="UTF-8"/>
+    <property name="severity" value="error"/>
+    <property name="fileExtensions" value="java"/>
+
+    <!-- Suppressions file for exceptions -->
+    <module name="SuppressionFilter">
+        <property name="file" value="${config_loc}/suppressions.xml"/>
+        <property name="optional" value="true"/>
+    </module>
+
+    <!-- File-level checks -->
+
+    <!-- No tab characters -->
+    <module name="FileTabCharacter">
+        <property name="eachLine" value="true"/>
+    </module>
+
+    <!-- Files must end with newline -->
+    <module name="NewlineAtEndOfFile">
+        <property name="lineSeparator" value="lf"/>
+    </module>
+
+    <!-- Line length: 120 characters -->
+    <module name="LineLength">
+        <property name="max" value="120"/>
+        <property name="ignorePattern" value="^package.*|^import.*|a]href|href|http://|https://|ftp://"/>
+    </module>
+
+    <!-- No trailing whitespace -->
+    <module name="RegexpSingleline">
+        <property name="format" value="\s+$"/>
+        <property name="message" value="Line has trailing whitespace."/>
+    </module>
+
+    <!-- TreeWalker checks (AST-based) -->
+    <module name="TreeWalker">
+        <!-- Suppress warnings with @SuppressWarnings annotation -->
+        <module name="SuppressWarningsHolder"/>
+
+        <!-- ==================== Naming Conventions ==================== -->
+
+        <!-- Class names: PascalCase -->
+        <module name="TypeName">
+            <property name="format" value="^[A-Z][a-zA-Z0-9]*$"/>
+        </module>
+
+        <!-- Method names: camelCase -->
+        <module name="MethodName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+
+        <!-- Variable names: camelCase -->
+        <module name="LocalVariableName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+
+        <!-- Parameter names: camelCase -->
+        <module name="ParameterName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+
+        <!-- Member variable names: camelCase -->
+        <module name="MemberName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+
+        <!-- Constants: UPPER_SNAKE_CASE -->
+        <module name="ConstantName">
+            <property name="format" value="^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$"/>
+        </module>
+
+        <!-- Package names: lowercase -->
+        <module name="PackageName">
+            <property name="format" value="^[a-z]+(\.[a-z][a-z0-9]*)*$"/>
+        </module>
+
+        <!-- ==================== Imports ==================== -->
+
+        <!-- No wildcard imports -->
+        <module name="AvoidStarImport"/>
+
+        <!-- No redundant imports -->
+        <module name="RedundantImport"/>
+
+        <!-- No unused imports -->
+        <module name="UnusedImports"/>
+
+        <!-- Import order: java, javax, org, com, then others -->
+        <module name="ImportOrder">
+            <property name="groups" value="java,javax,org,com"/>
+            <property name="ordered" value="true"/>
+            <property name="separated" value="true"/>
+            <property name="option" value="top"/>
+        </module>
+
+        <!-- ==================== Whitespace ==================== -->
+
+        <!-- Indentation: 4 spaces -->
+        <module name="Indentation">
+            <property name="basicOffset" value="4"/>
+            <property name="braceAdjustment" value="0"/>
+            <property name="caseIndent" value="4"/>
+            <property name="throwsIndent" value="4"/>
+            <property name="lineWrappingIndentation" value="4"/>
+            <property name="arrayInitIndent" value="4"/>
+        </module>
+
+        <!-- Whitespace around operators -->
+        <module name="WhitespaceAround">
+            <property name="allowEmptyConstructors" value="true"/>
+            <property name="allowEmptyMethods" value="true"/>
+            <property name="allowEmptyTypes" value="true"/>
+            <property name="allowEmptyLoops" value="true"/>
+        </module>
+
+        <!-- No whitespace after certain tokens -->
+        <module name="NoWhitespaceAfter">
+            <property name="tokens" value="AT,INC,DEC,UNARY_MINUS,UNARY_PLUS,BNOT,LNOT,DOT,ARRAY_DECLARATOR,INDEX_OP"/>
+        </module>
+
+        <!-- No whitespace before certain tokens -->
+        <module name="NoWhitespaceBefore">
+            <property name="tokens" value="COMMA,SEMI,POST_INC,POST_DEC,ELLIPSIS"/>
+        </module>
+
+        <!-- Whitespace after comma, semicolon, typecast -->
+        <module name="WhitespaceAfter">
+            <property name="tokens" value="COMMA,SEMI,TYPECAST"/>
+        </module>
+
+        <!-- Generic whitespace -->
+        <module name="GenericWhitespace"/>
+
+        <!-- Empty line separator between members -->
+        <module name="EmptyLineSeparator">
+            <property name="allowNoEmptyLineBetweenFields" value="true"/>
+            <property name="allowMultipleEmptyLines" value="false"/>
+        </module>
+
+        <!-- ==================== Braces (K&R Style) ==================== -->
+
+        <!-- Left brace on same line (K&R) -->
+        <module name="LeftCurly">
+            <property name="option" value="eol"/>
+        </module>
+
+        <!-- Right brace placement -->
+        <module name="RightCurly">
+            <property name="option" value="same"/>
+            <property name="tokens" value="LITERAL_TRY,LITERAL_CATCH,LITERAL_FINALLY,LITERAL_IF,LITERAL_ELSE,LITERAL_DO"/>
+        </module>
+
+        <!-- Require braces for all blocks -->
+        <module name="NeedBraces"/>
+
+        <!-- ==================== Block Checks ==================== -->
+
+        <!-- No empty blocks -->
+        <module name="EmptyBlock">
+            <property name="option" value="text"/>
+        </module>
+
+        <!-- Avoid nested blocks -->
+        <module name="AvoidNestedBlocks"/>
+
+        <!-- ==================== Coding ==================== -->
+
+        <!-- Require default case in switch -->
+        <module name="MissingSwitchDefault"/>
+
+        <!-- Fall through in switch must be commented -->
+        <module name="FallThrough"/>
+
+        <!-- No empty statements (;;) -->
+        <module name="EmptyStatement"/>
+
+        <!-- Override equals must override hashCode -->
+        <module name="EqualsHashCode"/>
+
+        <!-- No assignments in subexpressions -->
+        <module name="InnerAssignment"/>
+
+        <!-- Simplify boolean expressions -->
+        <module name="SimplifyBooleanExpression"/>
+
+        <!-- Simplify boolean returns -->
+        <module name="SimplifyBooleanReturn"/>
+
+        <!-- String literal equality -->
+        <module name="StringLiteralEquality"/>
+
+        <!-- One statement per line -->
+        <module name="OneStatementPerLine"/>
+
+        <!-- Declare variables close to use -->
+        <module name="VariableDeclarationUsageDistance">
+            <property name="allowedDistance" value="5"/>
+        </module>
+
+        <!-- ==================== Class Design ==================== -->
+
+        <!-- One top-level class per file -->
+        <module name="OneTopLevelClass"/>
+
+        <!-- Visibility modifier order -->
+        <module name="ModifierOrder"/>
+
+        <!-- Redundant modifiers -->
+        <module name="RedundantModifier"/>
+
+        <!-- ==================== Javadoc ==================== -->
+
+        <!-- Javadoc for public methods -->
+        <module name="MissingJavadocMethod">
+            <property name="scope" value="public"/>
+            <property name="allowMissingPropertyJavadoc" value="true"/>
+            <property name="tokens" value="METHOD_DEF,ANNOTATION_FIELD_DEF"/>
+        </module>
+
+        <!-- Javadoc for public types -->
+        <module name="MissingJavadocType">
+            <property name="scope" value="public"/>
+        </module>
+
+        <!-- ==================== Miscellaneous ==================== -->
+
+        <!-- Array style: Java style (String[] args, not String args[]) -->
+        <module name="ArrayTypeStyle"/>
+
+        <!-- Upper case L for long literals -->
+        <module name="UpperEll"/>
+
+        <!-- No finalize() method -->
+        <module name="NoFinalizer"/>
+
+        <!-- Proper annotation location -->
+        <module name="AnnotationLocation"/>
+
+    </module>
+
+    <!-- Enable @SuppressWarnings -->
+    <module name="SuppressWarningsFilter"/>
+
+</module>
