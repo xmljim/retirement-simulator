@@ -1,13 +1,12 @@
 package io.github.xmljim.retirement.domain.model;
 
-import io.github.xmljim.retirement.domain.enums.AccountType;
-import io.github.xmljim.retirement.domain.value.AssetAllocation;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
+
+import io.github.xmljim.retirement.domain.enums.AccountType;
+import io.github.xmljim.retirement.domain.value.AssetAllocation;
 
 /**
  * Represents an individual investment account within a portfolio.

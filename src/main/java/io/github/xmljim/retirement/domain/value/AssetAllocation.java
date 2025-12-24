@@ -141,10 +141,17 @@ public final class AssetAllocation {
      * @param cashReturn expected annual return for cash (as decimal)
      * @return the weighted average return rate
      */
-    public BigDecimal calculateBlendedReturn(BigDecimal stockReturn, BigDecimal bondReturn, BigDecimal cashReturn) {
-        BigDecimal stockContribution = stocksPercentage.multiply(stockReturn).divide(HUNDRED, SCALE, RoundingMode.HALF_UP);
-        BigDecimal bondContribution = bondsPercentage.multiply(bondReturn).divide(HUNDRED, SCALE, RoundingMode.HALF_UP);
-        BigDecimal cashContribution = cashPercentage.multiply(cashReturn).divide(HUNDRED, SCALE, RoundingMode.HALF_UP);
+    public BigDecimal calculateBlendedReturn(BigDecimal stockReturn, BigDecimal bondReturn,
+                                             BigDecimal cashReturn) {
+        BigDecimal stockContribution = stocksPercentage
+                .multiply(stockReturn)
+                .divide(HUNDRED, SCALE, RoundingMode.HALF_UP);
+        BigDecimal bondContribution = bondsPercentage
+                .multiply(bondReturn)
+                .divide(HUNDRED, SCALE, RoundingMode.HALF_UP);
+        BigDecimal cashContribution = cashPercentage
+                .multiply(cashReturn)
+                .divide(HUNDRED, SCALE, RoundingMode.HALF_UP);
 
         return stockContribution.add(bondContribution).add(cashContribution);
     }
