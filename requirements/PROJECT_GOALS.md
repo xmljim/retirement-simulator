@@ -20,6 +20,25 @@ This tool aims to model these interactions on a monthly basis, providing visibil
 
 ## Core Concepts
 
+### Person Profile
+
+A **Person Profile** is the foundational entity representing an individual in the simulation:
+
+- **Personal information**: Date of birth, planned retirement date, life expectancy
+- **Portfolio**: Collection of investment accounts owned by this person
+- **Income sources**: Salary, Social Security, pensions, annuities
+- **Linked profiles**: Optional link to spouse/partner profile
+
+**Linked Profiles (Couples)**:
+- Two Person Profiles can be linked to model couples
+- Each person maintains their own portfolio and income sources
+- Scenarios can operate on individual portfolios or combined household view
+- Enables modeling of:
+  - Joint Social Security strategies (spousal benefits, survivor benefits)
+  - Coordinated withdrawal strategies across both portfolios
+  - Survivorship scenarios (one spouse passes, other continues)
+  - Different retirement dates for each spouse
+
 ### Portfolio of Investments
 
 A user's retirement portfolio consists of one or more **investment accounts**, each with distinct characteristics:
@@ -31,6 +50,62 @@ A user's retirement portfolio consists of one or more **investment accounts**, e
 - **Tax treatment**: Pre-tax, post-tax (Roth), or taxable (affects withdrawal sequencing)
 
 The simulator should allow users to define multiple investments and model how they interact during accumulation and distribution phases.
+
+### Contribution Rules & Limits
+
+Contribution modeling must account for complex IRS rules that vary by:
+
+- **Account type**: 401(k), IRA, Roth IRA, HSA each have different limits
+- **Age**: Catch-up contributions available at 50+ (IRA, 401k) and 55+ (HSA)
+- **Income**: Phase-outs for IRA deductibility and Roth IRA eligibility
+- **Year**: Limits are inflation-adjusted annually by IRS
+- **Regulatory changes**: SECURE 2.0 Act introduces new rules effective 2025-2026
+
+**SECURE 2.0 Key Changes (2025-2026)**:
+- Ages 60-63 get enhanced "super catch-up" contributions (~50% higher than standard catch-up)
+- High earners ($145K+ prior year FICA wages) must make catch-up contributions as Roth
+- This requires income lookback to prior year for determining catch-up eligibility
+
+The system should:
+- Provide sensible defaults based on a configurable base year
+- Auto-project future limits using assumed inflation rate (~2-3%)
+- Allow configuration/override of all limits for scenario modeling
+- Support effective dates for rule changes (e.g., SECURE 2.0 phased rollout)
+- Automatically apply age-based catch-up eligibility
+- Track prior year income for SECURE 2.0 Roth catch-up determination
+
+**Out of Scope**: Employer vesting schedules (cliff, graded) require hire date tracking and add significant complexity. Planned as future feature.
+
+### Scenarios
+
+A **Scenario** represents a complete simulation configuration applied to one or more Person Profiles:
+
+**Scenario Components**:
+- **Person Profile(s)**: One person or linked couple
+- **Time horizon**: Start date, end condition (age or depletion)
+- **Simulation mode**: Deterministic, Monte Carlo, or Historical
+- **Distribution strategy**: Static, Bucket, Spending Curve, or Guardrails
+- **Assumptions**: Return rates, inflation rates (general, healthcare, housing)
+- **Expense budget**: Expected spending by category
+
+**Scenario Phases**:
+1. **Pre-Retirement (Accumulation)**: From start date until retirement date
+   - Apply contributions to accounts
+   - Apply employer matches
+   - Apply pre-retirement return rates
+   - Track income and expenses
+
+2. **Retirement (Distribution)**: From retirement date until end condition
+   - Execute chosen distribution strategy
+   - Apply post-retirement return rates
+   - Model income sources (SS, pensions, annuities)
+   - Track expenses with inflation
+   - Calculate withdrawal needs
+
+**Scenario Comparison**:
+- Users can create multiple scenarios with different parameters
+- Compare outcomes side-by-side (e.g., "retire at 62 vs 65", "4% vs 3.5% withdrawal")
+- Save/load scenario configurations for reuse
 
 ### Distribution Strategies
 
@@ -85,71 +160,356 @@ Requires: Defining guardrail thresholds, adjustment percentages, and floor/ceili
 
 ### 2. Contribution Modeling (Accumulation Phase)
 
+#### 2.1 Basic Contribution Tracking
 - [ ] Model monthly transactions from a start date through retirement
 - [ ] Support multiple contribution sources (personal, employer match, catch-up)
 - [ ] Apply contributions to specific accounts based on rules
 - [ ] Support incremental contribution rate increases (e.g., annual 1% bump)
-- [ ] Respect annual contribution limits by account type
 - [ ] Apply investment returns monthly per account
+
+#### 2.2 IRS Contribution Limits & Rules
+Contribution limits vary by account type, age, and income. The system must model these rules with configurable limits that can be updated as IRS rules change.
+
+**401(k) / 403(b) / 457(b) Plans**:
+- [ ] Annual elective deferral limit (employee contributions)
+- [ ] Annual total contribution limit (employee + employer)
+- [ ] Catch-up contributions for age 50+
+- [ ] Enhanced catch-up contributions for ages 60-63 (SECURE 2.0, effective 2025)
+- [ ] Employer match rules (percentage match, vesting schedules)
+
+**Traditional & Roth IRA**:
+- [ ] Annual contribution limit
+- [ ] Catch-up contributions for age 50+
+- [ ] Income-based phase-out rules for Traditional IRA deductibility
+- [ ] Income-based phase-out rules for Roth IRA contributions
+- [ ] Backdoor Roth IRA considerations
+
+**HSA (Health Savings Account)**:
+- [ ] Annual contribution limit (individual vs family coverage)
+- [ ] Catch-up contributions for age 55+
+- [ ] Employer contribution tracking
+
+**2026+ Rule Changes (SECURE 2.0 Act)**:
+- [ ] Super catch-up contributions for ages 60-63 (higher limits)
+- [ ] Roth catch-up requirement for high earners ($145K+ in prior year)
+- [ ] Automatic enrollment requirements impact modeling
+- [ ] Configurable rule effective dates for modeling transitions
+
+#### 2.3 Contribution Limit Configuration
+- [ ] Provide default IRS limits for a configurable base year
+- [ ] Auto-project future limits using inflation rate (~2-3% annually)
+- [ ] Allow override of all limits for scenario modeling
+- [ ] Track year-to-date contributions against limits
+- [ ] Alert/handle when contributions would exceed limits
+
+#### 2.4 SECURE 2.0 Compliance
+- [ ] Track prior year income for catch-up contribution rules
+- [ ] Determine Roth catch-up requirement based on $145K+ FICA wage threshold
+- [ ] Model income lookback for each simulation year
+- [ ] Apply enhanced catch-up limits for ages 60-63 (effective 2025)
+
+#### 2.5 Out of Scope (Future Consideration)
+- **Employer vesting schedules**: Modeling vested vs unvested employer contributions requires hire date tracking per employer and adds significant complexity. Consider as separate future feature.
 
 ### 3. Income Modeling
 
-- [ ] Model working income with cost-of-living adjustments (COLA)
-- [ ] Model Social Security benefits with configurable start date and inflation adjustments
-- [ ] Model other retirement income (pensions, annuities) with optional adjustments
-- [ ] Calculate target retirement income as a percentage of pre-retirement salary
+#### 3.1 Working Income (Pre-Retirement)
+- [ ] Model base salary with configurable annual COLA rate
+- [ ] Salary COLA independent of general inflation rate
+- [ ] Support start/end dates for income (e.g., working until retirement date)
 
-### 4. Distribution Strategies (Withdrawal Phase)
+**Out of Scope**: Job changes, promotions, variable compensation - too complex to model reliably.
 
-#### 4.1 Static Withdrawal
+#### 3.2 Social Security Benefits
+User provides their Full Retirement Age (FRA) benefit amount from SSA.gov. The system models timing adjustments:
+
+- [ ] Configurable claiming age (62-70)
+- [ ] Model early claiming reduction (before FRA):
+  - ~6.67% per year for first 3 years before FRA
+  - ~5% per year for years 4-5 before FRA
+- [ ] Model delayed claiming credits (after FRA):
+  - 8% per year increase up to age 70
+- [ ] Annual COLA adjustments (configurable rate, typically ~2-3%)
+- [ ] Spousal benefits: up to 50% of higher earner's FRA benefit
+- [ ] Survivor benefits: surviving spouse receives higher of two benefits
+- [ ] Earnings test: benefit reduction if working before FRA ($1 reduction per $2 earned over limit)
+- [ ] Taxation of benefits: model 0%/50%/85% taxable thresholds based on combined income
+
+**Out of Scope (Future)**: Estimating FRA benefit from earnings history.
+
+#### 3.3 Pension / Defined Benefit Plans
+- [ ] Configure monthly benefit amount
+- [ ] Start date (may differ from retirement date)
+- [ ] Optional COLA adjustment (many pensions have none, some have fixed %)
+- [ ] Survivor benefit options:
+  - Single life (highest benefit, no survivor)
+  - 100% joint & survivor
+  - 75% joint & survivor
+  - 50% joint & survivor
+- [ ] Support multiple pensions (e.g., spouse has separate pension)
+
+#### 3.4 Annuities
+- [ ] **Fixed immediate annuity**: Known monthly payment starting at purchase
+- [ ] **Fixed deferred annuity**: Known payment starting at future date
+- [ ] **Variable annuity**: Payment varies based on underlying investments (model with expected return)
+- [ ] Optional COLA/inflation riders
+- [ ] Survivor/death benefit options
+
+#### 3.5 Other Income Sources
+- [ ] Rental income (monthly amount, optional inflation adjustment)
+- [ ] Part-time work in retirement (amount, start/end dates)
+- [ ] Other recurring income (royalties, dividends outside portfolio, etc.)
+
+### 4. Expense & Budget Modeling
+
+Users need to model expected expenses to determine if income sources cover retirement needs.
+
+#### 4.1 Expense Categories
+Expenses should be categorized to apply appropriate inflation rates:
+
+- [ ] **Essential expenses**: Housing, food, utilities, insurance, transportation
+- [ ] **Healthcare expenses**: Premiums, out-of-pocket, long-term care (healthcare inflation rate)
+- [ ] **Housing expenses**: Property tax, maintenance, HOA (housing inflation rate)
+- [ ] **Discretionary expenses**: Travel, entertainment, hobbies (general inflation rate)
+- [ ] **Debt payments**: Mortgage (fixed or payoff date), other loans
+
+#### 4.2 Budget Configuration
+- [ ] Define monthly/annual amounts per category
+- [ ] Assign inflation rate to each category (general, healthcare, housing)
+- [ ] Support expense changes over time:
+  - Mortgage payoff date
+  - Reduced discretionary spending in later retirement (spending curve)
+  - Increased healthcare costs with age
+- [ ] One-time expenses (new car, home repair, travel goals)
+
+#### 4.3 Budget vs Income Analysis
+- [ ] Calculate monthly income need based on total expenses
+- [ ] Compare income sources to expenses by period
+- [ ] Identify income gaps that require portfolio withdrawals
+- [ ] Track surplus/deficit over time
+
+### 5. Distribution Strategies (Withdrawal Phase)
+
+#### 5.1 Static Withdrawal
 - [ ] Support fixed withdrawal rate (e.g., 4% rule)
 - [ ] Adjust annual withdrawal for inflation
 - [ ] Configure initial withdrawal rate
 
-#### 4.2 Bucket Strategy
+#### 5.2 Bucket Strategy
 - [ ] Define bucket allocations (short/medium/long-term)
 - [ ] Configure time horizons for each bucket
 - [ ] Model bucket refill rules (when and how to move funds between buckets)
 - [ ] Draw from appropriate bucket based on time horizon
 
-#### 4.3 Retirement Spending Curve
+#### 5.3 Retirement Spending Curve
 - [ ] Define spending phases (go-go, slow-go, no-go) with age ranges
 - [ ] Configure spending multipliers or target amounts per phase
 - [ ] Model healthcare cost increases in later phases
 - [ ] Smooth transitions between phases
 
-#### 4.4 Guardrails Strategy
+#### 5.4 Guardrails Strategy
 - [ ] Set initial withdrawal rate and inflation adjustment
 - [ ] Define upper guardrail threshold (increase spending trigger)
 - [ ] Define lower guardrail threshold (decrease spending trigger)
 - [ ] Configure adjustment percentages when guardrails are hit
 - [ ] Set floor and ceiling constraints on withdrawals
 
-#### 4.5 Common Withdrawal Features
+#### 5.5 Common Withdrawal Features
 - [ ] Calculate monthly withdrawal needs based on target income minus other income sources
 - [ ] Model withdrawal sequencing across account types (tax-efficient ordering)
 - [ ] Handle portfolio depletion scenarios gracefully
 - [ ] Support Required Minimum Distributions (RMDs) when applicable
 
-### 5. Simulation & Analysis
+### 6. Simulation & Analysis
 
-- [ ] Generate a sequence of monthly transactions representing the portfolio lifecycle
-- [ ] Calculate key metrics:
-  - Portfolio balance at retirement
-  - Portfolio longevity (when/if depleted)
-  - Total contributions made
-  - Total withdrawals taken
-  - Total investment gains
-  - Success rate across scenarios
-- [ ] Support "what-if" scenario comparisons
-- [ ] Monte Carlo simulation support (variable returns)
+#### 6.1 Time Horizon Configuration
+- [ ] **Start date**: Default to today (current date)
+- [ ] **Retirement date**: User-specified per Person Profile
+- [ ] **End date options**:
+  - Life expectancy tables (default) - configurable by gender, health factors
+  - User-specified age (e.g., "plan through age 95")
+  - Until portfolio depleted (for stress testing)
+  - First of: specified age OR portfolio depletion
 
-### 6. Output & Reporting
+#### 6.2 Simulation Modes
 
-- [ ] Generate transaction-level detail (monthly breakdown)
-- [ ] Generate summary statistics
-- [ ] Export capabilities (CSV, JSON, or other formats)
-- [ ] Per-account breakdown in reports
+**Deterministic (Single Path)**:
+- [ ] Fixed return rates (e.g., 7% pre-retirement, 5% post-retirement)
+- [ ] Single simulation run, single outcome
+- [ ] Best for baseline planning and quick analysis
+
+**Monte Carlo (Probabilistic)**:
+- [ ] Variable returns based on statistical distribution (mean + standard deviation)
+- [ ] Configurable number of simulation runs (default: 1,000 or 10,000)
+- [ ] Calculate success rate (% of runs where portfolio lasts to end date)
+- [ ] Show distribution of outcomes:
+  - 10th percentile (poor outcome)
+  - 50th percentile (median)
+  - 90th percentile (good outcome)
+- [ ] Configurable return assumptions (mean, std dev, distribution type)
+
+**Historical Backtesting**:
+- [ ] Run simulation against actual historical market returns
+- [ ] Select historical periods (e.g., "What if I retired in 1966, 2000, 2008?")
+- [ ] Rolling period analysis (all possible 30-year periods since X)
+- [ ] Compare outcomes across different historical starting points
+
+#### 6.3 Monthly Simulation Loop
+Each month, the simulation engine executes:
+
+1. **Check life events**:
+   - [ ] Retirement date reached (switch from accumulation to distribution)
+   - [ ] Social Security claiming age reached (start SS income)
+   - [ ] RMD age reached (73, moving to 75 under SECURE 2.0)
+   - [ ] Spouse events (retirement, SS, death/survivorship)
+   - [ ] Mortgage payoff date
+   - [ ] One-time expense triggers
+   - [ ] Portfolio depletion
+
+2. **Calculate income** (if applicable):
+   - [ ] Working salary (pre-retirement)
+   - [ ] Social Security benefits
+   - [ ] Pension payments
+   - [ ] Annuity payments
+   - [ ] Other income (rental, part-time, etc.)
+
+3. **Calculate expenses**:
+   - [ ] Apply category-specific inflation rates
+   - [ ] Adjust for spending phase (go-go/slow-go/no-go if using spending curve)
+   - [ ] Include any one-time expenses for this month
+
+4. **Determine cash flow gap**:
+   - [ ] Gap = Total Expenses - Total Income
+   - [ ] If gap > 0: Need withdrawal from portfolio
+   - [ ] If gap < 0: Surplus (apply to savings or reduce withdrawal)
+
+5. **Execute distribution strategy** (if gap > 0):
+   - [ ] Apply chosen strategy (Static, Bucket, Spending Curve, Guardrails)
+   - [ ] Follow withdrawal sequencing rules (account order)
+   - [ ] Respect RMD requirements if applicable
+   - [ ] Handle insufficient funds scenario
+
+6. **Apply contributions** (pre-retirement):
+   - [ ] Employee contributions (respect limits, catch-up rules)
+   - [ ] Employer match
+   - [ ] Route to appropriate accounts
+
+7. **Apply investment returns**:
+   - [ ] Calculate monthly return per account
+   - [ ] Apply based on simulation mode (fixed, random, historical)
+
+8. **Record transaction**:
+   - [ ] Log all activity for this month
+   - [ ] Update running totals and metrics
+
+#### 6.4 Key Metrics & Outputs
+- [ ] Portfolio balance at retirement
+- [ ] Portfolio longevity (when/if depleted)
+- [ ] Total contributions made (by account, by source)
+- [ ] Total withdrawals taken (by account)
+- [ ] Total investment gains/losses
+- [ ] Success rate (Monte Carlo: % of runs lasting to end date)
+- [ ] Probability of ruin (inverse of success rate)
+- [ ] Safe withdrawal rate achieved
+- [ ] Income replacement ratio
+- [ ] Real vs nominal values (inflation-adjusted)
+
+#### 6.5 Scenario Comparison
+- [ ] Run multiple scenarios with different parameters
+- [ ] Side-by-side comparison of key metrics
+- [ ] "What-if" analysis (change one variable, compare outcomes)
+- [ ] Sensitivity analysis (how sensitive is outcome to return rate, inflation, etc.)
+
+### 7. Output & Reporting
+
+This is a **library/API first** design. The core engine produces structured data that can be consumed by UIs, exported to files, or used programmatically. A React-based UI is planned for visualization.
+
+#### 7.1 Architectural Approach
+- [ ] Core library performs calculations and simulation
+- [ ] API layer exposes functionality for programmatic access
+- [ ] Reporting module generates structured data for consumption
+- [ ] UI (React) handles interactive visualization and charting
+- [ ] Export module generates file formats (CSV, JSON, PDF)
+
+#### 7.2 Report Types
+
+**Transaction Detail Report**:
+- [ ] Month-by-month breakdown of all activity
+- [ ] Per-account transactions
+- [ ] Income received, expenses paid, contributions, withdrawals
+- [ ] Running balances
+
+**Summary Dashboard Data**:
+- [ ] Key metrics at a glance (balance at retirement, longevity, success rate)
+- [ ] Snapshot of current vs projected state
+- [ ] Alerts/warnings (e.g., projected shortfall, high withdrawal rate)
+
+**Timeline Report**:
+- [ ] Portfolio balance over time
+- [ ] Segmented by phase (accumulation vs distribution)
+- [ ] Key milestone markers (retirement, SS start, RMD age)
+
+**Cash Flow Report**:
+- [ ] Income vs expenses by period
+- [ ] Income breakdown by source (salary, SS, pension, withdrawals)
+- [ ] Expense breakdown by category
+- [ ] Net cash flow (surplus/deficit)
+
+**Account Breakdown Report**:
+- [ ] Per-account balances over time
+- [ ] Contribution history by account
+- [ ] Withdrawal history by account
+- [ ] Growth/returns by account
+
+**Tax Projection Report**:
+- [ ] Estimated tax liability by year
+- [ ] Taxable income sources
+- [ ] Tax-advantaged vs taxable withdrawals
+- [ ] Effective tax rate
+
+**Scenario Comparison Report**:
+- [ ] Side-by-side metrics for multiple scenarios
+- [ ] Highlight differences in outcomes
+- [ ] Recommendation indicators
+
+**Monte Carlo Results Report**:
+- [ ] Success rate (% of runs meeting goal)
+- [ ] Distribution of outcomes (percentiles)
+- [ ] Probability of ruin analysis
+- [ ] Confidence intervals
+
+#### 7.3 Export Formats
+
+**CSV**:
+- [ ] Raw transaction data for spreadsheet analysis
+- [ ] Summary metrics export
+- [ ] Configurable columns/fields
+
+**JSON**:
+- [ ] Structured data for programmatic consumption
+- [ ] Full simulation results
+- [ ] API response format
+
+**PDF**:
+- [ ] Formatted printable reports
+- [ ] Embedded charts (using Apache PDFBox or similar charting tools)
+- [ ] Professional layout for advisor/client sharing
+
+#### 7.4 Data Structures for UI Consumption
+
+The API should return data structured for easy UI rendering:
+
+- [ ] Time-series data for line charts (portfolio balance, income, expenses)
+- [ ] Categorical data for pie/bar charts (account breakdown, expense categories)
+- [ ] Distribution data for histograms (Monte Carlo outcomes)
+- [ ] Comparison data for side-by-side tables
+- [ ] Milestone/event data for timeline markers
+
+#### 7.5 Granularity Options
+- [ ] **Monthly**: Full detail for deep analysis
+- [ ] **Annual**: Year-by-year summary
+- [ ] **Phase**: Accumulation vs distribution totals
+- [ ] **Milestone**: Key events (retirement, SS, RMD, depletion)
 
 ---
 
@@ -159,6 +519,36 @@ Requires: Defining guardrail thresholds, adjustment percentages, and floor/ceili
 - **Testability**: Comprehensive unit tests for all calculations
 - **Extensibility**: Easy to add new income sources, withdrawal strategies, or calculation methods
 - **Usability**: Clear API for constructing portfolios and running simulations
+
+### Architecture Principles
+
+**Library/API First**:
+- Core simulation engine is a standalone Java library
+- No UI dependencies in core logic
+- Clean separation of concerns (model, calculation, reporting)
+- API layer for programmatic access
+
+**Layered Design**:
+```
+┌─────────────────────────────────────┐
+│         UI Layer (React)            │  ← Visualization, user interaction
+├─────────────────────────────────────┤
+│         API Layer (REST/JSON)       │  ← HTTP endpoints, request/response
+├─────────────────────────────────────┤
+│       Reporting Module              │  ← Report generation, export formats
+├─────────────────────────────────────┤
+│      Simulation Engine              │  ← Core calculation, scenario execution
+├─────────────────────────────────────┤
+│         Domain Model                │  ← Person, Portfolio, Account, Transaction
+└─────────────────────────────────────┘
+```
+
+**Technology Stack** (Planned):
+- **Core Library**: Java (current)
+- **API Layer**: Spring Boot (or similar)
+- **UI**: React
+- **PDF Generation**: Apache PDFBox with charting
+- **Data Export**: Jackson (JSON), OpenCSV or similar (CSV)
 
 ---
 
@@ -191,14 +581,19 @@ Requires: Defining guardrail thresholds, adjustment percentages, and floor/ceili
 - Support transaction chaining (previous balance → current start balance)
 - Full test coverage
 
-### Milestone 2: Multi-Account Portfolio
-**Goal**: Support multiple investment accounts with different characteristics
+### Milestone 2: Multi-Account Portfolio & Contribution Rules
+**Goal**: Support multiple investment accounts with IRS-compliant contribution modeling
 
 - Create InvestmentAccount model with type, allocation, return rates
 - Create Portfolio container for multiple accounts
 - Model contribution routing to specific accounts
 - Aggregate portfolio balance across accounts
 - Account-level transaction tracking
+- **IRS contribution limits by account type** (401k, IRA, Roth, HSA)
+- **Age-based catch-up contributions** (50+, 55+ for HSA, 60-63 super catch-up)
+- **Income-based phase-outs and rules** (IRA deductibility, Roth eligibility)
+- **SECURE 2.0 rule support** (effective dates, Roth catch-up requirement for high earners)
+- **Configurable limits** with sensible defaults
 
 ### Milestone 3: Distribution Strategies
 **Goal**: Implement the four core withdrawal strategies
@@ -234,6 +629,15 @@ Requires: Defining guardrail thresholds, adjustment percentages, and floor/ceili
 - Visualization data preparation
 - Success/failure metrics for scenario runs
 
+### Milestone 7: Roth Conversion Strategies (Future)
+**Goal**: Model Roth conversion strategies for tax optimization
+
+- Analyze optimal conversion amounts based on tax brackets
+- Model "Roth conversion ladder" for early retirees
+- Project tax liability impact of conversions
+- Compare scenarios with/without conversions
+- Integration with withdrawal sequencing
+
 ---
 
 ## Open Questions
@@ -241,28 +645,61 @@ Requires: Defining guardrail thresholds, adjustment percentages, and floor/ceili
 ### Resolved
 - ~~**Multiple accounts**: Should we support modeling multiple accounts with different characteristics?~~
   **Decision**: Yes - support multiple investment accounts with distinct types, allocations, and rules.
+
 - ~~**Withdrawal strategies**: What strategies should we support?~~
   **Decision**: Support Static, Bucket, Spending Curve, and Guardrails strategies.
 
+- ~~**Simulation granularity**: Monthly is assumed - is this sufficient, or do we need flexibility?~~
+  **Decision**: Monthly granularity is sufficient. Aligns with Social Security payments and provides accurate compounding modeling.
+
+- ~~**Spouse/joint modeling**: Single person only, or support for couples?~~
+  **Decision**: Support both single and spouse/joint modeling, including joint Social Security benefits and survivorship scenarios.
+
+- ~~**Withdrawal sequencing**: What's the default order for multi-account withdrawals?~~
+  **Decision**: Provide a default tax-efficient sequence (Taxable → Traditional → Roth) with support for custom withdrawal sequences. Allow rules and contingencies for sequencing logic.
+
+- ~~**Historical vs projected returns**: Should we support backtesting against historical data?~~
+  **Decision**: Support both fixed projected rates and historical data backtesting.
+
 ### Open
-1. **Simulation granularity**: Monthly is assumed - is this sufficient, or do we need flexibility?
-2. **Tax modeling depth**: How detailed should tax modeling be?
-   - Simple: Just track pre-tax vs post-tax accounts
-   - Moderate: Model tax brackets, estimate tax liability on withdrawals
-   - Detailed: Capital gains, tax-loss harvesting, state taxes
-3. **Rebalancing**: How should we model portfolio rebalancing?
-   - Per-account rebalancing to target allocation?
-   - Cross-account rebalancing?
-   - Frequency (annual, threshold-based)?
-4. **Spouse/joint modeling**: Single person only, or support for couples?
-   - Joint vs individual Social Security benefits
-   - Survivorship scenarios
-5. **Withdrawal sequencing**: What's the default order for multi-account withdrawals?
-   - Tax-efficient: Taxable → Traditional → Roth
-   - User-configurable ordering?
-   - Roth conversion strategies?
-6. **Historical vs projected returns**: Should we support backtesting against historical data?
-7. **Inflation modeling**: Single rate, or separate rates for different expense categories (healthcare, general)?
+
+#### ~~Tax Modeling~~ (Resolved)
+
+**Decisions**:
+
+1. **Federal tax brackets**: Yes - provide current tax bracket defaults with option to override. Enable custom bracket configuration for users who want to model future tax law changes.
+
+2. **Account type tax treatment**: Model the tax differences between account types:
+   - **Traditional 401(k)/IRA**: Pre-tax contributions, taxed on withdrawal as ordinary income
+   - **Roth 401(k)/IRA**: Post-tax contributions, tax-free qualified withdrawals
+   - **HSA**: Pre-tax contributions, tax-free withdrawals for qualified medical expenses
+   - **Taxable Brokerage**: Post-tax contributions, capital gains taxes on growth, dividends taxed annually
+
+3. **Capital gains (taxable accounts)**: Use simple estimation approach - assume a configurable percentage of growth is taxable gains rather than tracking full cost basis. This balances accuracy with complexity.
+
+4. **Roth conversions**: Separate milestone - not part of core distribution strategies but planned as a future enhancement. Requires tax bracket awareness to model effectively.
+
+5. **State taxes**: Out of scope for initial implementation. Could be added as optional module in future.
+
+#### ~~Rebalancing~~ (Future Investigation)
+**Decision**: Deferred - requires further research and design.
+
+Rebalancing is complex because it involves simulating variable investment changes within accounts. Questions to explore in the future:
+- Per-account rebalancing to target allocation?
+- Cross-account rebalancing (tax-efficient asset placement)?
+- Frequency: annual, threshold-based (e.g., 5% drift), or both?
+- Tax implications of rebalancing in taxable accounts (capital gains triggers)?
+- How to model allocation drift between rebalancing events?
+
+**Note**: Initial implementation will assume static allocations per account. Rebalancing may be added as a future enhancement once the core simulation is stable.
+
+#### ~~Inflation Modeling~~ (Resolved)
+**Decision**: Support three separate inflation rates:
+- **General inflation (CPI)**: Applied to most expenses
+- **Healthcare inflation**: Typically higher than CPI (~5-6% historically vs ~2-3% CPI)
+- **Housing inflation**: Property taxes, maintenance, insurance
+
+This enables more accurate modeling of expense changes over a 30+ year retirement horizon, where healthcare costs often grow faster than general inflation.
 
 ---
 
