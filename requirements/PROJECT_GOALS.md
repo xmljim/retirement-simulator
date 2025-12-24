@@ -550,93 +550,336 @@ The API should return data structured for easy UI rendering:
 - **PDF Generation**: Apache PDFBox with charting
 - **Data Export**: Jackson (JSON), OpenCSV or similar (CSV)
 
+### Development Standards
+
+All development must adhere to these standards. These are **non-negotiable**.
+
+#### Java Best Practices
+
+**SOLID Principles**:
+- **S**ingle Responsibility: Each class has one reason to change
+- **O**pen/Closed: Open for extension, closed for modification
+- **L**iskov Substitution: Subtypes must be substitutable for base types
+- **I**nterface Segregation: Many specific interfaces over one general-purpose
+- **D**ependency Inversion: Depend on abstractions, not concretions
+
+**Gang of Four (GoF) Design Patterns**:
+Apply appropriate patterns where they add value:
+- **Creational**: Builder (already used), Factory, Singleton (sparingly)
+- **Structural**: Adapter, Decorator, Composite
+- **Behavioral**: Strategy (for distribution strategies), Observer, Command, Template Method
+
+**Code Quality**:
+- Meaningful names for classes, methods, variables
+- Small, focused methods (single responsibility)
+- Prefer composition over inheritance
+- Immutable objects where possible
+- Proper encapsulation (minimize public APIs)
+- No magic numbers - use named constants
+- Handle exceptions appropriately (don't swallow)
+
+#### Testing Requirements
+
+**Unit Testing is Mandatory**:
+- All business logic must have unit tests
+- Test-Driven Development (TDD) encouraged
+- Aim for high code coverage on core calculation logic
+- Use JUnit 5 (already in project)
+- Use descriptive test names (`@DisplayName`)
+- Follow Arrange-Act-Assert pattern
+
+**Test Categories**:
+- **Unit tests**: Isolated tests of individual classes/methods
+- **Integration tests**: Test component interactions
+- **Scenario tests**: End-to-end simulation validation
+
+#### Git Workflow
+
+**Branch Strategy**:
+- `main`: Production-ready code only
+- `develop`: Integration branch for features
+- `feature/<issue-number>-<short-description>`: Feature branches
+- `bugfix/<issue-number>-<short-description>`: Bug fix branches
+- `release/<version>`: Release preparation branches
+
+**Commit Standards**:
+- Atomic commits (one logical change per commit)
+- Clear, descriptive commit messages
+- Reference issue numbers in commits (e.g., "Fixes #123")
+- No commits directly to `main` - use Pull Requests
+
+**Pull Request Requirements**:
+- Descriptive title and summary
+- Link to related issue(s)
+- All tests must pass
+- Code review required before merge
+- Squash or rebase to keep history clean
+
+**Code Review Checklist**:
+- [ ] Follows SOLID principles
+- [ ] Appropriate design patterns used
+- [ ] Unit tests included and passing
+- [ ] No commented-out code
+- [ ] No TODOs without linked issues
+- [ ] Documentation updated if needed
+
 ---
 
 ## Current State
 
-### Completed
-- `PortfolioParameters`: Full parameter model with builders for all configuration
-- `Functions`: Core financial calculations (inflation, COLA, contributions, SS, other income)
-- `Transaction`: Partial implementation with retirement status, contribution rates, income calculations
-- Test coverage for Functions and partial Transaction behavior
+### Existing Code
 
-### In Progress / Not Started
-- `Transaction.getEndBalance()`: Returns hardcoded 0.0
-- Actual dollar amount calculations for contributions
-- Investment return application
-- Portfolio simulation engine (transaction sequencing)
-- Withdrawal calculations
-- Reporting/output
+**`PortfolioParameters.java`**:
+- Full parameter model with builders for investments, contributions, income
+- Contains nested classes: Investments, Contribution, WorkingIncome, WithdrawalIncome, MonthlyRetirementIncome
+- Uses Builder pattern appropriately
+- **Refactoring needed**: May need restructuring to align with new Person Profile / Portfolio concepts
+
+**`Functions.java`**:
+- Core financial calculations (inflation, COLA, contributions, SS, other income)
+- Functional interfaces with lambda implementations
+- **Refactoring needed**: Consider breaking into separate classes by responsibility (InflationCalculator, ContributionCalculator, etc.) to follow Single Responsibility Principle
+
+**`Transaction.java`**:
+- Partial implementation with retirement status, contribution rates, income calculations
+- `getEndBalance()` returns hardcoded 0.0
+- **Refactoring needed**: Significant work needed to complete; may need redesign for multi-account support
+
+**Enums**:
+- `TransactionType`: CONTRIBUTION, WITHDRAWAL
+- `ContributionType`: PERSONAL, EMPLOYER
+- `WithdrawalType`: FIXED, SALARY
+- **May need expansion** for new distribution strategies
+
+**Tests**:
+- `FunctionsTest.java`: 17 tests covering calculation functions
+- `TransactionTest.java`: 16 tests covering Transaction behavior
+- **Refactoring needed**: Tests may need updates as code is refactored
+
+### Refactoring Considerations
+
+Based on the expanded requirements, the existing code needs:
+
+1. **Domain Model Restructuring**:
+   - Introduce `PersonProfile` as top-level entity
+   - Separate `Portfolio` from `PortfolioParameters`
+   - Create `InvestmentAccount` for individual accounts
+   - Extract `Scenario` as simulation configuration
+
+2. **Functions Decomposition**:
+   - Break monolithic Functions class into focused calculators
+   - Consider Strategy pattern for different calculation approaches
+
+3. **Transaction Redesign**:
+   - Complete `getEndBalance()` implementation
+   - Support multi-account transactions
+   - Align with monthly simulation loop requirements
+
+### Not Yet Implemented
+- Person Profile model
+- Multi-account portfolio support
+- IRS contribution limits and rules
+- Expense/budget modeling
+- Distribution strategies (beyond basic)
+- Simulation engine
+- Reporting module
+- API layer
 
 ---
 
 ## Proposed Milestones
 
-### Milestone 1: Core Transaction Model
-**Goal**: A fully functional Transaction class that calculates accurate balances for a single account
+### Milestone 1: Domain Model Foundation
+**Goal**: Establish core domain model with clean architecture; refactor existing code
 
-- Implement `getEndBalance()` with investment returns
+**Domain Entities**:
+- Create `PersonProfile` model (DOB, retirement date, life expectancy, linked spouse)
+- Create `Portfolio` as container for investment accounts
+- Create `InvestmentAccount` model (type, allocation, return rates, balance)
+- Create `Scenario` configuration model
+- Define account type enum (401k, IRA, Roth IRA, Roth 401k, HSA, Taxable)
+
+**Refactoring**:
+- Restructure `PortfolioParameters` to align with new domain model
+- Decompose `Functions` class into focused calculator classes (Single Responsibility)
+- Apply Strategy pattern where appropriate
+- Update existing tests to match refactored code
+
+**Foundation**:
+- Establish package structure following layered architecture
+- Set up proper interfaces for extensibility
+- Full test coverage for domain model
+
+### Milestone 2: Core Transaction & Account Operations
+**Goal**: Fully functional transaction processing for individual accounts
+
+- Implement `Transaction` with complete balance calculations
+- Calculate investment returns (monthly compounding)
 - Calculate actual contribution amounts (rate × salary)
-- Calculate actual withdrawal amounts (static strategy)
+- Calculate actual withdrawal amounts
 - Support transaction chaining (previous balance → current start balance)
+- Account-level transaction history
 - Full test coverage
 
-### Milestone 2: Multi-Account Portfolio & Contribution Rules
+### Milestone 3: Multi-Account Portfolio & Contribution Rules
 **Goal**: Support multiple investment accounts with IRS-compliant contribution modeling
 
-- Create InvestmentAccount model with type, allocation, return rates
-- Create Portfolio container for multiple accounts
-- Model contribution routing to specific accounts
-- Aggregate portfolio balance across accounts
-- Account-level transaction tracking
-- **IRS contribution limits by account type** (401k, IRA, Roth, HSA)
-- **Age-based catch-up contributions** (50+, 55+ for HSA, 60-63 super catch-up)
-- **Income-based phase-outs and rules** (IRA deductibility, Roth eligibility)
-- **SECURE 2.0 rule support** (effective dates, Roth catch-up requirement for high earners)
-- **Configurable limits** with sensible defaults
+**Multi-Account Support**:
+- Portfolio aggregation across accounts
+- Contribution routing to specific accounts
+- Cross-account balance tracking
 
-### Milestone 3: Distribution Strategies
+**IRS Contribution Rules**:
+- Contribution limits by account type (401k, IRA, Roth, HSA)
+- Age-based catch-up contributions (50+, 55+ for HSA, 60-63 super catch-up)
+- Income-based phase-outs (IRA deductibility, Roth eligibility)
+- SECURE 2.0 rule support (effective dates, Roth catch-up for high earners)
+- Base year limits with inflation projection
+- Year-to-date contribution tracking against limits
+
+### Milestone 4: Income Modeling
+**Goal**: Comprehensive income source modeling
+
+**Working Income**:
+- Salary with configurable COLA
+- Income start/end dates
+
+**Social Security**:
+- FRA benefit input from SSA.gov
+- Early/delayed claiming adjustments
+- Spousal benefits
+- Survivor benefits
+- Earnings test
+- Benefit taxation thresholds
+
+**Pensions & Annuities**:
+- Defined benefit pension modeling
+- Survivor benefit options
+- Fixed/variable annuity support
+- COLA adjustments
+
+**Other Income**:
+- Rental income
+- Part-time retirement work
+- Other recurring sources
+
+### Milestone 5: Expense & Budget Modeling
+**Goal**: Category-based expense tracking with differentiated inflation
+
+- Expense categories (essential, healthcare, housing, discretionary, debt)
+- Category-specific inflation rates
+- Expense changes over time (mortgage payoff, spending phases)
+- One-time expense support
+- Budget vs income gap analysis
+
+### Milestone 6: Distribution Strategies
 **Goal**: Implement the four core withdrawal strategies
 
-- **3a**: Static withdrawal (fixed rate with inflation adjustment)
-- **3b**: Bucket strategy (time-segmented withdrawals)
-- **3c**: Spending curve (phase-based withdrawal targets)
-- **3d**: Guardrails (dynamic withdrawal adjustments)
-- Strategy interface/abstraction for extensibility
+**Strategies**:
+- **6a**: Static withdrawal (fixed rate with inflation adjustment)
+- **6b**: Bucket strategy (time-segmented withdrawals)
+- **6c**: Spending curve (phase-based withdrawal targets)
+- **6d**: Guardrails (dynamic withdrawal adjustments)
+
+**Framework**:
+- Strategy interface/abstraction (Strategy pattern)
 - Withdrawal sequencing across account types
+- Tax-efficient withdrawal ordering
+- RMD integration
 
-### Milestone 4: Portfolio Simulation Engine
-**Goal**: Generate a complete sequence of monthly transactions
+### Milestone 7: Simulation Engine
+**Goal**: Generate complete monthly transaction sequences
 
-- Create simulation runner that iterates from start date to end date
-- Generate Transaction objects for each month per account
-- Track cumulative statistics (contributions, withdrawals, gains)
-- Handle edge cases (retirement transition, SS start, portfolio depletion, RMDs)
+**Core Engine**:
+- Simulation runner (start date to end date)
+- Monthly simulation loop (8-step process)
+- Transaction generation per account per month
+- Phase handling (accumulation → distribution transition)
 
-### Milestone 5: Scenario Analysis
+**Event Handling**:
+- Retirement date trigger
+- Social Security start
+- RMD age trigger
+- Spouse events
+- One-time expenses
+- Portfolio depletion
+
+**Statistics**:
+- Cumulative tracking (contributions, withdrawals, gains)
+- Running balances and metrics
+
+### Milestone 8: Scenario Analysis
 **Goal**: Compare different retirement scenarios
 
-- Support multiple portfolio/strategy configurations
-- Side-by-side comparison metrics
-- Sensitivity analysis (variable returns, inflation, contribution rates)
-- Monte Carlo simulation support
+**Simulation Modes**:
+- Deterministic (fixed returns)
+- Monte Carlo (probabilistic, N runs, percentiles)
+- Historical backtesting (actual market data)
 
-### Milestone 6: Output & Reporting
+**Analysis Features**:
+- Multiple scenario configurations
+- Side-by-side comparison
+- Sensitivity analysis
+- Success rate / probability of ruin
+
+### Milestone 9: Output & Reporting
 **Goal**: Export simulation results in useful formats
 
-- CSV export of transaction history (per-account and aggregate)
-- Summary report generation
-- Visualization data preparation
-- Success/failure metrics for scenario runs
+**Report Types**:
+- Transaction detail
+- Summary dashboard
+- Timeline report
+- Cash flow report
+- Account breakdown
+- Tax projection
+- Scenario comparison
+- Monte Carlo results
 
-### Milestone 7: Roth Conversion Strategies (Future)
-**Goal**: Model Roth conversion strategies for tax optimization
+**Export Formats**:
+- CSV (raw data)
+- JSON (API/programmatic)
+- PDF (formatted with charts)
 
-- Analyze optimal conversion amounts based on tax brackets
-- Model "Roth conversion ladder" for early retirees
-- Project tax liability impact of conversions
-- Compare scenarios with/without conversions
-- Integration with withdrawal sequencing
+**API**:
+- Structured data for UI consumption
+- Granularity options (monthly, annual, phase, milestone)
+
+### Milestone 10: API Layer
+**Goal**: RESTful API for programmatic access
+
+- Spring Boot application setup
+- REST endpoints for all operations
+- Request/response DTOs
+- API documentation (OpenAPI/Swagger)
+- Authentication/authorization (if needed)
+
+### Milestone 11: UI (React)
+**Goal**: Interactive web interface
+
+- React application setup
+- Person Profile management
+- Portfolio configuration
+- Scenario builder
+- Simulation execution
+- Results visualization (charts, tables)
+- Report generation
+
+### Future Milestones
+
+**Milestone F1: Roth Conversion Strategies**
+- Optimal conversion analysis
+- Roth conversion ladder modeling
+- Tax liability projections
+
+**Milestone F2: Rebalancing**
+- Per-account rebalancing
+- Cross-account rebalancing
+- Tax-efficient rebalancing
+
+**Milestone F3: Advanced Tax Modeling**
+- State tax support
+- Capital gains tracking
+- Tax-loss harvesting
 
 ---
 
