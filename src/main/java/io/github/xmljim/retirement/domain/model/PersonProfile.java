@@ -34,24 +34,15 @@ public class PersonProfile {
     private final PersonProfile spouse;
 
     private PersonProfile(Builder builder) {
+        // Validation is performed in Builder.build() before this constructor is called,
+        // so no exceptions are thrown here (avoiding CT_CONSTRUCTOR_THROW)
         this.id = builder.id != null ? builder.id : UUID.randomUUID().toString();
-        this.name = Objects.requireNonNull(builder.name, "Name is required");
-        this.dateOfBirth = Objects.requireNonNull(builder.dateOfBirth, "Date of birth is required");
-        this.retirementDate = Objects.requireNonNull(builder.retirementDate, "Retirement date is required");
+        this.name = builder.name;
+        this.dateOfBirth = builder.dateOfBirth;
+        this.retirementDate = builder.retirementDate;
         this.lifeExpectancy = builder.lifeExpectancy;
         this.socialSecurityStartDate = builder.socialSecurityStartDate;
         this.spouse = builder.spouse;
-
-        validateDates();
-    }
-
-    private void validateDates() {
-        if (retirementDate.isBefore(dateOfBirth)) {
-            throw new IllegalArgumentException("Retirement date cannot be before date of birth");
-        }
-        if (socialSecurityStartDate != null && socialSecurityStartDate.isBefore(dateOfBirth)) {
-            throw new IllegalArgumentException("Social Security start date cannot be before date of birth");
-        }
     }
 
     /**
@@ -323,7 +314,21 @@ public class PersonProfile {
          * @throws IllegalArgumentException if validation fails
          */
         public PersonProfile build() {
+            validate();
             return new PersonProfile(this);
+        }
+
+        private void validate() {
+            Objects.requireNonNull(name, "Name is required");
+            Objects.requireNonNull(dateOfBirth, "Date of birth is required");
+            Objects.requireNonNull(retirementDate, "Retirement date is required");
+
+            if (retirementDate.isBefore(dateOfBirth)) {
+                throw new IllegalArgumentException("Retirement date cannot be before date of birth");
+            }
+            if (socialSecurityStartDate != null && socialSecurityStartDate.isBefore(dateOfBirth)) {
+                throw new IllegalArgumentException("Social Security start date cannot be before date of birth");
+            }
         }
     }
 }

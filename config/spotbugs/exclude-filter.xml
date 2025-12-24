@@ -20,4 +20,19 @@
         <Class name="io.github.xmljim.Main"/>
     </Match>
 
+    <!--
+        LEGACY CODE EXCLUSIONS
+        These files predate the quality gates and will be refactored in M1.
+        TODO: Remove after completing issues #7 and #8
+    -->
+    <!-- Exclude legacy model classes -->
+    <Match>
+        <Package name="io.github.xmljim.retirement.model"/>
+    </Match>
+
+    <!-- Exclude legacy functions class -->
+    <Match>
+        <Class name="io.github.xmljim.retirement.functions.Functions"/>
+    </Match>
+
 </FindBugsFilter>
