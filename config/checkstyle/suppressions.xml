@@ -14,4 +14,21 @@
 
     <!-- Suppress Javadoc for package-info files -->
     <suppress checks="MissingJavadocType" files="package-info\.java$"/>
+
+    <!--
+        LEGACY CODE SUPPRESSIONS
+        These files predate the quality gates and will be refactored in M1.
+        TODO: Remove after completing issues #7 and #8
+    -->
+    <!-- Suppress all checks for legacy model files (to be refactored in #7) -->
+    <suppress files="io[\\/]github[\\/]xmljim[\\/]retirement[\\/]model[\\/].*\.java$" checks=".*"/>
+
+    <!-- Suppress all checks for legacy functions (to be refactored in #8) -->
+    <suppress files="io[\\/]github[\\/]xmljim[\\/]retirement[\\/]functions[\\/].*\.java$" checks=".*"/>
+
+    <!-- Suppress all checks for Main class -->
+    <suppress files="io[\\/]github[\\/]xmljim[\\/]Main\.java$" checks=".*"/>
+
+    <!-- Suppress all checks for legacy test files -->
+    <suppress files="retirement[\\/]functions[\\/]FunctionsTest\.java$" checks=".*"/>
 </suppressions>
