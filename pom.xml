@@ -35,6 +35,7 @@
                 <configuration>
                     <configLocation>config/checkstyle/checkstyle.xml</configLocation>
                     <suppressionsLocation>config/checkstyle/suppressions.xml</suppressionsLocation>
+                    <propertyExpansion>config_loc=${project.basedir}/config/checkstyle</propertyExpansion>
                     <consoleOutput>true</consoleOutput>
                     <failsOnError>true</failsOnError>
                     <violationSeverity>warning</violationSeverity>
@@ -62,7 +63,7 @@
             <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
-                <version>4.8.3.1</version>
+                <version>4.9.8.2</version>
                 <configuration>
                     <effort>Max</effort>
                     <threshold>Medium</threshold>
@@ -91,7 +92,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-pmd-plugin</artifactId>
-                <version>3.21.2</version>
+                <version>3.28.0</version>
                 <configuration>
                     <rulesets>
                         <ruleset>config/pmd/ruleset.xml</ruleset>
@@ -102,6 +103,12 @@
                     <includeTests>true</includeTests>
                     <!-- Fail on priority 1-2 violations (severe) -->
                     <failurePriority>2</failurePriority>
+                    <!-- Exclude legacy code (to be refactored in issues #7 and #8) -->
+                    <excludes>
+                        <exclude>**/io/github/xmljim/retirement/model/**</exclude>
+                        <exclude>**/io/github/xmljim/retirement/functions/**</exclude>
+                        <exclude>**/io/github/xmljim/Main.java</exclude>
+                    </excludes>
                 </configuration>
                 <executions>
                     <execution>
@@ -125,7 +132,43 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.11</version>
+                <version>0.8.14</version>
+                <configuration>
+                    <rules>
+                        <rule>
+                            <element>BUNDLE</element>
+                            <limits>
+                                <!-- Line coverage: 80% minimum -->
+                                <limit>
+                                    <counter>LINE</counter>
+                                    <value>COVEREDRATIO</value>
+                                    <minimum>0.80</minimum>
+                                </limit>
+                                <!-- Branch coverage: 75% minimum -->
+                                <limit>
+                                    <counter>BRANCH</counter>
+                                    <value>COVEREDRATIO</value>
+                                    <minimum>0.75</minimum>
+                                </limit>
+                                <!-- Method coverage: 80% minimum -->
+                                <limit>
+                                    <counter>METHOD</counter>
+                                    <value>COVEREDRATIO</value>
+                                    <minimum>0.80</minimum>
+                                </limit>
+                            </limits>
+                        </rule>
+                    </rules>
+                    <excludes>
+                        <!-- Exclude Main class -->
+                        <exclude>io/github/xmljim/Main.class</exclude>
+                        <!-- Exclude configuration classes -->
+                        <exclude>**/config/**</exclude>
+                        <!-- Exclude legacy code (to be refactored in issues #7 and #8) -->
+                        <exclude>io/github/xmljim/retirement/model/**</exclude>
+                        <exclude>io/github/xmljim/retirement/functions/**</exclude>
+                    </excludes>
+                </configuration>
                 <executions>
                     <!-- Prepare agent for coverage collection -->
                     <execution>
@@ -149,39 +192,6 @@
                         <goals>
                             <goal>check</goal>
                         </goals>
-                        <configuration>
-                            <rules>
-                                <rule>
-                                    <element>BUNDLE</element>
-                                    <limits>
-                                        <!-- Line coverage: 80% minimum -->
-                                        <limit>
-                                            <counter>LINE</counter>
-                                            <value>COVEREDRATIO</value>
-                                            <minimum>0.80</minimum>
-                                        </limit>
-                                        <!-- Branch coverage: 75% minimum -->
-                                        <limit>
-                                            <counter>BRANCH</counter>
-                                            <value>COVEREDRATIO</value>
-                                            <minimum>0.75</minimum>
-                                        </limit>
-                                        <!-- Method coverage: 80% minimum -->
-                                        <limit>
-                                            <counter>METHOD</counter>
-                                            <value>COVEREDRATIO</value>
-                                            <minimum>0.80</minimum>
-                                        </limit>
-                                    </limits>
-                                </rule>
-                            </rules>
-                            <excludes>
-                                <!-- Exclude Main class -->
-                                <exclude>io/github/xmljim/Main.class</exclude>
-                                <!-- Exclude configuration classes -->
-                                <exclude>**/config/**</exclude>
-                            </excludes>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>
