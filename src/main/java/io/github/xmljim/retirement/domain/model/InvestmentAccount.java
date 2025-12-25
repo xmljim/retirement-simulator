@@ -51,7 +51,6 @@ public final class InvestmentAccount {
 
     private static final BigDecimal MIN_RETURN = new BigDecimal("-0.50");
     private static final BigDecimal MAX_RETURN = new BigDecimal("0.50");
-    private static final int SCALE = 6;
 
     private final String id;
     private final String name;
@@ -289,7 +288,7 @@ public final class InvestmentAccount {
         private AssetAllocation allocation = AssetAllocation.balanced();
         private BigDecimal preRetirementReturnRate;
         private BigDecimal postRetirementReturnRate;
-        private boolean useAllocationBasedReturn = false;
+        private boolean useAllocationBasedReturn;
 
         /**
          * Sets the account ID.
