@@ -1,53 +1,66 @@
 # IRS Contribution Limits Configuration
 # SECURE 2.0 Act limits for 401(k), 403(b), and 457(b) plans
+#
+# Sources:
+# - IRS News Release IR-2024-285 (Nov 2024): 2025 limits
+# - IRS News Release IR-2023-203 (Nov 2023): 2024 limits
+# - IRS Notice 2023-62: ROTH catch-up delayed to 2026
+#
+# SECURE 2.0 Key Provisions:
+# - Super catch-up (ages 60-63): Effective 2025, higher catch-up limit
+# - ROTH-only catch-up for high earners (>$145K): Delayed until 2026
 
 irs:
   contribution:
     # Default annual increase rate for extrapolating future years
+    # Based on historical ~2-3% COLA adjustments
     default-annual-increase-rate: 0.02
 
     # 401(k)/403(b)/457(b) limits by year
+    # Annual additions limit (employer+employee): $69,000 (2024), $70,000 (2025)
     limits:
       2024:
-        base-limit: 23000
-        catch-up-limit: 7500
+        base-limit: 23000        # IRS confirmed
+        catch-up-limit: 7500     # IRS confirmed (age 50+)
         super-catch-up-limit: 0  # Not effective until 2025
-        roth-catch-up-income-threshold: 145000
+        roth-catch-up-income-threshold: 145000  # Delayed until 2026
       2025:
-        base-limit: 23500
-        catch-up-limit: 7500
-        super-catch-up-limit: 11250  # Age 60-63 super catch-up
-        roth-catch-up-income-threshold: 145000
+        base-limit: 23500        # IRS confirmed
+        catch-up-limit: 7500     # IRS confirmed (age 50+)
+        super-catch-up-limit: 11250  # IRS confirmed (ages 60-63)
+        roth-catch-up-income-threshold: 145000  # Delayed until 2026
       2026:
-        base-limit: 24500
-        catch-up-limit: 7500
-        super-catch-up-limit: 11625
-        roth-catch-up-income-threshold: 150000  # Estimated increase
+        base-limit: 24000        # Estimated ($500 increase)
+        catch-up-limit: 7500     # Typically flat
+        super-catch-up-limit: 11250  # Typically flat initially
+        roth-catch-up-income-threshold: 145000  # Enforcement begins 2026
 
     # IRA limits (separate from employer-sponsored plans)
+    # Note: IRA catch-up ($1,000) is NOT indexed for inflation
     ira-limits:
       2024:
-        base-limit: 7000
-        catch-up-limit: 1000
+        base-limit: 7000         # IRS confirmed
+        catch-up-limit: 1000     # IRS confirmed (age 50+, not indexed)
       2025:
-        base-limit: 7000
-        catch-up-limit: 1000
+        base-limit: 7000         # IRS confirmed (unchanged)
+        catch-up-limit: 1000     # IRS confirmed (age 50+, not indexed)
       2026:
-        base-limit: 7500
-        catch-up-limit: 1000
+        base-limit: 7000         # Estimated (likely unchanged)
+        catch-up-limit: 1000     # Not indexed for inflation
 
     # HSA limits (requires HDHP coverage)
-    # Catch-up available at age 55 (not 50 like retirement accounts)
+    # Catch-up: Age 55+ (not 50), $1,000 flat (not indexed)
+    # Source: IRS Rev. Proc. 2023-23 (2024), Rev. Proc. 2024-25 (2025)
     hsa-limits:
       2024:
-        individual-limit: 4150
-        family-limit: 8300
-        catch-up-limit: 1000
+        individual-limit: 4150   # IRS confirmed
+        family-limit: 8300       # IRS confirmed
+        catch-up-limit: 1000     # IRS confirmed (age 55+, not indexed)
       2025:
-        individual-limit: 4300
-        family-limit: 8550
-        catch-up-limit: 1000
+        individual-limit: 4300   # IRS confirmed
+        family-limit: 8550       # IRS confirmed
+        catch-up-limit: 1000     # IRS confirmed (age 55+, not indexed)
       2026:
-        individual-limit: 4400  # Estimated
-        family-limit: 8750      # Estimated
-        catch-up-limit: 1000
+        individual-limit: 4400   # Estimated
+        family-limit: 8750       # Estimated
+        catch-up-limit: 1000     # Not indexed for inflation

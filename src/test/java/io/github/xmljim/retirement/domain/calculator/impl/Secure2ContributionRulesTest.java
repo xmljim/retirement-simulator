@@ -37,8 +37,8 @@ class Secure2ContributionRulesTest {
             new BigDecimal("23500"), new BigDecimal("7500"),
             new BigDecimal("11250"), new BigDecimal("145000")));
         testLimits.getLimits().put(2026, new IrsContributionLimits.YearLimits(
-            new BigDecimal("24500"), new BigDecimal("7500"),
-            new BigDecimal("11625"), new BigDecimal("150000")));
+            new BigDecimal("24000"), new BigDecimal("7500"),
+            new BigDecimal("11250"), new BigDecimal("145000")));
         return testLimits;
     }
 
@@ -173,9 +173,15 @@ class Secure2ContributionRulesTest {
         }
 
         @Test
-        @DisplayName("Income $150,000 does not require ROTH in 2026 (threshold raised)")
-        void income150KNoRothIn2026() {
-            assertFalse(rules.requiresRothCatchUp(2026, new BigDecimal("150000")));
+        @DisplayName("Income $145,000 does not require ROTH in 2026")
+        void income145KNoRothIn2026() {
+            assertFalse(rules.requiresRothCatchUp(2026, new BigDecimal("145000")));
+        }
+
+        @Test
+        @DisplayName("Income $145,001 requires ROTH in 2026")
+        void income145001RequiresRothIn2026() {
+            assertTrue(rules.requiresRothCatchUp(2026, new BigDecimal("145001")));
         }
 
         @Test

@@ -41,10 +41,10 @@ class IrsContributionLimitsTest {
             new BigDecimal("145000")
         ));
         yearLimits.put(2026, new YearLimits(
-            new BigDecimal("24500"),
+            new BigDecimal("24000"),
             new BigDecimal("7500"),
-            new BigDecimal("11625"),
-            new BigDecimal("150000")
+            new BigDecimal("11250"),
+            new BigDecimal("145000")
         ));
         limits.setLimits(yearLimits);
 
@@ -113,12 +113,12 @@ class IrsContributionLimitsTest {
             YearLimits result = limits.getLimitsForYear(2030);
 
             assertNotNull(result);
-            // Base limit: 24500 * (1.02)^4 = 26,519.59 → rounds to $26,500
-            assertEquals(0, new BigDecimal("26500").compareTo(result.baseLimit()));
+            // Base limit: 24000 * (1.02)^4 = 25,977.67 → rounds to $26,000
+            assertEquals(0, new BigDecimal("26000").compareTo(result.baseLimit()));
             // Catch-up: 7500 * (1.02)^4 = 8118.24 → rounds to $8,000
             assertEquals(0, new BigDecimal("8000").compareTo(result.catchUpLimit()));
-            // Income threshold: 150000 * (1.02)^4 = 162364.82 → rounds to $160,000
-            assertEquals(0, new BigDecimal("160000").compareTo(result.rothCatchUpIncomeThreshold()));
+            // Income threshold: 145000 * (1.02)^4 = 156,952.66 → rounds to $155,000
+            assertEquals(0, new BigDecimal("155000").compareTo(result.rothCatchUpIncomeThreshold()));
         }
 
         @Test
