@@ -8,7 +8,6 @@ package io.github.xmljim.retirement.domain.exception;
  * the projected end date.
  */
 public class InvalidDateRangeException extends ValidationException {
-
     /**
      * Constructs an invalid date range exception.
      *
