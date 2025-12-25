@@ -135,7 +135,7 @@ See [Contributing](docs/CONTRIBUTING.md) for detailed guidelines.
 | Milestone | Description | Status |
 |-----------|-------------|--------|
 | M0 | Project Setup & CI/CD | Complete |
-| M1 | Domain Model Foundation | Planned |
+| M1 | Domain Model Foundation | Complete |
 | M2 | Core Transaction & Account Operations | Planned |
 | M3 | Multi-Account Portfolio & Contribution Rules | Planned |
 | M4 | Income Modeling | Planned |
