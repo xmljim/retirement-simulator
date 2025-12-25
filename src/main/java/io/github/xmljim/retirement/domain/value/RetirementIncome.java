@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Objects;
 
+import io.github.xmljim.retirement.domain.annotation.Generated;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
 import io.github.xmljim.retirement.domain.exception.ValidationException;
 
@@ -92,6 +93,7 @@ public final class RetirementIncome {
         return new Builder();
     }
 
+    @Generated
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -107,11 +109,13 @@ public final class RetirementIncome {
             && Objects.equals(startDate, that.startDate);
     }
 
+    @Generated
     @Override
     public int hashCode() {
         return Objects.hash(name, monthlyAmount, adjustmentRate, startDate);
     }
 
+    @Generated
     @Override
     public String toString() {
         return "RetirementIncome{" +

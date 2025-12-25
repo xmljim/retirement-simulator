@@ -3,6 +3,7 @@ package io.github.xmljim.retirement.domain.value;
 import java.math.BigDecimal;
 import java.util.Objects;
 
+import io.github.xmljim.retirement.domain.annotation.Generated;
 import io.github.xmljim.retirement.domain.exception.ValidationException;
 
 /**
@@ -75,6 +76,7 @@ public final class WorkingIncome {
         return new Builder();
     }
 
+    @Generated
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -88,11 +90,13 @@ public final class WorkingIncome {
             && colaRate.compareTo(that.colaRate) == 0;
     }
 
+    @Generated
     @Override
     public int hashCode() {
         return Objects.hash(annualSalary, colaRate);
     }
 
+    @Generated
     @Override
     public String toString() {
         return "WorkingIncome{" +

@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+import io.github.xmljim.retirement.domain.annotation.Generated;
 import io.github.xmljim.retirement.domain.exception.InvalidDateRangeException;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
 
@@ -192,6 +193,7 @@ public final class PersonProfile {
             .spouse(this.spouse);
     }
 
+    @Generated
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -204,11 +206,13 @@ public final class PersonProfile {
         return Objects.equals(id, that.id);
     }
 
+    @Generated
     @Override
     public int hashCode() {
         return Objects.hash(id);
     }
 
+    @Generated
     @Override
     public String toString() {
         return "PersonProfile{" +

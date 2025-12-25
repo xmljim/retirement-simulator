@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Objects;
 
+import io.github.xmljim.retirement.domain.annotation.Generated;
 import io.github.xmljim.retirement.domain.exception.InvalidAllocationException;
 
 /**
@@ -158,6 +159,7 @@ public final class AssetAllocation {
         return stockContribution.add(bondContribution).add(cashContribution);
     }
 
+    @Generated
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -172,6 +174,7 @@ public final class AssetAllocation {
                 && cashPercentage.compareTo(that.cashPercentage) == 0;
     }
 
+    @Generated
     @Override
     public int hashCode() {
         return Objects.hash(
@@ -181,6 +184,7 @@ public final class AssetAllocation {
         );
     }
 
+    @Generated
     @Override
     public String toString() {
         return String.format("AssetAllocation{stocks=%s%%, bonds=%s%%, cash=%s%%}",

@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Month;
 import java.util.Objects;
 
+import io.github.xmljim.retirement.domain.annotation.Generated;
 import io.github.xmljim.retirement.domain.enums.ContributionType;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
 import io.github.xmljim.retirement.domain.exception.ValidationException;
@@ -105,6 +106,7 @@ public final class ContributionConfig {
         return new Builder();
     }
 
+    @Generated
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -120,11 +122,13 @@ public final class ContributionConfig {
             && incrementMonth == that.incrementMonth;
     }
 
+    @Generated
     @Override
     public int hashCode() {
         return Objects.hash(contributionType, contributionRate, incrementRate, incrementMonth);
     }
 
+    @Generated
     @Override
     public String toString() {
         return "ContributionConfig{" +
