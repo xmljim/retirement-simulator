@@ -12,15 +12,28 @@ import java.util.function.Supplier;
  * A utility class providing a set of common financial and time-based calculations
  * implemented as functional interfaces and lambda expressions.
  *
- * @deprecated This class uses deprecated PortfolioParameters. Will be refactored in Issue #8.
- *
  * <p>The class provides constants for common operations such as calculating
  * inflation, cost of living adjustments, and checking retirement status.</p>
  *
  * <p>This class cannot be instantiated.</p>
  *
+ * @deprecated This class has been replaced by the calculator framework in
+ *     {@link io.github.xmljim.retirement.domain.calculator}. Use the following replacements:
+ *     <ul>
+ *         <li>{@code INFLATION}, {@code ADJUSTED}, {@code COLA}, {@code INFLATED}
+ *             → {@link io.github.xmljim.retirement.domain.calculator.InflationCalculator}</li>
+ *         <li>{@code IS_RETIRED}, {@code INDIVIDUAL_CONTRIBUTION}, {@code EMPLOYER_CONTRIBUTION}
+ *             → {@link io.github.xmljim.retirement.domain.calculator.ContributionCalculator}</li>
+ *         <li>{@code MONTHLY_SALARY}, {@code SOCIAL_SECURITY}, {@code OTHER_RETIREMENT_INCOME}
+ *             → {@link io.github.xmljim.retirement.domain.calculator.IncomeCalculator}</li>
+ *     </ul>
+ *     <p>Obtain calculator instances via
+ *     {@link io.github.xmljim.retirement.domain.calculator.CalculatorFactory}.
+ *
  * @since 1.0
+ * @see io.github.xmljim.retirement.domain.calculator.CalculatorFactory
  */
+@Deprecated(forRemoval = true)
 @SuppressWarnings("deprecation")
 public final class Functions {
 
