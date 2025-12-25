@@ -67,10 +67,18 @@ public interface ContributionCalculator {
      * <p>The employer contribution is a fixed rate while the employee is working.
      * After retirement, the employer contribution is zero.
      *
+     * <p>Returns zero in these cases:
+     * <ul>
+     *   <li>The employee is retired (contributionDate >= retirementDate)</li>
+     *   <li>The employer match rate in config is zero or null</li>
+     *   <li>The contribution type does not include employer matching</li>
+     * </ul>
+     *
      * @param contributionDate the date of the contribution
      * @param retirementDate the planned retirement date
      * @param config the contribution configuration
      * @return the contribution rate as a decimal (e.g., 0.04 for 4%), or zero if retired
+     *         or if no employer match is configured
      * @throws IllegalArgumentException if any parameter is null
      */
     BigDecimal calculateEmployerContributionRate(

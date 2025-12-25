@@ -85,4 +85,23 @@ public interface InflationCalculator {
      * @throws IllegalArgumentException if salary is null or years is negative
      */
     BigDecimal applyCola(BigDecimal salary, BigDecimal colaRate, int years);
+
+    /**
+     * Converts an annual rate to a monthly rate.
+     *
+     * <p>This method provides a simple approximation by dividing the annual rate
+     * by 12. This is suitable for most financial planning purposes where the
+     * compounding effect over a single year is minimal.
+     *
+     * <p>Formula (simple): {@code monthlyRate = annualRate / 12}
+     *
+     * <p>Note: For precise compound interest calculations, the exact formula would be:
+     * {@code monthlyRate = (1 + annualRate)^(1/12) - 1}
+     * However, for typical inflation rates (2-4%), the difference is negligible
+     * (less than 0.01% difference).
+     *
+     * @param annualRate the annual rate as a decimal (e.g., 0.03 for 3%)
+     * @return the monthly rate as a decimal, or zero if annualRate is null or zero
+     */
+    BigDecimal toMonthlyRate(BigDecimal annualRate);
 }

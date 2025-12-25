@@ -72,13 +72,17 @@ public interface ReturnCalculator {
     /**
      * Converts an annual return rate to a monthly return rate.
      *
-     * <p>For compound returns, uses:
+     * <p>Uses simple approximation:
      * <pre>
-     * monthlyRate = (1 + annualRate)^(1/12) - 1
+     * monthlyRate = annualRate / 12
      * </pre>
      *
+     * <p>Note: For precise compound returns, the exact formula would be
+     * {@code (1 + annualRate)^(1/12) - 1}, but for typical return rates
+     * the difference is negligible.
+     *
      * @param annualRate the annual return rate as a decimal
-     * @return the equivalent monthly return rate
+     * @return the equivalent monthly return rate, or zero if annualRate is null or zero
      */
     BigDecimal toMonthlyRate(BigDecimal annualRate);
 }

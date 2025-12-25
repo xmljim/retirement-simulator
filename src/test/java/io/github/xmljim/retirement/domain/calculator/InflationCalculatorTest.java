@@ -155,6 +155,47 @@ class InflationCalculatorTest {
     }
 
     @Nested
+    @DisplayName("toMonthlyRate")
+    class ToMonthlyRateTests {
+
+        @Test
+        @DisplayName("Should convert 12% annual rate to 1% monthly rate")
+        void toMonthlyRate12Percent() {
+            BigDecimal annualRate = new BigDecimal("0.12");
+            BigDecimal result = calculator.toMonthlyRate(annualRate);
+
+            // Expected: 0.12 / 12 = 0.01
+            assertEquals(0, new BigDecimal("0.01").compareTo(result.setScale(2, RoundingMode.HALF_UP)));
+        }
+
+        @Test
+        @DisplayName("Should convert 3% annual rate to 0.25% monthly rate")
+        void toMonthlyRate3Percent() {
+            BigDecimal annualRate = new BigDecimal("0.03");
+            BigDecimal result = calculator.toMonthlyRate(annualRate);
+
+            // Expected: 0.03 / 12 = 0.0025
+            assertEquals(0, new BigDecimal("0.0025").compareTo(result.setScale(4, RoundingMode.HALF_UP)));
+        }
+
+        @Test
+        @DisplayName("Should return zero for null annual rate")
+        void toMonthlyRateNullRate() {
+            BigDecimal result = calculator.toMonthlyRate(null);
+
+            assertEquals(0, BigDecimal.ZERO.compareTo(result));
+        }
+
+        @Test
+        @DisplayName("Should return zero for zero annual rate")
+        void toMonthlyRateZeroRate() {
+            BigDecimal result = calculator.toMonthlyRate(BigDecimal.ZERO);
+
+            assertEquals(0, BigDecimal.ZERO.compareTo(result));
+        }
+    }
+
+    @Nested
     @DisplayName("Factory Method Tests")
     class FactoryMethodTests {
 

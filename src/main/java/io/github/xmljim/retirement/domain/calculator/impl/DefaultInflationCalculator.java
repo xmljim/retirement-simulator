@@ -79,6 +79,20 @@ public class DefaultInflationCalculator implements InflationCalculator {
         return applyInflation(salary, colaRate, years);
     }
 
+    @Override
+    public BigDecimal toMonthlyRate(BigDecimal annualRate) {
+        if (annualRate == null || annualRate.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+
+        // Simple approximation: monthlyRate = annualRate / 12
+        // For compound interest: monthlyRate = (1 + annualRate)^(1/12) - 1
+        // The simple approximation is sufficient for typical inflation rates
+        return annualRate.divide(TWELVE, SCALE, ROUNDING_MODE);
+    }
+
+    private static final BigDecimal TWELVE = new BigDecimal("12");
+
     private BigDecimal pow(BigDecimal base, int exponent) {
         return MathUtils.pow(base, exponent, SCALE, ROUNDING_MODE);
     }
