@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import io.github.xmljim.retirement.domain.annotation.Generated;
 import io.github.xmljim.retirement.domain.enums.AccountType;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
 import io.github.xmljim.retirement.domain.exception.ValidationException;
@@ -346,6 +347,7 @@ public final class Portfolio {
             .addAccounts(this.accounts);
     }
 
+    @Generated
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -358,11 +360,13 @@ public final class Portfolio {
         return Objects.equals(id, portfolio.id);
     }
 
+    @Generated
     @Override
     public int hashCode() {
         return Objects.hash(id);
     }
 
+    @Generated
     @Override
     public String toString() {
         return "Portfolio{" +

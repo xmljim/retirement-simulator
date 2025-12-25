@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Objects;
 
+import io.github.xmljim.retirement.domain.annotation.Generated;
 import io.github.xmljim.retirement.domain.exception.InvalidRateException;
 
 /**
@@ -159,6 +160,7 @@ public final class InflationAssumptions {
             .build();
     }
 
+    @Generated
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -173,6 +175,7 @@ public final class InflationAssumptions {
             && housingInflation.compareTo(that.housingInflation) == 0;
     }
 
+    @Generated
     @Override
     public int hashCode() {
         return Objects.hash(
@@ -182,6 +185,7 @@ public final class InflationAssumptions {
         );
     }
 
+    @Generated
     @Override
     public String toString() {
         return String.format(

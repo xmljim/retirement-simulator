@@ -7,6 +7,12 @@ import java.util.Optional;
 
 import static io.github.xmljim.retirement.functions.Functions.*;
 
+/**
+ * Represents a single transaction in a retirement portfolio simulation.
+ *
+ * @deprecated This class uses deprecated PortfolioParameters. Will be refactored in Issue #8.
+ */
+@SuppressWarnings("deprecation")
 public class Transaction {
 
     private final PortfolioParameters portfolioParameters;

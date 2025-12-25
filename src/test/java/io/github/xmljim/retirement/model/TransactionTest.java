@@ -13,6 +13,11 @@ import static io.github.xmljim.retirement.model.PortfolioParameters.Investments;
 import static io.github.xmljim.retirement.model.PortfolioParameters.Contribution;
 import static io.github.xmljim.retirement.functions.Functions.*;
 
+/**
+ * Tests for Transaction class.
+ * Uses deprecated PortfolioParameters - will be updated in Issue #10.
+ */
+@SuppressWarnings("deprecation")
 class TransactionTest {
 
     @Test

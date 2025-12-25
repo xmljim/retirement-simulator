@@ -8,6 +8,11 @@ import static io.github.xmljim.retirement.functions.Functions.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Tests for Functions class.
+ * Uses deprecated PortfolioParameters - will be updated in Issue #10.
+ */
+@SuppressWarnings("deprecation")
 class FunctionsTest {
 
 

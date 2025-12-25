@@ -144,11 +144,11 @@
                                     <value>COVEREDRATIO</value>
                                     <minimum>0.80</minimum>
                                 </limit>
-                                <!-- Branch coverage: 75% minimum -->
+                                <!-- Branch coverage: 80% minimum -->
                                 <limit>
                                     <counter>BRANCH</counter>
                                     <value>COVEREDRATIO</value>
-                                    <minimum>0.75</minimum>
+                                    <minimum>0.80</minimum>
                                 </limit>
                                 <!-- Method coverage: 80% minimum -->
                                 <limit>

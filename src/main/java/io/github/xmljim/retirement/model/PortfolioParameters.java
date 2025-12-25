@@ -9,9 +9,29 @@ import java.util.List;
 
 /**
  * Encapsulates all parameters required to model a retirement portfolio, including investments,
- * contributions, working income, withdrawal income, and monthly retirement income. Use the Builder
- * to construct an instance.
+ * contributions, working income, withdrawal income, and monthly retirement income.
+ *
+ * <p><b>Migration Guide:</b> This class is being replaced by the new domain model classes:
+ * <ul>
+ *   <li>{@code dateOfBirth}, {@code plannedRetirementDate} →
+ *       {@link io.github.xmljim.retirement.domain.model.PersonProfile}</li>
+ *   <li>{@code Investments} →
+ *       {@link io.github.xmljim.retirement.domain.model.InvestmentAccount}</li>
+ *   <li>{@code Contribution} →
+ *       {@link io.github.xmljim.retirement.domain.value.ContributionConfig}</li>
+ *   <li>{@code WorkingIncome} →
+ *       {@link io.github.xmljim.retirement.domain.value.WorkingIncome}</li>
+ *   <li>{@code WithdrawalIncome} →
+ *       {@link io.github.xmljim.retirement.domain.value.WithdrawalStrategy}</li>
+ *   <li>{@code MonthlyRetirementIncome} →
+ *       {@link io.github.xmljim.retirement.domain.value.SocialSecurityIncome} and
+ *       {@link io.github.xmljim.retirement.domain.value.RetirementIncome}</li>
+ * </ul>
+ *
+ * @deprecated This class will be removed in a future release. Use the domain model classes instead.
+ *             See migration guide above for replacement classes.
  */
+@Deprecated
 public class PortfolioParameters {
 
     private final LocalDate dateOfBirth;
