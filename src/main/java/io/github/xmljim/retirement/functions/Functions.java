@@ -12,6 +12,8 @@ import java.util.function.Supplier;
  * A utility class providing a set of common financial and time-based calculations
  * implemented as functional interfaces and lambda expressions.
  *
+ * @deprecated This class uses deprecated PortfolioParameters. Will be refactored in Issue #8.
+ *
  * <p>The class provides constants for common operations such as calculating
  * inflation, cost of living adjustments, and checking retirement status.</p>
  *
@@ -19,6 +21,7 @@ import java.util.function.Supplier;
  *
  * @since 1.0
  */
+@SuppressWarnings("deprecation")
 public final class Functions {
 
     /**
