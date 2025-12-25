@@ -46,6 +46,10 @@ public class IrsContributionLimits {
     private static final int SCALE = 2;
     private static final RoundingMode ROUNDING_MODE = RoundingMode.HALF_UP;
 
+    // IRS rounding increments for COLA adjustments
+    private static final BigDecimal LIMIT_INCREMENT = new BigDecimal("500");
+    private static final BigDecimal INCOME_THRESHOLD_INCREMENT = new BigDecimal("5000");
+
     private Map<Integer, YearLimits> limits = new HashMap<>();
     private BigDecimal defaultAnnualIncreaseRate = new BigDecimal("0.02");
     private Map<Integer, IraLimits> iraLimits = new HashMap<>();
@@ -137,17 +141,17 @@ public class IrsContributionLimits {
             return earliestEntry.getValue();
         }
 
-        // Extrapolate forward
+        // Extrapolate forward using IRS-style rounding
         int yearsAhead = year - latestYear;
         BigDecimal multiplier = BigDecimal.ONE.add(defaultAnnualIncreaseRate)
             .pow(yearsAhead);
 
         return new YearLimits(
-            latestLimits.baseLimit().multiply(multiplier).setScale(SCALE, ROUNDING_MODE),
-            latestLimits.catchUpLimit().multiply(multiplier).setScale(SCALE, ROUNDING_MODE),
-            latestLimits.superCatchUpLimit().multiply(multiplier).setScale(SCALE, ROUNDING_MODE),
-            latestLimits.rothCatchUpIncomeThreshold().multiply(multiplier)
-                .setScale(SCALE, ROUNDING_MODE)
+            roundToIncrement(latestLimits.baseLimit().multiply(multiplier), LIMIT_INCREMENT),
+            roundToIncrement(latestLimits.catchUpLimit().multiply(multiplier), LIMIT_INCREMENT),
+            roundToIncrement(latestLimits.superCatchUpLimit().multiply(multiplier), LIMIT_INCREMENT),
+            roundToIncrement(latestLimits.rothCatchUpIncomeThreshold().multiply(multiplier),
+                INCOME_THRESHOLD_INCREMENT)
         );
     }
 
@@ -177,14 +181,14 @@ public class IrsContributionLimits {
             return floorEntry != null ? floorEntry.getValue() : latestLimits;
         }
 
-        // Extrapolate forward
+        // Extrapolate forward using IRS-style rounding
         int yearsAhead = year - latestYear;
         BigDecimal multiplier = BigDecimal.ONE.add(defaultAnnualIncreaseRate)
             .pow(yearsAhead);
 
         return new IraLimits(
-            latestLimits.baseLimit().multiply(multiplier).setScale(SCALE, ROUNDING_MODE),
-            latestLimits.catchUpLimit().multiply(multiplier).setScale(SCALE, ROUNDING_MODE)
+            roundToIncrement(latestLimits.baseLimit().multiply(multiplier), LIMIT_INCREMENT),
+            roundToIncrement(latestLimits.catchUpLimit().multiply(multiplier), LIMIT_INCREMENT)
         );
     }
 
@@ -240,5 +244,26 @@ public class IrsContributionLimits {
      */
     public void setIraLimits(Map<Integer, IraLimits> iraLimits) {
         this.iraLimits = iraLimits;
+    }
+
+    /**
+     * Rounds a value to the nearest increment (IRS-style COLA rounding).
+     *
+     * <p>IRS contribution limits are adjusted in specific increments:
+     * <ul>
+     *   <li>Contribution limits: $500 increments</li>
+     *   <li>Income thresholds: $5,000 increments</li>
+     * </ul>
+     *
+     * @param value the value to round
+     * @param increment the increment to round to (e.g., 500, 5000)
+     * @return the value rounded to the nearest increment
+     */
+    private BigDecimal roundToIncrement(BigDecimal value, BigDecimal increment) {
+        if (value == null || value.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+        // Divide by increment, round to nearest whole number, multiply back
+        return value.divide(increment, 0, ROUNDING_MODE).multiply(increment);
     }
 }

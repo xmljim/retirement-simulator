@@ -88,15 +88,18 @@ class IrsContributionLimitsTest {
         }
 
         @Test
-        @DisplayName("Should extrapolate limits for future year")
+        @DisplayName("Should extrapolate limits for future year with IRS-style rounding")
         void extrapolatesLimitsForFutureYear() {
             // 2030 is 4 years after 2026
             YearLimits result = limits.getLimitsForYear(2030);
 
             assertNotNull(result);
-            // Base limit: 24500 * (1.02)^4 ≈ 26523.22
-            assertTrue(result.baseLimit().compareTo(new BigDecimal("26000")) > 0);
-            assertTrue(result.baseLimit().compareTo(new BigDecimal("27000")) < 0);
+            // Base limit: 24500 * (1.02)^4 = 26,519.59 → rounds to $26,500
+            assertEquals(0, new BigDecimal("26500").compareTo(result.baseLimit()));
+            // Catch-up: 7500 * (1.02)^4 = 8118.24 → rounds to $8,000
+            assertEquals(0, new BigDecimal("8000").compareTo(result.catchUpLimit()));
+            // Income threshold: 150000 * (1.02)^4 = 162364.82 → rounds to $160,000
+            assertEquals(0, new BigDecimal("160000").compareTo(result.rothCatchUpIncomeThreshold()));
         }
 
         @Test
