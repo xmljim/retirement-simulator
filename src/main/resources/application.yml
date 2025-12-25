@@ -1,0 +1,37 @@
+# IRS Contribution Limits Configuration
+# SECURE 2.0 Act limits for 401(k), 403(b), and 457(b) plans
+
+irs:
+  contribution:
+    # Default annual increase rate for extrapolating future years
+    default-annual-increase-rate: 0.02
+
+    # 401(k)/403(b)/457(b) limits by year
+    limits:
+      2024:
+        base-limit: 23000
+        catch-up-limit: 7500
+        super-catch-up-limit: 0  # Not effective until 2025
+        roth-catch-up-income-threshold: 145000
+      2025:
+        base-limit: 23500
+        catch-up-limit: 7500
+        super-catch-up-limit: 11250  # Age 60-63 super catch-up
+        roth-catch-up-income-threshold: 145000
+      2026:
+        base-limit: 24500
+        catch-up-limit: 7500
+        super-catch-up-limit: 11625
+        roth-catch-up-income-threshold: 150000  # Estimated increase
+
+    # IRA limits (separate from employer-sponsored plans)
+    ira-limits:
+      2024:
+        base-limit: 7000
+        catch-up-limit: 1000
+      2025:
+        base-limit: 7000
+        catch-up-limit: 1000
+      2026:
+        base-limit: 7500
+        catch-up-limit: 1000

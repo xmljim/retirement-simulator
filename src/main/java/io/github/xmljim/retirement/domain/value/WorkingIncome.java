@@ -13,15 +13,21 @@ import io.github.xmljim.retirement.domain.exception.ValidationException;
  * rate that applies during the accumulation phase.
  *
  * <p>This is an immutable value object. Use the {@link Builder} to create instances.
+ *
+ * <p>The {@code priorYearIncome} field is used for SECURE 2.0 ROTH catch-up
+ * contribution rules. Employees who earned more than $145,000 in the prior
+ * year must make catch-up contributions to a ROTH account.
  */
 public final class WorkingIncome {
 
     private final BigDecimal annualSalary;
     private final BigDecimal colaRate;
+    private final BigDecimal priorYearIncome;
 
     private WorkingIncome(Builder builder) {
         this.annualSalary = builder.annualSalary;
         this.colaRate = builder.colaRate;
+        this.priorYearIncome = builder.priorYearIncome;
     }
 
     /**
@@ -51,6 +57,19 @@ public final class WorkingIncome {
      */
     public BigDecimal getColaRate() {
         return colaRate;
+    }
+
+    /**
+     * Returns the prior year income for SECURE 2.0 ROTH catch-up rules.
+     *
+     * <p>Under SECURE 2.0, employees who earned more than $145,000 in the prior
+     * year must make catch-up contributions to a ROTH account. This field stores
+     * that prior year income for the calculation.
+     *
+     * @return the prior year income, or null if not specified
+     */
+    public BigDecimal getPriorYearIncome() {
+        return priorYearIncome;
     }
 
     /**
@@ -87,13 +106,14 @@ public final class WorkingIncome {
         }
         WorkingIncome that = (WorkingIncome) o;
         return annualSalary.compareTo(that.annualSalary) == 0
-            && colaRate.compareTo(that.colaRate) == 0;
+            && colaRate.compareTo(that.colaRate) == 0
+            && Objects.equals(priorYearIncome, that.priorYearIncome);
     }
 
     @Generated
     @Override
     public int hashCode() {
-        return Objects.hash(annualSalary, colaRate);
+        return Objects.hash(annualSalary, colaRate, priorYearIncome);
     }
 
     @Generated
@@ -102,6 +122,7 @@ public final class WorkingIncome {
         return "WorkingIncome{" +
             "annualSalary=" + annualSalary +
             ", colaRate=" + colaRate +
+            ", priorYearIncome=" + priorYearIncome +
             '}';
     }
 
@@ -111,6 +132,7 @@ public final class WorkingIncome {
     public static class Builder {
         private BigDecimal annualSalary = BigDecimal.ZERO;
         private BigDecimal colaRate = BigDecimal.ZERO;
+        private BigDecimal priorYearIncome;
 
         /**
          * Sets the annual salary amount.
@@ -152,6 +174,27 @@ public final class WorkingIncome {
          */
         public Builder colaRate(double rate) {
             return colaRate(BigDecimal.valueOf(rate));
+        }
+
+        /**
+         * Sets the prior year income for SECURE 2.0 ROTH catch-up rules.
+         *
+         * @param income the prior year income
+         * @return this builder
+         */
+        public Builder priorYearIncome(BigDecimal income) {
+            this.priorYearIncome = income;
+            return this;
+        }
+
+        /**
+         * Sets the prior year income for SECURE 2.0 ROTH catch-up rules.
+         *
+         * @param income the prior year income
+         * @return this builder
+         */
+        public Builder priorYearIncome(double income) {
+            return priorYearIncome(BigDecimal.valueOf(income));
         }
 
         /**

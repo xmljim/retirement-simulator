@@ -5,6 +5,7 @@ import java.time.Month;
 import java.util.Objects;
 
 import io.github.xmljim.retirement.domain.annotation.Generated;
+import io.github.xmljim.retirement.domain.enums.AccountType;
 import io.github.xmljim.retirement.domain.enums.ContributionType;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
 import io.github.xmljim.retirement.domain.exception.ValidationException;
@@ -16,6 +17,15 @@ import io.github.xmljim.retirement.domain.exception.ValidationException;
  * contributions, including the base rate, annual increment, and the month
  * when the increment is applied.
  *
+ * <p>Additional SECURE 2.0 support:
+ * <ul>
+ *   <li>{@code targetAccountType} - Optional override for ROTH routing. When set,
+ *       contributions will be directed to this account type instead of the account's
+ *       default. Used for high earner catch-up contributions that must go to ROTH.</li>
+ *   <li>{@code matchingPolicy} - For employer contribution configs, defines the
+ *       matching rules (simple, tiered, or none).</li>
+ * </ul>
+ *
  * <p>This is an immutable value object. Use the {@link Builder} to create instances.
  */
 public final class ContributionConfig {
@@ -24,12 +34,16 @@ public final class ContributionConfig {
     private final BigDecimal contributionRate;
     private final BigDecimal incrementRate;
     private final Month incrementMonth;
+    private final AccountType targetAccountType;
+    private final MatchingPolicy matchingPolicy;
 
     private ContributionConfig(Builder builder) {
         this.contributionType = builder.contributionType;
         this.contributionRate = builder.contributionRate;
         this.incrementRate = builder.incrementRate;
         this.incrementMonth = builder.incrementMonth;
+        this.targetAccountType = builder.targetAccountType;
+        this.matchingPolicy = builder.matchingPolicy;
     }
 
     /**
@@ -69,6 +83,31 @@ public final class ContributionConfig {
      */
     public Month getIncrementMonth() {
         return incrementMonth;
+    }
+
+    /**
+     * Returns the target account type for ROTH routing.
+     *
+     * <p>When set, contributions will be directed to this account type instead
+     * of the account's default. This is used for SECURE 2.0 high earner catch-up
+     * contributions that must go to ROTH.
+     *
+     * @return the target account type, or null if using account default
+     */
+    public AccountType getTargetAccountType() {
+        return targetAccountType;
+    }
+
+    /**
+     * Returns the matching policy for employer contributions.
+     *
+     * <p>For employer contribution configs, this defines how the employer
+     * calculates the match (simple, tiered, or none).
+     *
+     * @return the matching policy, or null if not an employer contribution
+     */
+    public MatchingPolicy getMatchingPolicy() {
+        return matchingPolicy;
     }
 
     /**
@@ -119,13 +158,16 @@ public final class ContributionConfig {
         return contributionType == that.contributionType
             && contributionRate.compareTo(that.contributionRate) == 0
             && incrementRate.compareTo(that.incrementRate) == 0
-            && incrementMonth == that.incrementMonth;
+            && incrementMonth == that.incrementMonth
+            && targetAccountType == that.targetAccountType
+            && Objects.equals(matchingPolicy, that.matchingPolicy);
     }
 
     @Generated
     @Override
     public int hashCode() {
-        return Objects.hash(contributionType, contributionRate, incrementRate, incrementMonth);
+        return Objects.hash(contributionType, contributionRate, incrementRate, incrementMonth,
+            targetAccountType, matchingPolicy);
     }
 
     @Generated
@@ -136,6 +178,8 @@ public final class ContributionConfig {
             ", rate=" + contributionRate +
             ", increment=" + incrementRate +
             ", month=" + incrementMonth +
+            ", targetAccountType=" + targetAccountType +
+            ", matchingPolicy=" + matchingPolicy +
             '}';
     }
 
@@ -147,6 +191,8 @@ public final class ContributionConfig {
         private BigDecimal contributionRate = BigDecimal.ZERO;
         private BigDecimal incrementRate = BigDecimal.ZERO;
         private Month incrementMonth = Month.JANUARY;
+        private AccountType targetAccountType;
+        private MatchingPolicy matchingPolicy;
 
         /**
          * Sets the contribution type.
@@ -209,6 +255,35 @@ public final class ContributionConfig {
          */
         public Builder incrementMonth(Month month) {
             this.incrementMonth = month;
+            return this;
+        }
+
+        /**
+         * Sets the target account type for ROTH routing.
+         *
+         * <p>When set, contributions will be directed to this account type instead
+         * of the account's default. This is used for SECURE 2.0 high earner catch-up
+         * contributions that must go to ROTH.
+         *
+         * @param accountType the target account type
+         * @return this builder
+         */
+        public Builder targetAccountType(AccountType accountType) {
+            this.targetAccountType = accountType;
+            return this;
+        }
+
+        /**
+         * Sets the matching policy for employer contributions.
+         *
+         * <p>For employer contribution configs, this defines how the employer
+         * calculates the match (simple, tiered, or none).
+         *
+         * @param policy the matching policy
+         * @return this builder
+         */
+        public Builder matchingPolicy(MatchingPolicy policy) {
+            this.matchingPolicy = policy;
             return this;
         }
 

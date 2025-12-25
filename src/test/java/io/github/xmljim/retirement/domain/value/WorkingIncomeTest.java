@@ -2,6 +2,7 @@ package io.github.xmljim.retirement.domain.value;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
@@ -79,6 +80,71 @@ class WorkingIncomeTest {
                 WorkingIncome.builder()
                     .annualSalary(-100000.00)
                     .build());
+        }
+    }
+
+    @Nested
+    @DisplayName("Prior Year Income Tests")
+    class PriorYearIncomeTests {
+
+        @Test
+        @DisplayName("Should set and get prior year income")
+        void setAndGetPriorYearIncome() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .colaRate(0.02)
+                .priorYearIncome(150000.00)
+                .build();
+
+            assertEquals(0, new BigDecimal("150000").compareTo(income.getPriorYearIncome()));
+        }
+
+        @Test
+        @DisplayName("Should allow null prior year income")
+        void allowNullPriorYearIncome() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .colaRate(0.02)
+                .build();
+
+            assertNull(income.getPriorYearIncome());
+        }
+
+        @Test
+        @DisplayName("Should include prior year income in equals")
+        void includesInEquals() {
+            WorkingIncome w1 = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .colaRate(0.02)
+                .priorYearIncome(150000.00)
+                .build();
+
+            WorkingIncome w2 = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .colaRate(0.02)
+                .priorYearIncome(150000.00)
+                .build();
+
+            WorkingIncome w3 = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .colaRate(0.02)
+                .priorYearIncome(100000.00)
+                .build();
+
+            assertEquals(w1, w2);
+            assertNotEquals(w1, w3);
+        }
+
+        @Test
+        @DisplayName("Should include prior year income in toString")
+        void includesInToString() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .priorYearIncome(150000.00)
+                .build();
+
+            String result = income.toString();
+            assertEquals(true, result.contains("priorYearIncome=150000"));
         }
     }
 
