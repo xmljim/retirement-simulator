@@ -2,6 +2,7 @@ package io.github.xmljim.retirement.domain.value;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import io.github.xmljim.retirement.domain.enums.AccountType;
 import io.github.xmljim.retirement.domain.enums.ContributionType;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
 import io.github.xmljim.retirement.domain.exception.ValidationException;
@@ -106,6 +108,101 @@ class ContributionConfigTest {
                     .contributionRate(0.10)
                     .incrementRate(-0.01)
                     .build());
+        }
+    }
+
+    @Nested
+    @DisplayName("Target Account Type Tests")
+    class TargetAccountTypeTests {
+
+        @Test
+        @DisplayName("Should set and get target account type")
+        void setAndGetTargetAccountType() {
+            ContributionConfig config = ContributionConfig.builder()
+                .contributionType(ContributionType.PERSONAL)
+                .contributionRate(0.10)
+                .targetAccountType(AccountType.ROTH_401K)
+                .build();
+
+            assertEquals(AccountType.ROTH_401K, config.getTargetAccountType());
+        }
+
+        @Test
+        @DisplayName("Should allow null target account type")
+        void allowNullTargetAccountType() {
+            ContributionConfig config = ContributionConfig.builder()
+                .contributionType(ContributionType.PERSONAL)
+                .contributionRate(0.10)
+                .build();
+
+            assertNull(config.getTargetAccountType());
+        }
+
+        @Test
+        @DisplayName("Should include target account type in equals")
+        void includesInEquals() {
+            ContributionConfig c1 = ContributionConfig.builder()
+                .contributionType(ContributionType.PERSONAL)
+                .contributionRate(0.10)
+                .targetAccountType(AccountType.ROTH_401K)
+                .build();
+
+            ContributionConfig c2 = ContributionConfig.builder()
+                .contributionType(ContributionType.PERSONAL)
+                .contributionRate(0.10)
+                .targetAccountType(AccountType.ROTH_401K)
+                .build();
+
+            ContributionConfig c3 = ContributionConfig.builder()
+                .contributionType(ContributionType.PERSONAL)
+                .contributionRate(0.10)
+                .targetAccountType(AccountType.TRADITIONAL_401K)
+                .build();
+
+            assertEquals(c1, c2);
+            assertNotEquals(c1, c3);
+        }
+    }
+
+    @Nested
+    @DisplayName("Matching Policy Tests")
+    class MatchingPolicyTests {
+
+        @Test
+        @DisplayName("Should set and get matching policy")
+        void setAndGetMatchingPolicy() {
+            MatchingPolicy policy = MatchingPolicy.simple(0.50, 0.06);
+            ContributionConfig config = ContributionConfig.builder()
+                .contributionType(ContributionType.EMPLOYER)
+                .contributionRate(0.06)
+                .matchingPolicy(policy)
+                .build();
+
+            assertEquals(policy, config.getMatchingPolicy());
+        }
+
+        @Test
+        @DisplayName("Should allow null matching policy")
+        void allowNullMatchingPolicy() {
+            ContributionConfig config = ContributionConfig.builder()
+                .contributionType(ContributionType.EMPLOYER)
+                .contributionRate(0.06)
+                .build();
+
+            assertNull(config.getMatchingPolicy());
+        }
+
+        @Test
+        @DisplayName("Should include matching policy in toString")
+        void includesInToString() {
+            MatchingPolicy policy = MatchingPolicy.simple(0.50, 0.06);
+            ContributionConfig config = ContributionConfig.builder()
+                .contributionType(ContributionType.EMPLOYER)
+                .matchingPolicy(policy)
+                .build();
+
+            String result = config.toString();
+            assertEquals(true, result.contains("matchingPolicy="));
         }
     }
 
