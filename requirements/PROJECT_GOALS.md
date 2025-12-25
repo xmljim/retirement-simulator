@@ -627,88 +627,117 @@ Apply appropriate patterns where they add value:
 
 ## Current State
 
-### Existing Code
+### Implemented (Milestone 1 Complete)
 
-**`PortfolioParameters.java`**:
-- Full parameter model with builders for investments, contributions, income
-- Contains nested classes: Investments, Contribution, WorkingIncome, WithdrawalIncome, MonthlyRetirementIncome
-- Uses Builder pattern appropriately
-- **Refactoring needed**: May need restructuring to align with new Person Profile / Portfolio concepts
+**Domain Model** (`io.github.xmljim.retirement.domain.model`):
+- `PersonProfile` - Individual with DOB, retirement date, life expectancy, linked spouse support
+- `Portfolio` - Container for investment accounts with aggregation
+- `InvestmentAccount` - Account with type, allocation, return rates, balance
+- `Scenario` - Simulation configuration (time horizon, assumptions, strategies)
 
-**`Functions.java`**:
-- Core financial calculations (inflation, COLA, contributions, SS, other income)
-- Functional interfaces with lambda implementations
-- **Refactoring needed**: Consider breaking into separate classes by responsibility (InflationCalculator, ContributionCalculator, etc.) to follow Single Responsibility Principle
+**Value Objects** (`io.github.xmljim.retirement.domain.value`):
+- `WorkingIncome` - Salary with COLA, includes `priorYearIncome` for SECURE 2.0
+- `ContributionConfig` - Contribution settings with `targetAccountType` and `matchingPolicy`
+- `AssetAllocation` - Stock/bond/cash allocation with validation
+- `RetirementIncome` - Social Security, pension, annuity income sources
+- `MatchingPolicy` - Interface with `SimpleMatchingPolicy`, `TieredMatchingPolicy`, `NoMatchingPolicy`
+- `MatchTier` - Record for tiered matching configuration
 
-**`Transaction.java`**:
-- Partial implementation with retirement status, contribution rates, income calculations
-- `getEndBalance()` returns hardcoded 0.0
-- **Refactoring needed**: Significant work needed to complete; may need redesign for multi-account support
+**Enums** (`io.github.xmljim.retirement.domain.enums`):
+- `AccountType` - 401K, IRA, ROTH variants, HSA, Taxable Brokerage with `TaxTreatment`
+- `ContributionType` - PERSONAL, EMPLOYER
+- `TransactionType` - CONTRIBUTION, WITHDRAWAL
+- `TaxTreatment` - PRE_TAX, POST_TAX, TAX_FREE
 
-**Enums**:
-- `TransactionType`: CONTRIBUTION, WITHDRAWAL
-- `ContributionType`: PERSONAL, EMPLOYER
-- `WithdrawalType`: FIXED, SALARY
-- **May need expansion** for new distribution strategies
+**Calculator Framework** (`io.github.xmljim.retirement.domain.calculator`):
+- `Calculator` - Base interface with calculation lifecycle
+- `InflationCalculator` - Inflation adjustment calculations
+- `ContributionCalculator` - Contribution amount calculations
+- `SocialSecurityCalculator` - SS benefit calculations with claiming age adjustments
+- `IrsContributionRules` - Interface for IRS rule implementations
+- `Secure2ContributionRules` - SECURE 2.0 implementation with catch-up rules
 
-**Tests**:
-- `FunctionsTest.java`: 17 tests covering calculation functions
-- `TransactionTest.java`: 16 tests covering Transaction behavior
-- **Refactoring needed**: Tests may need updates as code is refactored
+**Configuration** (`io.github.xmljim.retirement.domain.config`):
+- `IrsContributionLimits` - Spring `@ConfigurationProperties` for IRS limits from YAML
+- Supports 401(k), IRA, and HSA limits with year-by-year configuration
+- IRS-style COLA rounding for future year extrapolation
 
-### Refactoring Considerations
+**Exceptions** (`io.github.xmljim.retirement.domain.exception`):
+- `ValidationException` - Domain validation errors
+- `MissingRequiredFieldException` - Required field validation
 
-Based on the expanded requirements, the existing code needs:
+### Legacy Code (Deprecated)
 
-1. **Domain Model Restructuring**:
-   - Introduce `PersonProfile` as top-level entity
-   - Separate `Portfolio` from `PortfolioParameters`
-   - Create `InvestmentAccount` for individual accounts
-   - Extract `Scenario` as simulation configuration
+The following classes are deprecated and maintained for backwards compatibility:
 
-2. **Functions Decomposition**:
-   - Break monolithic Functions class into focused calculators
-   - Consider Strategy pattern for different calculation approaches
+**`PortfolioParameters.java`** (`@Deprecated`):
+- Original parameter model - replaced by domain model classes
+- Migration guide in Javadoc
 
-3. **Transaction Redesign**:
-   - Complete `getEndBalance()` implementation
-   - Support multi-account transactions
-   - Align with monthly simulation loop requirements
+**`Functions.java`** (`@Deprecated`):
+- Original calculations - replaced by Calculator framework
+- Migration guide in Javadoc
+
+**`model/ContributionType.java`, `model/WithdrawalType.java`** (`@Deprecated`):
+- Original enums - replaced by `domain.enums` equivalents
 
 ### Not Yet Implemented
-- Person Profile model
-- Multi-account portfolio support
-- IRS contribution limits and rules
-- Expense/budget modeling
-- Distribution strategies (beyond basic)
-- Simulation engine
-- Reporting module
-- API layer
+- Transaction processing with balance calculations (M2)
+- Multi-account contribution routing (M3)
+- Income phase-out rules for IRA/Roth (M3)
+- Expense/budget modeling (M5)
+- Distribution strategies (M6)
+- Simulation engine (M7)
+- Reporting module (M9)
+- API layer (M10)
 
 ---
 
 ## Proposed Milestones
 
-### Milestone 1: Domain Model Foundation
+### Milestone 1: Domain Model Foundation ✅ COMPLETE
 **Goal**: Establish core domain model with clean architecture; refactor existing code
 
-**Domain Entities**:
-- Create `PersonProfile` model (DOB, retirement date, life expectancy, linked spouse)
-- Create `Portfolio` as container for investment accounts
-- Create `InvestmentAccount` model (type, allocation, return rates, balance)
-- Create `Scenario` configuration model
-- Define account type enum (401k, IRA, Roth IRA, Roth 401k, HSA, Taxable)
+**Status**: Completed December 2024
 
-**Refactoring**:
-- Restructure `PortfolioParameters` to align with new domain model
-- Decompose `Functions` class into focused calculator classes (Single Responsibility)
-- Apply Strategy pattern where appropriate
-- Update existing tests to match refactored code
+**Domain Entities** (Completed):
+- [x] Created `PersonProfile` model (DOB, retirement date, life expectancy, linked spouse)
+- [x] Created `Portfolio` as container for investment accounts
+- [x] Created `InvestmentAccount` model (type, allocation, return rates, balance)
+- [x] Created `Scenario` configuration model
+- [x] Defined `AccountType` enum (401k, IRA, Roth IRA, Roth 401k, HSA, Taxable Brokerage) with `TaxTreatment`
 
-**Foundation**:
-- Establish package structure following layered architecture
-- Set up proper interfaces for extensibility
-- Full test coverage for domain model
+**Calculator Framework** (Completed):
+- [x] Created `Calculator` base interface with calculation lifecycle
+- [x] Implemented `InflationCalculator`, `ContributionCalculator`, `SocialSecurityCalculator`
+- [x] Applied Strategy pattern for extensibility
+- [x] Decomposed monolithic `Functions` class (marked `@Deprecated`)
+
+**IRS Contribution Rules - SECURE 2.0** (Completed):
+- [x] Created `IrsContributionLimits` with Spring `@ConfigurationProperties`
+- [x] Implemented `IrsContributionRules` interface and `Secure2ContributionRules`
+- [x] Age-based catch-up (50+) and super catch-up (60-63, effective 2025)
+- [x] ROTH-only catch-up for high earners ($145K+, effective 2026)
+- [x] HSA contribution limits with age 55+ catch-up
+- [x] IRS-style COLA rounding ($500 for limits, $50 for HSA)
+- [x] YAML configuration with year-by-year limits through 2026
+
+**Matching Policies** (Completed):
+- [x] Created `MatchingPolicy` interface with `SimpleMatchingPolicy`, `TieredMatchingPolicy`, `NoMatchingPolicy`
+- [x] Created `MatchTier` record for tiered matching configuration
+
+**Value Objects** (Completed):
+- [x] Created `WorkingIncome` with `priorYearIncome` for SECURE 2.0 rules
+- [x] Created `ContributionConfig` with `targetAccountType` and `matchingPolicy`
+- [x] Created `AssetAllocation`, `RetirementIncome` and related value objects
+
+**Foundation** (Completed):
+- [x] Established package structure: `domain.model`, `domain.value`, `domain.enums`, `domain.calculator`, `domain.config`, `domain.exception`
+- [x] Set up proper interfaces for extensibility
+- [x] Full test coverage with 80%+ line coverage
+- [x] Quality gates: Checkstyle, SpotBugs, PMD all passing
+- [x] Package-level Javadoc for all packages
+- [x] Legacy code marked `@Deprecated` with migration guides
 
 ### Milestone 2: Core Transaction & Account Operations
 **Goal**: Fully functional transaction processing for individual accounts
