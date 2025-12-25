@@ -199,6 +199,33 @@ class Secure2ContributionRulesTest {
         }
 
         @Test
+        @DisplayName("Employer contribution to 403b goes to Traditional 403b")
+        void employerTo403bGoesToTraditional403b() {
+            AccountType result = rules.determineTargetAccountType(
+                ContributionType.EMPLOYER, false, new BigDecimal("100000"),
+                2025, AccountType.ROTH_403B);
+            assertEquals(AccountType.TRADITIONAL_403B, result);
+        }
+
+        @Test
+        @DisplayName("Employer contribution to IRA goes to Traditional IRA")
+        void employerToIraGoesToTraditionalIra() {
+            AccountType result = rules.determineTargetAccountType(
+                ContributionType.EMPLOYER, false, new BigDecimal("100000"),
+                2025, AccountType.ROTH_IRA);
+            assertEquals(AccountType.TRADITIONAL_IRA, result);
+        }
+
+        @Test
+        @DisplayName("Employer contribution to Traditional stays Traditional")
+        void employerToTraditionalStaysTraditional() {
+            AccountType result = rules.determineTargetAccountType(
+                ContributionType.EMPLOYER, false, new BigDecimal("100000"),
+                2025, AccountType.TRADITIONAL_401K);
+            assertEquals(AccountType.TRADITIONAL_401K, result);
+        }
+
+        @Test
         @DisplayName("Personal base contribution follows account default")
         void personalBaseFollowsDefault() {
             AccountType result = rules.determineTargetAccountType(
@@ -217,12 +244,57 @@ class Secure2ContributionRulesTest {
         }
 
         @Test
+        @DisplayName("Catch-up for high earner 403b goes to ROTH 403b")
+        void catchUpHighEarner403bGoesToRoth403b() {
+            AccountType result = rules.determineTargetAccountType(
+                ContributionType.PERSONAL, true, new BigDecimal("150000"),
+                2025, AccountType.TRADITIONAL_403B);
+            assertEquals(AccountType.ROTH_403B, result);
+        }
+
+        @Test
+        @DisplayName("Catch-up for high earner IRA goes to ROTH IRA")
+        void catchUpHighEarnerIraGoesToRothIra() {
+            AccountType result = rules.determineTargetAccountType(
+                ContributionType.PERSONAL, true, new BigDecimal("150000"),
+                2025, AccountType.TRADITIONAL_IRA);
+            assertEquals(AccountType.ROTH_IRA, result);
+        }
+
+        @Test
+        @DisplayName("Catch-up for high earner ROTH stays ROTH")
+        void catchUpHighEarnerRothStaysRoth() {
+            AccountType result = rules.determineTargetAccountType(
+                ContributionType.PERSONAL, true, new BigDecimal("150000"),
+                2025, AccountType.ROTH_401K);
+            assertEquals(AccountType.ROTH_401K, result);
+        }
+
+        @Test
         @DisplayName("Catch-up for normal earner follows default")
         void catchUpNormalEarnerFollowsDefault() {
             AccountType result = rules.determineTargetAccountType(
                 ContributionType.PERSONAL, true, new BigDecimal("100000"),
                 2025, AccountType.TRADITIONAL_401K);
             assertEquals(AccountType.TRADITIONAL_401K, result);
+        }
+
+        @Test
+        @DisplayName("Null account type returns null")
+        void nullAccountTypeReturnsNull() {
+            AccountType result = rules.determineTargetAccountType(
+                ContributionType.EMPLOYER, false, new BigDecimal("100000"),
+                2025, null);
+            assertEquals(null, result);
+        }
+
+        @Test
+        @DisplayName("Other account types pass through unchanged")
+        void otherAccountTypesPassThrough() {
+            AccountType result = rules.determineTargetAccountType(
+                ContributionType.EMPLOYER, false, new BigDecimal("100000"),
+                2025, AccountType.TAXABLE_BROKERAGE);
+            assertEquals(AccountType.TAXABLE_BROKERAGE, result);
         }
     }
 

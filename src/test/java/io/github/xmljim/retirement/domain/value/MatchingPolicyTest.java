@@ -74,6 +74,64 @@ class MatchingPolicyTest {
             assertTrue(policy.getDescription().contains("50%"));
             assertTrue(policy.getDescription().contains("6%"));
         }
+
+        @Test
+        @DisplayName("Should throw for negative max match percent")
+        void throwsForNegativeMaxMatchPercent() {
+            assertThrows(IllegalArgumentException.class, () ->
+                MatchingPolicy.simple(0.50, -0.06));
+        }
+
+        @Test
+        @DisplayName("Should return zero for negative contribution")
+        void returnsZeroForNegativeContribution() {
+            MatchingPolicy policy = MatchingPolicy.simple(0.50, 0.06);
+
+            BigDecimal result = policy.calculateEmployerMatch(new BigDecimal("-0.05"));
+            assertEquals(0, BigDecimal.ZERO.compareTo(result));
+        }
+
+        @Test
+        @DisplayName("Should expose match rate via getter")
+        void exposesMatchRate() {
+            SimpleMatchingPolicy policy = new SimpleMatchingPolicy(
+                new BigDecimal("0.50"), new BigDecimal("0.06"), true);
+
+            assertEquals(0, new BigDecimal("0.50").compareTo(policy.getMatchRate()));
+        }
+
+        @Test
+        @DisplayName("Should expose max match percent via getter")
+        void exposesMaxMatchPercent() {
+            SimpleMatchingPolicy policy = new SimpleMatchingPolicy(
+                new BigDecimal("0.50"), new BigDecimal("0.06"), true);
+
+            assertEquals(0, new BigDecimal("0.06").compareTo(policy.getMaxMatchPercent()));
+        }
+
+        @Test
+        @DisplayName("Should return allowsRothMatch correctly")
+        void returnsAllowsRothMatch() {
+            SimpleMatchingPolicy policyWithRoth = new SimpleMatchingPolicy(
+                new BigDecimal("0.50"), new BigDecimal("0.06"), true);
+            SimpleMatchingPolicy policyWithoutRoth = new SimpleMatchingPolicy(
+                new BigDecimal("0.50"), new BigDecimal("0.06"), false);
+
+            assertTrue(policyWithRoth.allowsRothMatch());
+            assertFalse(policyWithoutRoth.allowsRothMatch());
+        }
+
+        @Test
+        @DisplayName("Should return toString")
+        void returnsToString() {
+            SimpleMatchingPolicy policy = new SimpleMatchingPolicy(
+                new BigDecimal("0.50"), new BigDecimal("0.06"), true);
+
+            String result = policy.toString();
+            assertNotNull(result);
+            assertTrue(result.contains("SimpleMatchingPolicy"));
+            assertTrue(result.contains("0.50"));
+        }
     }
 
     @Nested
@@ -154,6 +212,80 @@ class MatchingPolicyTest {
             BigDecimal result = policy.calculateEmployerMatch(new BigDecimal("0.06"));
             assertEquals(0, new BigDecimal("0.04").compareTo(result.stripTrailingZeros()));
         }
+
+        @Test
+        @DisplayName("Should return zero for zero contribution")
+        void returnsZeroForZeroContribution() {
+            MatchingPolicy policy = MatchingPolicy.tiered(List.of(
+                MatchTier.of(0.03, 1.0)
+            ));
+
+            BigDecimal result = policy.calculateEmployerMatch(BigDecimal.ZERO);
+            assertEquals(0, BigDecimal.ZERO.compareTo(result));
+        }
+
+        @Test
+        @DisplayName("Should return zero for negative contribution")
+        void returnsZeroForNegativeContribution() {
+            MatchingPolicy policy = MatchingPolicy.tiered(List.of(
+                MatchTier.of(0.03, 1.0)
+            ));
+
+            BigDecimal result = policy.calculateEmployerMatch(new BigDecimal("-0.05"));
+            assertEquals(0, BigDecimal.ZERO.compareTo(result));
+        }
+
+        @Test
+        @DisplayName("Should expose tiers via getter")
+        void exposesTiers() {
+            TieredMatchingPolicy policy = new TieredMatchingPolicy(List.of(
+                MatchTier.of(0.03, 1.0),
+                MatchTier.of(0.05, 0.5)
+            ), true);
+
+            List<MatchTier> tiers = policy.getTiers();
+            assertEquals(2, tiers.size());
+        }
+
+        @Test
+        @DisplayName("Should return allowsRothMatch correctly")
+        void returnsAllowsRothMatch() {
+            TieredMatchingPolicy policyWithRoth = new TieredMatchingPolicy(
+                List.of(MatchTier.of(0.03, 1.0)), true);
+            TieredMatchingPolicy policyWithoutRoth = new TieredMatchingPolicy(
+                List.of(MatchTier.of(0.03, 1.0)), false);
+
+            assertTrue(policyWithRoth.allowsRothMatch());
+            assertFalse(policyWithoutRoth.allowsRothMatch());
+        }
+
+        @Test
+        @DisplayName("Should return description with multiple tiers")
+        void returnsDescriptionWithMultipleTiers() {
+            TieredMatchingPolicy policy = new TieredMatchingPolicy(List.of(
+                MatchTier.of(0.03, 1.0),
+                MatchTier.of(0.05, 0.5)
+            ), true);
+
+            String description = policy.getDescription();
+            assertNotNull(description);
+            assertTrue(description.contains("Tiered match"));
+            assertTrue(description.contains("100%"));
+            assertTrue(description.contains("50%"));
+        }
+
+        @Test
+        @DisplayName("Should return toString")
+        void returnsToString() {
+            TieredMatchingPolicy policy = new TieredMatchingPolicy(List.of(
+                MatchTier.of(0.03, 1.0)
+            ), true);
+
+            String result = policy.toString();
+            assertNotNull(result);
+            assertTrue(result.contains("TieredMatchingPolicy"));
+            assertTrue(result.contains("allowsRothMatch=true"));
+        }
     }
 
     @Nested
@@ -175,6 +307,26 @@ class MatchingPolicyTest {
             MatchingPolicy policy = MatchingPolicy.none();
 
             assertFalse(policy.allowsRothMatch());
+        }
+
+        @Test
+        @DisplayName("Should return description")
+        void returnsDescription() {
+            MatchingPolicy policy = MatchingPolicy.none();
+
+            String description = policy.getDescription();
+            assertNotNull(description);
+            assertTrue(description.contains("No employer match"));
+        }
+
+        @Test
+        @DisplayName("Should return toString")
+        void returnsToString() {
+            MatchingPolicy policy = MatchingPolicy.none();
+
+            String result = policy.toString();
+            assertNotNull(result);
+            assertTrue(result.contains("NoMatchingPolicy"));
         }
     }
 
