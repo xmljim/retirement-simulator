@@ -3,6 +3,7 @@ package io.github.xmljim.retirement.domain.value;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -113,6 +114,41 @@ class RetirementIncomeTest {
             RetirementIncome r2 = RetirementIncome.fixedPension("Pension B", 500.00, START_DATE);
 
             assertNotEquals(r1, r2);
+        }
+
+        @Test
+        @DisplayName("Same object should be equal to itself")
+        void sameObject() {
+            RetirementIncome r1 = RetirementIncome.fixedPension("Pension", 500.00, START_DATE);
+            assertEquals(r1, r1);
+        }
+
+        @Test
+        @DisplayName("Should not equal null")
+        void notEqualNull() {
+            RetirementIncome r1 = RetirementIncome.fixedPension("Pension", 500.00, START_DATE);
+            assertNotEquals(null, r1);
+        }
+
+        @Test
+        @DisplayName("Should not equal different class")
+        void notEqualDifferentClass() {
+            RetirementIncome r1 = RetirementIncome.fixedPension("Pension", 500.00, START_DATE);
+            assertNotEquals("string", r1);
+        }
+    }
+
+    @Nested
+    @DisplayName("ToString Tests")
+    class ToStringTests {
+
+        @Test
+        @DisplayName("Should produce readable string")
+        void toStringFormat() {
+            RetirementIncome income = RetirementIncome.fixedPension("My Pension", 500.00, START_DATE);
+            String str = income.toString();
+            assertTrue(str.contains("My Pension"));
+            assertTrue(str.contains("monthlyAmount"));
         }
     }
 }

@@ -3,6 +3,7 @@ package io.github.xmljim.retirement.domain.value;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.time.Month;
@@ -130,6 +131,41 @@ class ContributionConfigTest {
             ContributionConfig c2 = ContributionConfig.employer(0.04);
 
             assertNotEquals(c1, c2);
+        }
+
+        @Test
+        @DisplayName("Same object should be equal to itself")
+        void sameObject() {
+            ContributionConfig c1 = ContributionConfig.personal(0.10);
+            assertEquals(c1, c1);
+        }
+
+        @Test
+        @DisplayName("Should not equal null")
+        void notEqualNull() {
+            ContributionConfig c1 = ContributionConfig.personal(0.10);
+            assertNotEquals(null, c1);
+        }
+
+        @Test
+        @DisplayName("Should not equal different class")
+        void notEqualDifferentClass() {
+            ContributionConfig c1 = ContributionConfig.personal(0.10);
+            assertNotEquals("string", c1);
+        }
+    }
+
+    @Nested
+    @DisplayName("ToString Tests")
+    class ToStringTests {
+
+        @Test
+        @DisplayName("Should produce readable string")
+        void toStringFormat() {
+            ContributionConfig config = ContributionConfig.personal(0.10);
+            String str = config.toString();
+            assertTrue(str.contains("PERSONAL"));
+            assertTrue(str.contains("rate"));
         }
     }
 }

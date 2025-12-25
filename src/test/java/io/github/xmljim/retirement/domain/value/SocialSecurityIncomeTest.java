@@ -3,6 +3,7 @@ package io.github.xmljim.retirement.domain.value;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -108,6 +109,53 @@ class SocialSecurityIncomeTest {
                 .build();
 
             assertNotEquals(s1, s2);
+        }
+
+        @Test
+        @DisplayName("Same object should be equal to itself")
+        void sameObject() {
+            SocialSecurityIncome s1 = SocialSecurityIncome.builder()
+                .monthlyBenefit(4018.00)
+                .startDate(START_DATE)
+                .build();
+            assertEquals(s1, s1);
+        }
+
+        @Test
+        @DisplayName("Should not equal null")
+        void notEqualNull() {
+            SocialSecurityIncome s1 = SocialSecurityIncome.builder()
+                .monthlyBenefit(4018.00)
+                .startDate(START_DATE)
+                .build();
+            assertNotEquals(null, s1);
+        }
+
+        @Test
+        @DisplayName("Should not equal different class")
+        void notEqualDifferentClass() {
+            SocialSecurityIncome s1 = SocialSecurityIncome.builder()
+                .monthlyBenefit(4018.00)
+                .startDate(START_DATE)
+                .build();
+            assertNotEquals("string", s1);
+        }
+    }
+
+    @Nested
+    @DisplayName("ToString Tests")
+    class ToStringTests {
+
+        @Test
+        @DisplayName("Should produce readable string")
+        void toStringFormat() {
+            SocialSecurityIncome ss = SocialSecurityIncome.builder()
+                .monthlyBenefit(4018.00)
+                .startDate(START_DATE)
+                .build();
+            String str = ss.toString();
+            assertTrue(str.contains("monthlyBenefit"));
+            assertTrue(str.contains("startDate"));
         }
     }
 }
