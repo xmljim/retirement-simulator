@@ -51,10 +51,10 @@ public final class AssetAllocation {
      */
     public static AssetAllocation of(double stocks, double bonds, double cash) {
         return builder()
-                .stocks(stocks)
-                .bonds(bonds)
-                .cash(cash)
-                .build();
+            .stocks(stocks)
+            .bonds(bonds)
+            .cash(cash)
+            .build();
     }
 
     /**
@@ -91,9 +91,9 @@ public final class AssetAllocation {
      */
     public static AssetAllocation balanced() {
         return new AssetAllocation(
-                new BigDecimal("60"),
-                new BigDecimal("40"),
-                BigDecimal.ZERO
+            new BigDecimal("60"),
+            new BigDecimal("40"),
+            BigDecimal.ZERO
         );
     }
 
@@ -144,14 +144,14 @@ public final class AssetAllocation {
     public BigDecimal calculateBlendedReturn(BigDecimal stockReturn, BigDecimal bondReturn,
                                              BigDecimal cashReturn) {
         BigDecimal stockContribution = stocksPercentage
-                .multiply(stockReturn)
-                .divide(HUNDRED, SCALE, RoundingMode.HALF_UP);
+            .multiply(stockReturn)
+            .divide(HUNDRED, SCALE, RoundingMode.HALF_UP);
         BigDecimal bondContribution = bondsPercentage
-                .multiply(bondReturn)
-                .divide(HUNDRED, SCALE, RoundingMode.HALF_UP);
+            .multiply(bondReturn)
+            .divide(HUNDRED, SCALE, RoundingMode.HALF_UP);
         BigDecimal cashContribution = cashPercentage
-                .multiply(cashReturn)
-                .divide(HUNDRED, SCALE, RoundingMode.HALF_UP);
+            .multiply(cashReturn)
+            .divide(HUNDRED, SCALE, RoundingMode.HALF_UP);
 
         return stockContribution.add(bondContribution).add(cashContribution);
     }

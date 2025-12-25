@@ -100,8 +100,8 @@ public final class Portfolio {
      */
     public Optional<InvestmentAccount> findAccountById(String accountId) {
         return accounts.stream()
-                .filter(a -> a.getId().equals(accountId))
-                .findFirst();
+            .filter(a -> a.getId().equals(accountId))
+            .findFirst();
     }
 
     /**
@@ -112,8 +112,8 @@ public final class Portfolio {
      */
     public List<InvestmentAccount> getAccountsByType(AccountType accountType) {
         return accounts.stream()
-                .filter(a -> a.getAccountType() == accountType)
-                .collect(Collectors.toList());
+            .filter(a -> a.getAccountType() == accountType)
+            .collect(Collectors.toList());
     }
 
     /**
@@ -124,8 +124,8 @@ public final class Portfolio {
      */
     public List<InvestmentAccount> getAccountsByTaxTreatment(AccountType.TaxTreatment taxTreatment) {
         return accounts.stream()
-                .filter(a -> a.getTaxTreatment() == taxTreatment)
-                .collect(Collectors.toList());
+            .filter(a -> a.getTaxTreatment() == taxTreatment)
+            .collect(Collectors.toList());
     }
 
     // ==================== Balance Aggregation ====================
@@ -137,8 +137,8 @@ public final class Portfolio {
      */
     public BigDecimal getTotalBalance() {
         return accounts.stream()
-                .map(InvestmentAccount::getBalance)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            .map(InvestmentAccount::getBalance)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     /**
@@ -149,9 +149,9 @@ public final class Portfolio {
      */
     public BigDecimal getBalanceByType(AccountType accountType) {
         return accounts.stream()
-                .filter(a -> a.getAccountType() == accountType)
-                .map(InvestmentAccount::getBalance)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            .filter(a -> a.getAccountType() == accountType)
+            .map(InvestmentAccount::getBalance)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     /**
@@ -161,14 +161,14 @@ public final class Portfolio {
      */
     public Map<AccountType, BigDecimal> getBalancesByType() {
         return accounts.stream()
-                .collect(Collectors.groupingBy(
-                        InvestmentAccount::getAccountType,
-                        Collectors.reducing(
-                                BigDecimal.ZERO,
-                                InvestmentAccount::getBalance,
-                                BigDecimal::add
-                        )
-                ));
+            .collect(Collectors.groupingBy(
+                InvestmentAccount::getAccountType,
+                Collectors.reducing(
+                    BigDecimal.ZERO,
+                    InvestmentAccount::getBalance,
+                    BigDecimal::add
+                )
+            ));
     }
 
     /**
@@ -179,9 +179,9 @@ public final class Portfolio {
      */
     public BigDecimal getBalanceByTaxTreatment(AccountType.TaxTreatment taxTreatment) {
         return accounts.stream()
-                .filter(a -> a.getTaxTreatment() == taxTreatment)
-                .map(InvestmentAccount::getBalance)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            .filter(a -> a.getTaxTreatment() == taxTreatment)
+            .map(InvestmentAccount::getBalance)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     /**
@@ -191,14 +191,14 @@ public final class Portfolio {
      */
     public Map<AccountType.TaxTreatment, BigDecimal> getBalancesByTaxTreatment() {
         return accounts.stream()
-                .collect(Collectors.groupingBy(
-                        InvestmentAccount::getTaxTreatment,
-                        Collectors.reducing(
-                                BigDecimal.ZERO,
-                                InvestmentAccount::getBalance,
-                                BigDecimal::add
-                        )
-                ));
+            .collect(Collectors.groupingBy(
+                InvestmentAccount::getTaxTreatment,
+                Collectors.reducing(
+                    BigDecimal.ZERO,
+                    InvestmentAccount::getBalance,
+                    BigDecimal::add
+                )
+            ));
     }
 
     // ==================== Allocation Methods ====================
@@ -314,13 +314,13 @@ public final class Portfolio {
      */
     public Portfolio withoutAccount(String accountId) {
         List<InvestmentAccount> filtered = accounts.stream()
-                .filter(a -> !a.getId().equals(accountId))
-                .collect(Collectors.toList());
+            .filter(a -> !a.getId().equals(accountId))
+            .collect(Collectors.toList());
 
         return toBuilder()
-                .clearAccounts()
-                .addAccounts(filtered)
-                .build();
+            .clearAccounts()
+            .addAccounts(filtered)
+            .build();
     }
 
     /**
@@ -339,9 +339,9 @@ public final class Portfolio {
      */
     public Builder toBuilder() {
         return new Builder()
-                .id(this.id)
-                .owner(this.owner)
-                .addAccounts(this.accounts);
+            .id(this.id)
+            .owner(this.owner)
+            .addAccounts(this.accounts);
     }
 
     @Override
