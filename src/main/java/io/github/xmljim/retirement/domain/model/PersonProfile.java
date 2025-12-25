@@ -6,6 +6,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+import io.github.xmljim.retirement.domain.exception.InvalidDateRangeException;
+import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
+
 /**
  * Represents an individual in the retirement simulation.
  *
@@ -310,8 +313,8 @@ public final class PersonProfile {
          * Builds the PersonProfile instance.
          *
          * @return a new PersonProfile
-         * @throws NullPointerException if required fields are missing
-         * @throws IllegalArgumentException if validation fails
+         * @throws MissingRequiredFieldException if required fields are missing
+         * @throws InvalidDateRangeException if date relationships are invalid
          */
         public PersonProfile build() {
             validate();
@@ -319,15 +322,15 @@ public final class PersonProfile {
         }
 
         private void validate() {
-            Objects.requireNonNull(name, "Name is required");
-            Objects.requireNonNull(dateOfBirth, "Date of birth is required");
-            Objects.requireNonNull(retirementDate, "Retirement date is required");
+            MissingRequiredFieldException.requireNonNull(name, "name");
+            MissingRequiredFieldException.requireNonNull(dateOfBirth, "dateOfBirth");
+            MissingRequiredFieldException.requireNonNull(retirementDate, "retirementDate");
 
             if (retirementDate.isBefore(dateOfBirth)) {
-                throw new IllegalArgumentException("Retirement date cannot be before date of birth");
+                throw InvalidDateRangeException.dateMustBeAfter("Retirement date", "date of birth");
             }
             if (socialSecurityStartDate != null && socialSecurityStartDate.isBefore(dateOfBirth)) {
-                throw new IllegalArgumentException("Social Security start date cannot be before date of birth");
+                throw InvalidDateRangeException.dateMustBeAfter("Social Security start date", "date of birth");
             }
         }
     }

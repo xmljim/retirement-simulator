@@ -17,6 +17,8 @@ import org.junit.jupiter.api.Test;
 import io.github.xmljim.retirement.domain.enums.DistributionStrategy;
 import io.github.xmljim.retirement.domain.enums.EndCondition;
 import io.github.xmljim.retirement.domain.enums.SimulationMode;
+import io.github.xmljim.retirement.domain.exception.InvalidDateRangeException;
+import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
 import io.github.xmljim.retirement.domain.value.InflationAssumptions;
 
 @DisplayName("Scenario Tests")
@@ -65,14 +67,14 @@ class ScenarioTest {
         @Test
         @DisplayName("Should throw exception when name is missing")
         void missingName() {
-            assertThrows(NullPointerException.class, () ->
+            assertThrows(MissingRequiredFieldException.class, () ->
                 Scenario.builder().primaryPerson(primaryPerson).build());
         }
 
         @Test
         @DisplayName("Should throw exception when primary person is missing")
         void missingPrimaryPerson() {
-            assertThrows(NullPointerException.class, () ->
+            assertThrows(MissingRequiredFieldException.class, () ->
                 Scenario.builder().name("Test").build());
         }
 
@@ -191,7 +193,7 @@ class ScenarioTest {
         @Test
         @DisplayName("Should reject start date after projected end")
         void startDateAfterEnd() {
-            assertThrows(IllegalArgumentException.class, () ->
+            assertThrows(InvalidDateRangeException.class, () ->
                 Scenario.builder()
                     .name("Test")
                     .primaryPerson(primaryPerson)

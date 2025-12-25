@@ -11,6 +11,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import io.github.xmljim.retirement.domain.exception.InvalidRateException;
+
 @DisplayName("InflationAssumptions Tests")
 class InflationAssumptionsTest {
 
@@ -63,14 +65,14 @@ class InflationAssumptionsTest {
         @Test
         @DisplayName("Should reject rate below -10%")
         void rateTooLow() {
-            assertThrows(IllegalArgumentException.class, () ->
+            assertThrows(InvalidRateException.class, () ->
                 InflationAssumptions.builder().generalInflation(-0.15).build());
         }
 
         @Test
         @DisplayName("Should reject rate above 20%")
         void rateTooHigh() {
-            assertThrows(IllegalArgumentException.class, () ->
+            assertThrows(InvalidRateException.class, () ->
                 InflationAssumptions.builder().healthcareInflation(0.25).build());
         }
     }

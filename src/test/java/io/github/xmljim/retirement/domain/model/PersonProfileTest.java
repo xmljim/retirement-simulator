@@ -13,6 +13,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import io.github.xmljim.retirement.domain.exception.InvalidDateRangeException;
+import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
+
 @DisplayName("PersonProfile Tests")
 class PersonProfileTest {
 
@@ -67,7 +70,7 @@ class PersonProfileTest {
         @Test
         @DisplayName("Should throw exception when name is missing")
         void missingName() {
-            assertThrows(NullPointerException.class, () ->
+            assertThrows(MissingRequiredFieldException.class, () ->
                     PersonProfile.builder()
                             .dateOfBirth(DOB)
                             .retirementDate(RETIREMENT_DATE)
@@ -78,7 +81,7 @@ class PersonProfileTest {
         @Test
         @DisplayName("Should throw exception when date of birth is missing")
         void missingDateOfBirth() {
-            assertThrows(NullPointerException.class, () ->
+            assertThrows(MissingRequiredFieldException.class, () ->
                     PersonProfile.builder()
                             .name(NAME)
                             .retirementDate(RETIREMENT_DATE)
@@ -89,7 +92,7 @@ class PersonProfileTest {
         @Test
         @DisplayName("Should throw exception when retirement date is missing")
         void missingRetirementDate() {
-            assertThrows(NullPointerException.class, () ->
+            assertThrows(MissingRequiredFieldException.class, () ->
                     PersonProfile.builder()
                             .name(NAME)
                             .dateOfBirth(DOB)
@@ -128,7 +131,7 @@ class PersonProfileTest {
         @Test
         @DisplayName("Should throw exception when retirement date is before birth date")
         void retirementBeforeBirth() {
-            assertThrows(IllegalArgumentException.class, () ->
+            assertThrows(InvalidDateRangeException.class, () ->
                     PersonProfile.builder()
                             .name(NAME)
                             .dateOfBirth(DOB)
@@ -140,7 +143,7 @@ class PersonProfileTest {
         @Test
         @DisplayName("Should throw exception when SS start date is before birth date")
         void ssStartBeforeBirth() {
-            assertThrows(IllegalArgumentException.class, () ->
+            assertThrows(InvalidDateRangeException.class, () ->
                     PersonProfile.builder()
                             .name(NAME)
                             .dateOfBirth(DOB)

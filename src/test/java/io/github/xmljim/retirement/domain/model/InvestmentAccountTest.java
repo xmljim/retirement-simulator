@@ -14,6 +14,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import io.github.xmljim.retirement.domain.enums.AccountType;
+import io.github.xmljim.retirement.domain.exception.InvalidRateException;
+import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
+import io.github.xmljim.retirement.domain.exception.ValidationException;
 import io.github.xmljim.retirement.domain.value.AssetAllocation;
 
 @DisplayName("InvestmentAccount Tests")
@@ -82,7 +85,7 @@ class InvestmentAccountTest {
         @Test
         @DisplayName("Should throw exception when name is missing")
         void missingName() {
-            assertThrows(NullPointerException.class, () ->
+            assertThrows(MissingRequiredFieldException.class, () ->
                     InvestmentAccount.builder()
                             .accountType(ACCOUNT_TYPE)
                             .balance(BALANCE)
@@ -94,7 +97,7 @@ class InvestmentAccountTest {
         @Test
         @DisplayName("Should throw exception when account type is missing")
         void missingAccountType() {
-            assertThrows(NullPointerException.class, () ->
+            assertThrows(MissingRequiredFieldException.class, () ->
                     InvestmentAccount.builder()
                             .name(ACCOUNT_NAME)
                             .balance(BALANCE)
@@ -106,7 +109,7 @@ class InvestmentAccountTest {
         @Test
         @DisplayName("Should throw exception when return rate is missing and not using allocation-based")
         void missingReturnRate() {
-            assertThrows(NullPointerException.class, () ->
+            assertThrows(MissingRequiredFieldException.class, () ->
                     InvestmentAccount.builder()
                             .name(ACCOUNT_NAME)
                             .accountType(ACCOUNT_TYPE)
@@ -138,8 +141,8 @@ class InvestmentAccountTest {
         @Test
         @DisplayName("Should throw exception for negative balance")
         void negativeBalance() {
-            IllegalArgumentException exception = assertThrows(
-                    IllegalArgumentException.class,
+            ValidationException exception = assertThrows(
+                    ValidationException.class,
                     () -> createDefaultAccount()
                             .balance(new BigDecimal("-1000"))
                             .build()
@@ -151,8 +154,8 @@ class InvestmentAccountTest {
         @Test
         @DisplayName("Should throw exception for return rate below -50%")
         void returnRateTooLow() {
-            IllegalArgumentException exception = assertThrows(
-                    IllegalArgumentException.class,
+            InvalidRateException exception = assertThrows(
+                    InvalidRateException.class,
                     () -> createDefaultAccount()
                             .preRetirementReturnRate(new BigDecimal("-0.60"))
                             .build()
@@ -164,8 +167,8 @@ class InvestmentAccountTest {
         @Test
         @DisplayName("Should throw exception for return rate above 50%")
         void returnRateTooHigh() {
-            IllegalArgumentException exception = assertThrows(
-                    IllegalArgumentException.class,
+            InvalidRateException exception = assertThrows(
+                    InvalidRateException.class,
                     () -> createDefaultAccount()
                             .preRetirementReturnRate(new BigDecimal("0.60"))
                             .build()

@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Objects;
 
+import io.github.xmljim.retirement.domain.exception.InvalidAllocationException;
+
 /**
  * Represents the asset allocation of an investment account.
  *
@@ -232,7 +234,7 @@ public final class AssetAllocation {
          * Builds the AssetAllocation instance.
          *
          * @return a new AssetAllocation
-         * @throws IllegalArgumentException if validation fails
+         * @throws InvalidAllocationException if validation fails
          */
         public AssetAllocation build() {
             validate();
@@ -246,17 +248,13 @@ public final class AssetAllocation {
 
             BigDecimal total = stocks.add(bonds).add(cash);
             if (total.compareTo(HUNDRED) != 0) {
-                throw new IllegalArgumentException(
-                        String.format("Asset allocation must sum to 100%%, but was %s%%",
-                                total.stripTrailingZeros().toPlainString()));
+                throw InvalidAllocationException.invalidSum(total);
             }
         }
 
         private void validateRange(String name, BigDecimal value) {
             if (value.compareTo(BigDecimal.ZERO) < 0 || value.compareTo(HUNDRED) > 0) {
-                throw new IllegalArgumentException(
-                        String.format("%s percentage must be between 0 and 100, but was %s",
-                                name, value.stripTrailingZeros().toPlainString()));
+                throw InvalidAllocationException.outOfRange(name, value);
             }
         }
     }

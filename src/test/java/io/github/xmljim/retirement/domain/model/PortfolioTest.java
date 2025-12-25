@@ -17,6 +17,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import io.github.xmljim.retirement.domain.enums.AccountType;
+import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
+import io.github.xmljim.retirement.domain.exception.ValidationException;
 import io.github.xmljim.retirement.domain.value.AssetAllocation;
 
 @DisplayName("Portfolio Tests")
@@ -81,14 +83,14 @@ class PortfolioTest {
         @Test
         @DisplayName("Should throw exception when owner is missing")
         void missingOwner() {
-            assertThrows(NullPointerException.class, () ->
+            assertThrows(MissingRequiredFieldException.class, () ->
                     Portfolio.builder().addAccount(account401k).build());
         }
 
         @Test
         @DisplayName("Should throw exception for duplicate account ID")
         void duplicateAccountId() {
-            assertThrows(IllegalArgumentException.class, () ->
+            assertThrows(ValidationException.class, () ->
                     Portfolio.builder()
                             .owner(owner)
                             .addAccount(account401k)

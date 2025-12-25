@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Objects;
 
+import io.github.xmljim.retirement.domain.exception.InvalidRateException;
+
 /**
  * Represents inflation rate assumptions used in retirement projections.
  *
@@ -268,7 +270,7 @@ public final class InflationAssumptions {
          * Builds the InflationAssumptions instance.
          *
          * @return a new InflationAssumptions
-         * @throws IllegalArgumentException if any rate is out of range
+         * @throws InvalidRateException if any rate is out of range
          */
         public InflationAssumptions build() {
             validateRate("General inflation", generalInflation);
@@ -279,10 +281,7 @@ public final class InflationAssumptions {
 
         private void validateRate(String name, BigDecimal rate) {
             if (rate.compareTo(MIN_RATE) < 0 || rate.compareTo(MAX_RATE) > 0) {
-                throw new IllegalArgumentException(
-                    String.format("%s rate must be between -10%% and 20%%, but was %s%%",
-                        name, rate.multiply(new BigDecimal("100")).stripTrailingZeros().toPlainString())
-                );
+                throw InvalidRateException.inflationRateOutOfRange(name, rate);
             }
         }
     }

@@ -10,6 +10,8 @@ import java.util.UUID;
 import io.github.xmljim.retirement.domain.enums.DistributionStrategy;
 import io.github.xmljim.retirement.domain.enums.EndCondition;
 import io.github.xmljim.retirement.domain.enums.SimulationMode;
+import io.github.xmljim.retirement.domain.exception.InvalidDateRangeException;
+import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
 import io.github.xmljim.retirement.domain.value.InflationAssumptions;
 
 /**
@@ -292,24 +294,24 @@ public final class Scenario {
             return defaultCashReturn(BigDecimal.valueOf(rate));
         }
 
-        /** Builds the Scenario. @return a new Scenario @throws NullPointerException if required fields missing */
+        /** Builds the Scenario. @return a new Scenario @throws MissingRequiredFieldException if missing */
         public Scenario build() {
             validate();
             return new Scenario(this);
         }
 
         private void validate() {
-            Objects.requireNonNull(name, "Scenario name is required");
-            Objects.requireNonNull(primaryPerson, "Primary person is required");
-            Objects.requireNonNull(startDate, "Start date is required");
-            Objects.requireNonNull(endCondition, "End condition is required");
-            Objects.requireNonNull(simulationMode, "Simulation mode is required");
-            Objects.requireNonNull(distributionStrategy, "Distribution strategy is required");
-            Objects.requireNonNull(inflationAssumptions, "Inflation assumptions are required");
+            MissingRequiredFieldException.requireNonNull(name, "name");
+            MissingRequiredFieldException.requireNonNull(primaryPerson, "primaryPerson");
+            MissingRequiredFieldException.requireNonNull(startDate, "startDate");
+            MissingRequiredFieldException.requireNonNull(endCondition, "endCondition");
+            MissingRequiredFieldException.requireNonNull(simulationMode, "simulationMode");
+            MissingRequiredFieldException.requireNonNull(distributionStrategy, "distributionStrategy");
+            MissingRequiredFieldException.requireNonNull(inflationAssumptions, "inflationAssumptions");
 
             if (startDate.isAfter(primaryPerson.getProjectedEndDate())) {
-                throw new IllegalArgumentException(
-                    "Start date cannot be after primary person's projected end date");
+                throw InvalidDateRangeException.dateMustBeBefore(
+                    "Start date", "primary person's projected end date");
             }
         }
     }

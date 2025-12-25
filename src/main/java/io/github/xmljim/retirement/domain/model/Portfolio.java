@@ -14,6 +14,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import io.github.xmljim.retirement.domain.enums.AccountType;
+import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
+import io.github.xmljim.retirement.domain.exception.ValidationException;
 import io.github.xmljim.retirement.domain.value.AssetAllocation;
 
 /**
@@ -407,14 +409,15 @@ public final class Portfolio {
          *
          * @param account the account to add
          * @return this builder
-         * @throws IllegalArgumentException if account ID already exists
+         * @throws MissingRequiredFieldException if account is null
+         * @throws ValidationException if account ID already exists
          */
         public Builder addAccount(InvestmentAccount account) {
-            Objects.requireNonNull(account, "Account cannot be null");
+            MissingRequiredFieldException.requireNonNull(account, "account");
 
             if (accountIds.contains(account.getId())) {
-                throw new IllegalArgumentException(
-                        "Duplicate account ID: " + account.getId());
+                throw new ValidationException(
+                    "Duplicate account ID: " + account.getId(), "account");
             }
 
             accounts.add(account);
@@ -448,7 +451,7 @@ public final class Portfolio {
          * Builds the Portfolio instance.
          *
          * @return a new Portfolio
-         * @throws NullPointerException if owner is not set
+         * @throws MissingRequiredFieldException if owner is not set
          */
         public Portfolio build() {
             validate();
@@ -456,7 +459,7 @@ public final class Portfolio {
         }
 
         private void validate() {
-            Objects.requireNonNull(owner, "Owner is required");
+            MissingRequiredFieldException.requireNonNull(owner, "owner");
         }
     }
 }

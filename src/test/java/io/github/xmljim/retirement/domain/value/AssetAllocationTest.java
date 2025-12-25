@@ -11,6 +11,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import io.github.xmljim.retirement.domain.exception.InvalidAllocationException;
+
 @DisplayName("AssetAllocation Tests")
 class AssetAllocationTest {
 
@@ -107,9 +109,9 @@ class AssetAllocationTest {
         @Test
         @DisplayName("Should throw exception when percentages don't sum to 100")
         void invalidSum() {
-            IllegalArgumentException exception = assertThrows(
-                    IllegalArgumentException.class,
-                    () -> AssetAllocation.of(50, 30, 10)
+            InvalidAllocationException exception = assertThrows(
+                InvalidAllocationException.class,
+                () -> AssetAllocation.of(50, 30, 10)
             );
 
             assertTrue(exception.getMessage().contains("sum to 100%"));
@@ -118,9 +120,9 @@ class AssetAllocationTest {
         @Test
         @DisplayName("Should throw exception for negative stocks percentage")
         void negativeStocks() {
-            IllegalArgumentException exception = assertThrows(
-                    IllegalArgumentException.class,
-                    () -> AssetAllocation.of(-10, 60, 50)
+            InvalidAllocationException exception = assertThrows(
+                InvalidAllocationException.class,
+                () -> AssetAllocation.of(-10, 60, 50)
             );
 
             assertTrue(exception.getMessage().contains("Stocks"));
@@ -130,9 +132,9 @@ class AssetAllocationTest {
         @Test
         @DisplayName("Should throw exception for percentage over 100")
         void overOneHundred() {
-            IllegalArgumentException exception = assertThrows(
-                    IllegalArgumentException.class,
-                    () -> AssetAllocation.builder().stocks(110).bonds(0).cash(-10).build()
+            InvalidAllocationException exception = assertThrows(
+                InvalidAllocationException.class,
+                () -> AssetAllocation.builder().stocks(110).bonds(0).cash(-10).build()
             );
 
             assertTrue(exception.getMessage().contains("between 0 and 100"));

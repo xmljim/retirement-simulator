@@ -6,6 +6,9 @@ import java.util.Objects;
 import java.util.UUID;
 
 import io.github.xmljim.retirement.domain.enums.AccountType;
+import io.github.xmljim.retirement.domain.exception.InvalidRateException;
+import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
+import io.github.xmljim.retirement.domain.exception.ValidationException;
 import io.github.xmljim.retirement.domain.value.AssetAllocation;
 
 /**
@@ -417,17 +420,17 @@ public final class InvestmentAccount {
         }
 
         private void validate() {
-            Objects.requireNonNull(name, "Account name is required");
-            Objects.requireNonNull(accountType, "Account type is required");
-            Objects.requireNonNull(allocation, "Asset allocation is required");
+            MissingRequiredFieldException.requireNonNull(name, "name");
+            MissingRequiredFieldException.requireNonNull(accountType, "accountType");
+            MissingRequiredFieldException.requireNonNull(allocation, "allocation");
 
             if (balance.compareTo(BigDecimal.ZERO) < 0) {
-                throw new IllegalArgumentException("Balance cannot be negative");
+                throw new ValidationException("Balance cannot be negative", "balance");
             }
 
             if (!useAllocationBasedReturn) {
-                Objects.requireNonNull(preRetirementReturnRate,
-                        "Pre-retirement return rate is required unless using allocation-based returns");
+                MissingRequiredFieldException.requireNonNull(preRetirementReturnRate,
+                    "preRetirementReturnRate (required unless using allocation-based returns)");
                 validateReturnRate("Pre-retirement return rate", preRetirementReturnRate);
                 if (postRetirementReturnRate != null) {
                     validateReturnRate("Post-retirement return rate", postRetirementReturnRate);
@@ -437,9 +440,7 @@ public final class InvestmentAccount {
 
         private void validateReturnRate(String name, BigDecimal rate) {
             if (rate.compareTo(MIN_RETURN) < 0 || rate.compareTo(MAX_RETURN) > 0) {
-                throw new IllegalArgumentException(
-                        String.format("%s must be between -50%% and 50%%, but was %s",
-                                name, rate.multiply(new BigDecimal("100")).stripTrailingZeros().toPlainString() + "%"));
+                throw InvalidRateException.returnRateOutOfRange(name, rate, MIN_RETURN, MAX_RETURN);
             }
         }
     }
