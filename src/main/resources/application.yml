@@ -35,3 +35,19 @@ irs:
       2026:
         base-limit: 7500
         catch-up-limit: 1000
+
+    # HSA limits (requires HDHP coverage)
+    # Catch-up available at age 55 (not 50 like retirement accounts)
+    hsa-limits:
+      2024:
+        individual-limit: 4150
+        family-limit: 8300
+        catch-up-limit: 1000
+      2025:
+        individual-limit: 4300
+        family-limit: 8550
+        catch-up-limit: 1000
+      2026:
+        individual-limit: 4400  # Estimated
+        family-limit: 8750      # Estimated
+        catch-up-limit: 1000

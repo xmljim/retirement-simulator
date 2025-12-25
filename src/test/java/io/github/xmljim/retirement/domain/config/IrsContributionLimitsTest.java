@@ -13,6 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import io.github.xmljim.retirement.domain.config.IrsContributionLimits.HsaLimits;
 import io.github.xmljim.retirement.domain.config.IrsContributionLimits.IraLimits;
 import io.github.xmljim.retirement.domain.config.IrsContributionLimits.YearLimits;
 
@@ -57,6 +58,24 @@ class IrsContributionLimitsTest {
             new BigDecimal("1000")
         ));
         limits.setIraLimits(iraLimits);
+
+        Map<Integer, HsaLimits> hsaLimits = new HashMap<>();
+        hsaLimits.put(2024, new HsaLimits(
+            new BigDecimal("4150"),
+            new BigDecimal("8300"),
+            new BigDecimal("1000")
+        ));
+        hsaLimits.put(2025, new HsaLimits(
+            new BigDecimal("4300"),
+            new BigDecimal("8550"),
+            new BigDecimal("1000")
+        ));
+        hsaLimits.put(2026, new HsaLimits(
+            new BigDecimal("4400"),
+            new BigDecimal("8750"),
+            new BigDecimal("1000")
+        ));
+        limits.setHsaLimits(hsaLimits);
 
         limits.setDefaultAnnualIncreaseRate(new BigDecimal("0.02"));
     }
@@ -151,6 +170,60 @@ class IrsContributionLimitsTest {
     }
 
     @Nested
+    @DisplayName("getHsaLimitsForYear")
+    class GetHsaLimitsForYearTests {
+
+        @Test
+        @DisplayName("Should return 2024 HSA limits")
+        void returns2024HsaLimits() {
+            HsaLimits result = limits.getHsaLimitsForYear(2024);
+
+            assertNotNull(result);
+            assertEquals(0, new BigDecimal("4150").compareTo(result.individualLimit()));
+            assertEquals(0, new BigDecimal("8300").compareTo(result.familyLimit()));
+            assertEquals(0, new BigDecimal("1000").compareTo(result.catchUpLimit()));
+        }
+
+        @Test
+        @DisplayName("Should return 2025 HSA limits")
+        void returns2025HsaLimits() {
+            HsaLimits result = limits.getHsaLimitsForYear(2025);
+
+            assertNotNull(result);
+            assertEquals(0, new BigDecimal("4300").compareTo(result.individualLimit()));
+            assertEquals(0, new BigDecimal("8550").compareTo(result.familyLimit()));
+            assertEquals(0, new BigDecimal("1000").compareTo(result.catchUpLimit()));
+        }
+
+        @Test
+        @DisplayName("Should extrapolate HSA limits for future year with $50 rounding")
+        void extrapolatesHsaLimitsForFutureYear() {
+            // 2030 is 4 years after 2026
+            HsaLimits result = limits.getHsaLimitsForYear(2030);
+
+            assertNotNull(result);
+            // Individual: 4400 * (1.02)^4 = 4762.45 → rounds to $4,750
+            assertEquals(0, new BigDecimal("4750").compareTo(result.individualLimit()));
+            // Family: 8750 * (1.02)^4 = 9470.45 → rounds to $9,450
+            assertEquals(0, new BigDecimal("9450").compareTo(result.familyLimit()));
+            // Catch-up stays flat at $1,000
+            assertEquals(0, new BigDecimal("1000").compareTo(result.catchUpLimit()));
+        }
+
+        @Test
+        @DisplayName("Should return zero limits when no HSA years configured")
+        void returnsZeroLimitsWhenEmpty() {
+            IrsContributionLimits emptyLimits = new IrsContributionLimits();
+            emptyLimits.setHsaLimits(new HashMap<>());
+
+            HsaLimits result = emptyLimits.getHsaLimitsForYear(2025);
+
+            assertNotNull(result);
+            assertEquals(0, BigDecimal.ZERO.compareTo(result.individualLimit()));
+        }
+    }
+
+    @Nested
     @DisplayName("YearLimits Record")
     class YearLimitsTests {
 
@@ -163,6 +236,21 @@ class IrsContributionLimitsTest {
             assertEquals(0, BigDecimal.ZERO.compareTo(result.catchUpLimit()));
             assertEquals(0, BigDecimal.ZERO.compareTo(result.superCatchUpLimit()));
             assertEquals(0, BigDecimal.ZERO.compareTo(result.rothCatchUpIncomeThreshold()));
+        }
+    }
+
+    @Nested
+    @DisplayName("HsaLimits Record")
+    class HsaLimitsTests {
+
+        @Test
+        @DisplayName("Should handle null values with defaults")
+        void handlesNullValuesWithDefaults() {
+            HsaLimits result = new HsaLimits(null, null, null);
+
+            assertEquals(0, BigDecimal.ZERO.compareTo(result.individualLimit()));
+            assertEquals(0, BigDecimal.ZERO.compareTo(result.familyLimit()));
+            assertEquals(0, BigDecimal.ZERO.compareTo(result.catchUpLimit()));
         }
     }
 

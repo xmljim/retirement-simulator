@@ -49,10 +49,12 @@ public class IrsContributionLimits {
     // IRS rounding increments for COLA adjustments
     private static final BigDecimal LIMIT_INCREMENT = new BigDecimal("500");
     private static final BigDecimal INCOME_THRESHOLD_INCREMENT = new BigDecimal("5000");
+    private static final BigDecimal HSA_INCREMENT = new BigDecimal("50");
 
     private Map<Integer, YearLimits> limits = new HashMap<>();
     private BigDecimal defaultAnnualIncreaseRate = new BigDecimal("0.02");
     private Map<Integer, IraLimits> iraLimits = new HashMap<>();
+    private Map<Integer, HsaLimits> hsaLimits = new HashMap<>();
 
     /**
      * Contribution limits for a specific year.
@@ -103,6 +105,37 @@ public class IrsContributionLimits {
         public IraLimits {
             if (baseLimit == null) {
                 baseLimit = BigDecimal.ZERO;
+            }
+            if (catchUpLimit == null) {
+                catchUpLimit = BigDecimal.ZERO;
+            }
+        }
+    }
+
+    /**
+     * HSA contribution limits for a specific year.
+     *
+     * <p>HSA limits differ by coverage type (individual vs family) and include
+     * a catch-up contribution for those age 55 and older.
+     *
+     * @param individualLimit the limit for self-only HDHP coverage
+     * @param familyLimit the limit for family HDHP coverage
+     * @param catchUpLimit the additional catch-up limit for age 55+ ($1,000)
+     */
+    public record HsaLimits(
+        BigDecimal individualLimit,
+        BigDecimal familyLimit,
+        BigDecimal catchUpLimit
+    ) {
+        /**
+         * Creates HsaLimits with default values for missing fields.
+         */
+        public HsaLimits {
+            if (individualLimit == null) {
+                individualLimit = BigDecimal.ZERO;
+            }
+            if (familyLimit == null) {
+                familyLimit = BigDecimal.ZERO;
             }
             if (catchUpLimit == null) {
                 catchUpLimit = BigDecimal.ZERO;
@@ -193,6 +226,48 @@ public class IrsContributionLimits {
     }
 
     /**
+     * Returns the HSA limits for a specific year.
+     *
+     * <p>HSA limits are adjusted annually for inflation in $50 increments.
+     * The catch-up contribution for age 55+ has remained at $1,000 for many years.
+     *
+     * @param year the contribution year
+     * @return the HSA limits for that year
+     */
+    public HsaLimits getHsaLimitsForYear(int year) {
+        if (hsaLimits.containsKey(year)) {
+            return hsaLimits.get(year);
+        }
+
+        // Find the most recent year
+        NavigableMap<Integer, HsaLimits> sortedLimits = new TreeMap<>(hsaLimits);
+        if (sortedLimits.isEmpty()) {
+            return new HsaLimits(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+        }
+
+        Map.Entry<Integer, HsaLimits> latestEntry = sortedLimits.lastEntry();
+        int latestYear = latestEntry.getKey();
+        HsaLimits latestLimits = latestEntry.getValue();
+
+        if (year <= latestYear) {
+            Map.Entry<Integer, HsaLimits> floorEntry = sortedLimits.floorEntry(year);
+            return floorEntry != null ? floorEntry.getValue() : latestLimits;
+        }
+
+        // Extrapolate forward using IRS-style rounding ($50 increments for HSA)
+        int yearsAhead = year - latestYear;
+        BigDecimal multiplier = BigDecimal.ONE.add(defaultAnnualIncreaseRate)
+            .pow(yearsAhead);
+
+        // HSA catch-up has been flat at $1,000 for years - don't extrapolate it
+        return new HsaLimits(
+            roundToIncrement(latestLimits.individualLimit().multiply(multiplier), HSA_INCREMENT),
+            roundToIncrement(latestLimits.familyLimit().multiply(multiplier), HSA_INCREMENT),
+            latestLimits.catchUpLimit()
+        );
+    }
+
+    /**
      * Returns the configured limits map.
      *
      * @return map of year to limits
@@ -247,12 +322,31 @@ public class IrsContributionLimits {
     }
 
     /**
+     * Returns the HSA limits map.
+     *
+     * @return map of year to HSA limits
+     */
+    public Map<Integer, HsaLimits> getHsaLimits() {
+        return hsaLimits;
+    }
+
+    /**
+     * Sets the HSA limits map.
+     *
+     * @param hsaLimits the HSA limits map
+     */
+    public void setHsaLimits(Map<Integer, HsaLimits> hsaLimits) {
+        this.hsaLimits = hsaLimits;
+    }
+
+    /**
      * Rounds a value to the nearest increment (IRS-style COLA rounding).
      *
      * <p>IRS contribution limits are adjusted in specific increments:
      * <ul>
      *   <li>Contribution limits: $500 increments</li>
      *   <li>Income thresholds: $5,000 increments</li>
+     *   <li>HSA limits: $50 increments</li>
      * </ul>
      *
      * @param value the value to round
