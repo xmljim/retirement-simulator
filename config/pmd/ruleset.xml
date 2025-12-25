@@ -13,8 +13,11 @@
     <rule ref="category/java/bestpractices.xml">
         <!-- Exclude rules that conflict with our style -->
         <exclude name="GuardLogStatement"/>
+        <!-- PMD 7.x renamed JUnit rules - exclude both for compatibility -->
         <exclude name="JUnitTestContainsTooManyAsserts"/>
         <exclude name="JUnitAssertionsShouldIncludeMessage"/>
+        <exclude name="UnitTestContainsTooManyAsserts"/>
+        <exclude name="UnitTestAssertionsShouldIncludeMessage"/>
     </rule>
 
     <!-- ==================== Code Style ==================== -->
@@ -32,6 +35,10 @@
         <exclude name="ShortVariable"/>
         <exclude name="LongVariable"/>
         <exclude name="TooManyStaticImports"/>
+        <!-- LinguisticNaming gives false positives on test method names -->
+        <exclude name="LinguisticNaming"/>
+        <!-- UseUnderscoresInNumericLiterals is a style preference -->
+        <exclude name="UseUnderscoresInNumericLiterals"/>
     </rule>
 
     <!-- Configure specific code style rules -->
@@ -80,6 +87,10 @@
         <exclude name="MissingSerialVersionUID"/>
         <exclude name="NullAssignment"/>
         <exclude name="UseLocaleWithCaseConversions"/>
+        <!-- AvoidFieldNameMatchingMethodName is common in builder pattern -->
+        <exclude name="AvoidFieldNameMatchingMethodName"/>
+        <!-- AvoidDuplicateLiterals is overly strict in test code -->
+        <exclude name="AvoidDuplicateLiterals"/>
     </rule>
 
     <!-- ==================== Multithreading ==================== -->
@@ -91,6 +102,8 @@
     <!-- ==================== Performance ==================== -->
     <rule ref="category/java/performance.xml">
         <exclude name="AvoidInstantiatingObjectsInLoops"/>
+        <!-- BigIntegerInstantiation is overly strict (e.g., flagging BigDecimal("10")) -->
+        <exclude name="BigIntegerInstantiation"/>
     </rule>
 
     <!-- ==================== Security ==================== -->
