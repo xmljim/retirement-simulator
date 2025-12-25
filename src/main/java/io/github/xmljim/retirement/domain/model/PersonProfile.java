@@ -180,13 +180,13 @@ public final class PersonProfile {
      */
     public Builder toBuilder() {
         return new Builder()
-                .id(this.id)
-                .name(this.name)
-                .dateOfBirth(this.dateOfBirth)
-                .retirementDate(this.retirementDate)
-                .lifeExpectancy(this.lifeExpectancy)
-                .socialSecurityStartDate(this.socialSecurityStartDate)
-                .spouse(this.spouse);
+            .id(this.id)
+            .name(this.name)
+            .dateOfBirth(this.dateOfBirth)
+            .retirementDate(this.retirementDate)
+            .lifeExpectancy(this.lifeExpectancy)
+            .socialSecurityStartDate(this.socialSecurityStartDate)
+            .spouse(this.spouse);
     }
 
     @Override

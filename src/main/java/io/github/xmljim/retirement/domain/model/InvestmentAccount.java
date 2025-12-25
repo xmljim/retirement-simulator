@@ -225,11 +225,11 @@ public final class InvestmentAccount {
      */
     public Builder toBuilder() {
         Builder builder = new Builder()
-                .id(this.id)
-                .name(this.name)
-                .accountType(this.accountType)
-                .balance(this.balance)
-                .allocation(this.allocation);
+            .id(this.id)
+            .name(this.name)
+            .accountType(this.accountType)
+            .balance(this.balance)
+            .allocation(this.allocation);
 
         if (useAllocationBasedReturn) {
             builder.useAllocationBasedReturn();
