@@ -1,5 +1,8 @@
 # Retirement Portfolio Simulator
 
+[![CI](https://github.com/xmljim/retirement-simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/xmljim/retirement-simulator/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/xmljim/retirement-simulator/branch/main/graph/badge.svg)](https://codecov.io/gh/xmljim/retirement-simulator)
+
 A comprehensive retirement portfolio simulation tool that models the accumulation and distribution phases of retirement savings, enabling users to project portfolio performance under various scenarios.
 
 ## Overview
@@ -131,7 +134,7 @@ See [Contributing](docs/CONTRIBUTING.md) for detailed guidelines.
 
 | Milestone | Description | Status |
 |-----------|-------------|--------|
-| M0 | Project Setup & CI/CD | Planned |
+| M0 | Project Setup & CI/CD | Complete |
 | M1 | Domain Model Foundation | Planned |
 | M2 | Core Transaction & Account Operations | Planned |
 | M3 | Multi-Account Portfolio & Contribution Rules | Planned |
