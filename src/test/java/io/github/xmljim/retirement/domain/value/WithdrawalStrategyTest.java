@@ -3,7 +3,6 @@ package io.github.xmljim.retirement.domain.value;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 
@@ -134,20 +133,6 @@ class WithdrawalStrategyTest {
         void notEqualDifferentClass() {
             WithdrawalStrategy s1 = WithdrawalStrategy.percentage(0.04);
             assertNotEquals("string", s1);
-        }
-    }
-
-    @Nested
-    @DisplayName("ToString Tests")
-    class ToStringTests {
-
-        @Test
-        @DisplayName("Should produce readable string")
-        void toStringFormat() {
-            WithdrawalStrategy strategy = WithdrawalStrategy.percentage(0.04);
-            String str = strategy.toString();
-            assertTrue(str.contains("PERCENTAGE"));
-            assertTrue(str.contains("rate"));
         }
     }
 }

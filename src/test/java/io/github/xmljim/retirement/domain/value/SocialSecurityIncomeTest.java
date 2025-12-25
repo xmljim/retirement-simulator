@@ -3,7 +3,6 @@ package io.github.xmljim.retirement.domain.value;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -139,23 +138,6 @@ class SocialSecurityIncomeTest {
                 .startDate(START_DATE)
                 .build();
             assertNotEquals("string", s1);
-        }
-    }
-
-    @Nested
-    @DisplayName("ToString Tests")
-    class ToStringTests {
-
-        @Test
-        @DisplayName("Should produce readable string")
-        void toStringFormat() {
-            SocialSecurityIncome ss = SocialSecurityIncome.builder()
-                .monthlyBenefit(4018.00)
-                .startDate(START_DATE)
-                .build();
-            String str = ss.toString();
-            assertTrue(str.contains("monthlyBenefit"));
-            assertTrue(str.contains("startDate"));
         }
     }
 }

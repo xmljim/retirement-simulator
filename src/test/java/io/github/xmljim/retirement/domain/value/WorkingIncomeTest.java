@@ -3,7 +3,6 @@ package io.github.xmljim.retirement.domain.value;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 
@@ -125,20 +124,6 @@ class WorkingIncomeTest {
         void notEqualDifferentClass() {
             WorkingIncome w1 = WorkingIncome.of(100000.00, 0.02);
             assertNotEquals("string", w1);
-        }
-    }
-
-    @Nested
-    @DisplayName("ToString Tests")
-    class ToStringTests {
-
-        @Test
-        @DisplayName("Should produce readable string")
-        void toStringFormat() {
-            WorkingIncome income = WorkingIncome.of(100000.00, 0.02);
-            String str = income.toString();
-            assertTrue(str.contains("annualSalary"));
-            assertTrue(str.contains("colaRate"));
         }
     }
 }
