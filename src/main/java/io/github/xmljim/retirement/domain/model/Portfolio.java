@@ -234,12 +234,22 @@ public final class Portfolio {
                     account.getAllocation().getCashPercentage().multiply(weight));
         }
 
-        // Round to ensure they sum to 100
-        double stocks = weightedStocks.setScale(2, RoundingMode.HALF_UP).doubleValue();
-        double bonds = weightedBonds.setScale(2, RoundingMode.HALF_UP).doubleValue();
-        double cash = 100.0 - stocks - bonds;
+        // Round stocks and bonds, cash gets remainder to ensure sum is exactly 100
+        BigDecimal hundred = new BigDecimal("100");
+        BigDecimal stocksRounded = weightedStocks.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal bondsRounded = weightedBonds.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal cashRounded = hundred.subtract(stocksRounded).subtract(bondsRounded);
 
-        return AssetAllocation.of(stocks, bonds, Math.max(0, cash));
+        // Ensure no negative values from rounding errors
+        if (cashRounded.compareTo(BigDecimal.ZERO) < 0) {
+            cashRounded = BigDecimal.ZERO;
+            bondsRounded = hundred.subtract(stocksRounded);
+        }
+
+        return AssetAllocation.of(
+                stocksRounded.doubleValue(),
+                bondsRounded.doubleValue(),
+                cashRounded.doubleValue());
     }
 
     /**
