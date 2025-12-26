@@ -487,6 +487,42 @@ class ReturnCalculatorTest {
             // Should complete without overflow
             assertTrue(result.compareTo(balance) > 0);
         }
+
+        @Test
+        @DisplayName("Should return original balance for 12 months with zero rate")
+        void zeroRateForFullYear() {
+            BigDecimal balance = new BigDecimal("100");
+
+            // This exercises the exponent == 1.0 case in MathUtils (12/12 = 1.0)
+            BigDecimal result = calculator.calculateAccountGrowth(balance, BigDecimal.ZERO, 12);
+
+            assertEquals(0, balance.compareTo(result));
+        }
+
+        @Test
+        @DisplayName("Should handle zero months (exponent 0.0 case)")
+        void zeroMonthsExponent() {
+            BigDecimal balance = new BigDecimal("100");
+            BigDecimal annualRate = new BigDecimal("0.10");
+
+            // This exercises the months == 0 case which returns early
+            BigDecimal result = calculator.calculateAccountGrowth(balance, annualRate, 0);
+
+            assertEquals(0, balance.compareTo(result));
+        }
+
+        @Test
+        @DisplayName("Should calculate correctly for exactly 12 months (exponent 1.0)")
+        void exactlyTwelveMonths() {
+            BigDecimal balance = new BigDecimal("100");
+            BigDecimal annualRate = new BigDecimal("0.10");
+
+            // 12 months = exponent of 1.0, should give exactly 10% growth
+            BigDecimal result = calculator.calculateAccountGrowth(balance, annualRate, 12);
+
+            // 100 * (1.10)^1 = 110
+            assertEquals(0, new BigDecimal("110.00").compareTo(result.setScale(2, RoundingMode.HALF_UP)));
+        }
     }
 
     @Nested
