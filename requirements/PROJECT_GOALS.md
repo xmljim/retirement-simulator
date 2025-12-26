@@ -627,7 +627,7 @@ Apply appropriate patterns where they add value:
 
 ## Current State
 
-### Implemented (Milestones 1 & 2 Complete)
+### Implemented (Milestones 1, 2 & 3a Complete)
 
 **Domain Model** (`io.github.xmljim.retirement.domain.model`):
 - `PersonProfile` - Individual with DOB, retirement date, life expectancy, linked spouse support
@@ -636,6 +636,7 @@ Apply appropriate patterns where they add value:
 - `Scenario` - Simulation configuration (time horizon, assumptions, strategies)
 - `Transaction` - Complete transaction with balance tracking, chaining, and metadata (M2)
 - `TransactionHistory` - Immutable collection of transactions with query and aggregation (M2)
+- `CouplePortfolioView` - Aggregate view across spouse portfolios with per-spouse YTD tracking (M3a)
 
 **Value Objects** (`io.github.xmljim.retirement.domain.value`):
 - `WorkingIncome` - Salary with COLA, includes `priorYearIncome` for SECURE 2.0
@@ -645,12 +646,17 @@ Apply appropriate patterns where they add value:
 - `MatchingPolicy` - Interface with `SimpleMatchingPolicy`, `TieredMatchingPolicy`, `NoMatchingPolicy`
 - `MatchTier` - Record for tiered matching configuration
 - `WithdrawalResult` - Record capturing withdrawal amount, account details, and remaining balance (M2)
+- `ContributionRecord` - Immutable record of a single contribution (M3a)
+- `RoutingConfiguration` - Configuration for contribution routing rules (M3a)
+- `RoutingRule` - Individual routing rule with account type and percentage (M3a)
+- `YTDSummary` - Year-to-date contribution summary with limits and remaining room (M3a)
 
 **Enums** (`io.github.xmljim.retirement.domain.enums`):
 - `AccountType` - 401K, IRA, ROTH variants, HSA, Taxable Brokerage with `TaxTreatment`
 - `ContributionType` - PERSONAL, EMPLOYER
 - `TransactionType` - CONTRIBUTION, WITHDRAWAL, RETURN, FEE, TRANSFER (M2)
 - `TaxTreatment` - PRE_TAX, POST_TAX, TAX_FREE
+- `LimitCategory` - EMPLOYER_401K, IRA, HSA for IRS limit grouping (M3a)
 
 **Calculator Framework** (`io.github.xmljim.retirement.domain.calculator`):
 - `Calculator` - Base interface with calculation lifecycle
@@ -663,6 +669,11 @@ Apply appropriate patterns where they add value:
 - `WithdrawalCalculator` - Withdrawal amount calculations with strategy support (M2)
 - `CompoundingFunction` - Functional interface for compounding strategies (M2)
 - `CompoundingFunctions` - Standard implementations: ANNUAL, MONTHLY, DAILY, CONTINUOUS (M2)
+- `ContributionRouter` - Routes contributions to appropriate accounts (M3a)
+- `ContributionAllocation` - Tracks allocated contribution amounts (M3a)
+- `YTDContributionTracker` - Year-to-date contribution tracking interface (M3a)
+- `ContributionLimitChecker` - Pre-contribution limit validation (M3a)
+- `LimitCheckResult` - Result of contribution limit check (M3a)
 
 **Calculator Implementations** (`io.github.xmljim.retirement.domain.calculator.impl`):
 - `DefaultInflationCalculator` - Standard inflation adjustments
@@ -671,6 +682,9 @@ Apply appropriate patterns where they add value:
 - `DefaultReturnCalculator` - Investment growth with pluggable compounding (M2)
 - `DefaultWithdrawalCalculator` - Basic withdrawal logic (M2)
 - `MathUtils` - BigDecimal power functions for financial calculations (M2)
+- `DefaultContributionRouter` - Standard contribution routing with overflow (M3a)
+- `DefaultYTDContributionTracker` - Immutable YTD tracking implementation (M3a)
+- `DefaultContributionLimitChecker` - IRS limit enforcement (M3a)
 
 **Configuration** (`io.github.xmljim.retirement.domain.config`):
 - `IrsContributionLimits` - Spring `@ConfigurationProperties` for IRS limits from YAML
@@ -699,8 +713,7 @@ The following classes are deprecated and maintained for backwards compatibility:
 - Original enums - replaced by `domain.enums` equivalents
 
 ### Not Yet Implemented
-- Multi-account contribution routing (M3)
-- Income phase-out rules for IRA/Roth (M3)
+- Income phase-out rules for IRA/Roth (M3b)
 - Expense/budget modeling (M5)
 - Distribution strategies (M6)
 - Simulation engine (M7)
@@ -796,28 +809,38 @@ The following classes are deprecated and maintained for backwards compatibility:
 - [x] Integration tests verifying calculator interactions
 - [x] 80%+ line coverage maintained
 
-### Milestone 3a: Contribution Routing & Tracking
+### Milestone 3a: Contribution Routing & Tracking ✅ COMPLETE
 **Goal**: Route contributions to correct accounts and track against IRS limits
+
+**Status**: Completed December 2024
 
 **Note**: Portfolio aggregation, IRS limits configuration, age-based catch-up, and SECURE 2.0 Roth catch-up were completed in M1.
 
-**Contribution Routing** (5 points):
-- ContributionRouter class to determine target accounts
-- Support split contributions (e.g., 80% Traditional, 20% Roth)
-- Overflow handling when primary account hits limit
-- Employer match routing (always pre-tax)
-- Account priority ordering
+**Contribution Routing** (Completed):
+- [x] `ContributionRouter` interface and `DefaultContributionRouter` implementation
+- [x] `RoutingConfiguration` and `RoutingRule` for configurable routing
+- [x] Support split contributions (e.g., 80% Traditional, 20% Roth)
+- [x] Overflow handling when primary account hits limit
+- [x] Employer match routing (always to Traditional)
+- [x] High earner ROTH catch-up routing per SECURE 2.0
+- [x] `ContributionAllocation` for tracking routed amounts
 
-**YTD Tracking & Limit Enforcement** (8 points):
-- YTDContributionTracker by account type and person
-- Separate tracking for regular vs catch-up contributions
-- ContributionLimitChecker with remaining room calculation
-- Multi-account coordination (IRA limit across Traditional + Roth)
-- Couple portfolio support (combined view, per-spouse subtotals)
+**YTD Tracking & Limit Enforcement** (Completed):
+- [x] `YTDContributionTracker` interface with immutable `DefaultYTDContributionTracker`
+- [x] `ContributionRecord` for tracking individual contributions
+- [x] `LimitCategory` enum (EMPLOYER_401K, IRA, HSA) for limit grouping
+- [x] `ContributionLimitChecker` with `LimitCheckResult` for pre-contribution validation
+- [x] Combined IRA limit enforcement (Traditional + Roth share limit)
+- [x] HSA family vs individual limit based on spouse linkage
+- [x] `YTDSummary` for contribution status reporting
+- [x] `CouplePortfolioView` for combined view with per-spouse YTD tracking
 
-**Test Coverage** (3 points):
-- Comprehensive tests for routing and tracking
-- Integration tests with M1 IRS rules
+**Test Coverage** (Completed):
+- [x] Comprehensive tests for routing (single, split, overflow, employer match)
+- [x] YTD tracking tests (contributions, year rollover, at-limit scenarios)
+- [x] Limit checker tests (all account types, catch-up, HSA family/individual)
+- [x] Integration tests (full year, couple with different ages)
+- [x] Birthday edge case tests for catch-up eligibility transitions
 
 **Total Points**: 16
 

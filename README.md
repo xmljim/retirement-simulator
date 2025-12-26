@@ -137,7 +137,7 @@ See [Contributing](docs/CONTRIBUTING.md) for detailed guidelines.
 | M0 | Project Setup & CI/CD | Complete |
 | M1 | Domain Model Foundation | Complete |
 | M2 | Core Transaction & Account Operations | Complete |
-| M3a | Contribution Routing & Tracking | Planned |
+| M3a | Contribution Routing & Tracking | Complete |
 | M3b | Income-Based Phase-Outs | Planned |
 | M4 | Income Modeling | Planned |
 | M5 | Expense & Budget Modeling | Planned |
