@@ -6,6 +6,8 @@ import java.math.RoundingMode;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 
+import io.github.xmljim.retirement.domain.calculator.CompoundingFunction;
+import io.github.xmljim.retirement.domain.calculator.CompoundingFunctions;
 import io.github.xmljim.retirement.domain.calculator.ReturnCalculator;
 import io.github.xmljim.retirement.domain.exception.CalculationException;
 import io.github.xmljim.retirement.domain.exception.InvalidDateRangeException;
@@ -89,15 +91,23 @@ public class DefaultReturnCalculator implements ReturnCalculator {
 
     @Override
     public BigDecimal calculateAccountGrowth(BigDecimal balance, BigDecimal annualReturnRate, int months) {
+        // Default to true annual compounding
+        return calculateAccountGrowth(balance, annualReturnRate, months, CompoundingFunctions.ANNUAL);
+    }
+
+    @Override
+    public BigDecimal calculateAccountGrowth(BigDecimal balance, BigDecimal annualReturnRate,
+                                             int periods, CompoundingFunction compounding) {
         MissingRequiredFieldException.requireNonNull(balance, "balance");
+        MissingRequiredFieldException.requireNonNull(compounding, "compounding");
 
         if (balance.compareTo(BigDecimal.ZERO) < 0) {
             throw CalculationException.negativeBalance("account growth calculation", balance);
         }
-        if (months < 0) {
-            throw CalculationException.invalidPeriod(months);
+        if (periods < 0) {
+            throw CalculationException.invalidPeriod(periods);
         }
-        if (months == 0 || balance.compareTo(BigDecimal.ZERO) == 0) {
+        if (periods == 0 || balance.compareTo(BigDecimal.ZERO) == 0) {
             return balance;
         }
 
@@ -106,12 +116,8 @@ public class DefaultReturnCalculator implements ReturnCalculator {
             return balance;
         }
 
-        // True annual compounding: balance * (1 + annualRate)^(months/12)
-        BigDecimal base = BigDecimal.ONE.add(annualReturnRate);
-        double exponent = months / 12.0;
-        BigDecimal growthFactor = MathUtils.pow(base, exponent, SCALE, ROUNDING_MODE);
-
-        return balance.multiply(growthFactor).setScale(SCALE, ROUNDING_MODE);
+        // Delegate to the compounding function
+        return compounding.compound(balance, annualReturnRate, periods);
     }
 
     @Override

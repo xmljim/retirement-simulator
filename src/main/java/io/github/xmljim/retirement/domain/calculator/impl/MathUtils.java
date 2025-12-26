@@ -10,7 +10,7 @@ import java.math.RoundingMode;
  * <p>This class provides high-precision BigDecimal arithmetic operations
  * that are commonly needed across calculator implementations.
  */
-final class MathUtils {
+public final class MathUtils {
 
     private static final int DEFAULT_SCALE = 10;
     private static final RoundingMode DEFAULT_ROUNDING = RoundingMode.HALF_UP;
@@ -31,7 +31,7 @@ final class MathUtils {
      * @param roundingMode the rounding mode to use
      * @return base^exponent
      */
-    static BigDecimal pow(BigDecimal base, int exponent, int scale, RoundingMode roundingMode) {
+    public static BigDecimal pow(BigDecimal base, int exponent, int scale, RoundingMode roundingMode) {
         if (exponent == 0) {
             return BigDecimal.ONE;
         }
@@ -64,7 +64,7 @@ final class MathUtils {
      * @param exponent the exponent (must be non-negative)
      * @return base^exponent
      */
-    static BigDecimal pow(BigDecimal base, int exponent) {
+    public static BigDecimal pow(BigDecimal base, int exponent) {
         return pow(base, exponent, DEFAULT_SCALE, DEFAULT_ROUNDING);
     }
 
@@ -85,7 +85,7 @@ final class MathUtils {
      * @param roundingMode the rounding mode to use
      * @return base^exponent as a BigDecimal
      */
-    static BigDecimal pow(BigDecimal base, double exponent, int scale, RoundingMode roundingMode) {
+    public static BigDecimal pow(BigDecimal base, double exponent, int scale, RoundingMode roundingMode) {
         if (exponent == 0.0) {
             return BigDecimal.ONE;
         }
@@ -104,7 +104,7 @@ final class MathUtils {
      * @param exponent the fractional exponent
      * @return base^exponent as a BigDecimal
      */
-    static BigDecimal pow(BigDecimal base, double exponent) {
+    public static BigDecimal pow(BigDecimal base, double exponent) {
         return pow(base, exponent, DEFAULT_SCALE, DEFAULT_ROUNDING);
     }
 }
