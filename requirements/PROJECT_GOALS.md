@@ -627,13 +627,15 @@ Apply appropriate patterns where they add value:
 
 ## Current State
 
-### Implemented (Milestone 1 Complete)
+### Implemented (Milestones 1 & 2 Complete)
 
 **Domain Model** (`io.github.xmljim.retirement.domain.model`):
 - `PersonProfile` - Individual with DOB, retirement date, life expectancy, linked spouse support
 - `Portfolio` - Container for investment accounts with aggregation
 - `InvestmentAccount` - Account with type, allocation, return rates, balance
 - `Scenario` - Simulation configuration (time horizon, assumptions, strategies)
+- `Transaction` - Complete transaction with balance tracking, chaining, and metadata (M2)
+- `TransactionHistory` - Immutable collection of transactions with query and aggregation (M2)
 
 **Value Objects** (`io.github.xmljim.retirement.domain.value`):
 - `WorkingIncome` - Salary with COLA, includes `priorYearIncome` for SECURE 2.0
@@ -642,11 +644,12 @@ Apply appropriate patterns where they add value:
 - `RetirementIncome` - Social Security, pension, annuity income sources
 - `MatchingPolicy` - Interface with `SimpleMatchingPolicy`, `TieredMatchingPolicy`, `NoMatchingPolicy`
 - `MatchTier` - Record for tiered matching configuration
+- `WithdrawalResult` - Record capturing withdrawal amount, account details, and remaining balance (M2)
 
 **Enums** (`io.github.xmljim.retirement.domain.enums`):
 - `AccountType` - 401K, IRA, ROTH variants, HSA, Taxable Brokerage with `TaxTreatment`
 - `ContributionType` - PERSONAL, EMPLOYER
-- `TransactionType` - CONTRIBUTION, WITHDRAWAL
+- `TransactionType` - CONTRIBUTION, WITHDRAWAL, RETURN, FEE, TRANSFER (M2)
 - `TaxTreatment` - PRE_TAX, POST_TAX, TAX_FREE
 
 **Calculator Framework** (`io.github.xmljim.retirement.domain.calculator`):
@@ -656,6 +659,18 @@ Apply appropriate patterns where they add value:
 - `SocialSecurityCalculator` - SS benefit calculations with claiming age adjustments
 - `IrsContributionRules` - Interface for IRS rule implementations
 - `Secure2ContributionRules` - SECURE 2.0 implementation with catch-up rules
+- `ReturnCalculator` - Investment return calculations with compounding options (M2)
+- `WithdrawalCalculator` - Withdrawal amount calculations with strategy support (M2)
+- `CompoundingFunction` - Functional interface for compounding strategies (M2)
+- `CompoundingFunctions` - Standard implementations: ANNUAL, MONTHLY, DAILY, CONTINUOUS (M2)
+
+**Calculator Implementations** (`io.github.xmljim.retirement.domain.calculator.impl`):
+- `DefaultInflationCalculator` - Standard inflation adjustments
+- `DefaultContributionCalculator` - Standard contribution calculations
+- `DefaultSocialSecurityCalculator` - SS benefit with claiming age adjustments
+- `DefaultReturnCalculator` - Investment growth with pluggable compounding (M2)
+- `DefaultWithdrawalCalculator` - Basic withdrawal logic (M2)
+- `MathUtils` - BigDecimal power functions for financial calculations (M2)
 
 **Configuration** (`io.github.xmljim.retirement.domain.config`):
 - `IrsContributionLimits` - Spring `@ConfigurationProperties` for IRS limits from YAML
@@ -665,6 +680,8 @@ Apply appropriate patterns where they add value:
 **Exceptions** (`io.github.xmljim.retirement.domain.exception`):
 - `ValidationException` - Domain validation errors
 - `MissingRequiredFieldException` - Required field validation
+- `CalculationException` - Calculation-specific errors (M2)
+- `InvalidDateRangeException` - Date range validation (M2)
 
 ### Legacy Code (Deprecated)
 
@@ -678,11 +695,10 @@ The following classes are deprecated and maintained for backwards compatibility:
 - Original calculations - replaced by Calculator framework
 - Migration guide in Javadoc
 
-**`model/ContributionType.java`, `model/WithdrawalType.java`** (`@Deprecated`):
+**`model/ContributionType.java`, `model/WithdrawalType.java`, `model/TransactionType.java`** (`@Deprecated`):
 - Original enums - replaced by `domain.enums` equivalents
 
 ### Not Yet Implemented
-- Transaction processing with balance calculations (M2)
 - Multi-account contribution routing (M3)
 - Income phase-out rules for IRA/Roth (M3)
 - Expense/budget modeling (M5)
@@ -739,16 +755,46 @@ The following classes are deprecated and maintained for backwards compatibility:
 - [x] Package-level Javadoc for all packages
 - [x] Legacy code marked `@Deprecated` with migration guides
 
-### Milestone 2: Core Transaction & Account Operations
+### Milestone 2: Core Transaction & Account Operations ✅ COMPLETE
 **Goal**: Fully functional transaction processing for individual accounts
 
-- Implement `Transaction` with complete balance calculations
-- Calculate investment returns (monthly compounding)
-- Calculate actual contribution amounts (rate × salary)
-- Calculate actual withdrawal amounts
-- Support transaction chaining (previous balance → current start balance)
-- Account-level transaction history
-- Full test coverage
+**Status**: Completed December 2024
+
+**Transaction Model** (Completed):
+- [x] Created new `Transaction` class (`domain.model`) with complete balance tracking
+- [x] Transaction fields: type, amount, description, account type, start balance, end balance, date, previous transaction
+- [x] Support transaction chaining via `previous` reference for balance continuity
+- [x] Builder pattern with fluent API for transaction construction
+- [x] Created new `TransactionType` enum (`domain.enums`) - CONTRIBUTION, WITHDRAWAL, RETURN, FEE, TRANSFER
+- [x] Deprecated legacy `TransactionType` in `domain.model` with migration guide
+
+**Transaction History** (Completed):
+- [x] Created `TransactionHistory` class for account-level transaction tracking
+- [x] Immutable design with `append()` returning new instance
+- [x] Query methods: `getByType()`, `getByDateRange()`, `getLatest()`
+- [x] Aggregation: `getTotalContributions()`, `getTotalWithdrawals()`, `getNetChange()`
+- [x] Balance tracking: `getCurrentBalance()` from latest transaction
+
+**Withdrawal Calculations** (Completed):
+- [x] Created `WithdrawalResult` record capturing withdrawal details and remaining balance
+- [x] Created `WithdrawalCalculator` interface for withdrawal strategy abstraction
+- [x] Implemented `DefaultWithdrawalCalculator` with basic withdrawal logic
+
+**Investment Returns** (Completed):
+- [x] Created `CompoundingFunction` functional interface (Strategy pattern)
+- [x] Created `CompoundingFunctions` utility class with standard implementations:
+  - `ANNUAL` - True annual compounding: `principal * (1 + rate)^(months/12)`
+  - `MONTHLY` - Discrete monthly: `principal * (1 + rate/12)^months`
+  - `DAILY` - Daily compounding: `principal * (1 + rate/365)^days`
+  - `CONTINUOUS` - Continuous: `principal * e^(rate * years)`
+- [x] Updated `ReturnCalculator` with `calculateAccountGrowth(balance, rate, periods, compounding)` overload
+- [x] Made `MathUtils` public for reuse across calculators
+
+**Test Coverage** (Completed):
+- [x] Comprehensive tests for all new classes
+- [x] Edge case coverage: null handling, zero values, negative values
+- [x] Integration tests verifying calculator interactions
+- [x] 80%+ line coverage maintained
 
 ### Milestone 3: Multi-Account Portfolio & Contribution Rules
 **Goal**: Support multiple investment accounts with IRS-compliant contribution modeling
