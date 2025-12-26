@@ -63,7 +63,7 @@ public interface ReturnCalculator {
     /**
      * Calculates the growth of an account balance over a period.
      *
-     * <p>Uses true annual compounding formula:
+     * <p>Uses true annual compounding formula by default:
      * <pre>
      * endBalance = balance * (1 + annualRate)^(months/12)
      * </pre>
@@ -81,6 +81,24 @@ public interface ReturnCalculator {
      * @throws CalculationException if balance is negative or months is negative
      */
     BigDecimal calculateAccountGrowth(BigDecimal balance, BigDecimal annualReturnRate, int months);
+
+    /**
+     * Calculates the growth of an account balance using a specific compounding function.
+     *
+     * <p>This method allows custom compounding strategies to be used instead of
+     * the default true annual compounding.
+     *
+     * @param balance the current account balance (must be non-negative)
+     * @param annualReturnRate the annual return rate as a decimal (e.g., 0.10 for 10%)
+     * @param periods the number of periods (interpretation depends on compounding function)
+     * @param compounding the compounding function to use
+     * @return the ending balance after growth
+     * @throws MissingRequiredFieldException if balance or compounding is null
+     * @throws CalculationException if balance is negative or periods is negative
+     * @see CompoundingFunctions
+     */
+    BigDecimal calculateAccountGrowth(BigDecimal balance, BigDecimal annualReturnRate,
+                                      int periods, CompoundingFunction compounding);
 
     /**
      * Converts an annual return rate to a monthly return rate.
