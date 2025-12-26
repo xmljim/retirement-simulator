@@ -1,9 +1,14 @@
 package io.github.xmljim.retirement.domain.calculator;
 
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultContributionCalculator;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultContributionLimitChecker;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultContributionRouter;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultIncomeCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultInflationCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultReturnCalculator;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultWithdrawalCalculator;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultYTDContributionTracker;
+import io.github.xmljim.retirement.domain.config.IrsContributionLimits;
 
 /**
  * Factory for obtaining calculator instances.
@@ -35,6 +40,9 @@ public final class CalculatorFactory {
 
     private static final ReturnCalculator RETURN_CALCULATOR =
         new DefaultReturnCalculator();
+
+    private static final WithdrawalCalculator WITHDRAWAL_CALCULATOR =
+        new DefaultWithdrawalCalculator();
 
     private CalculatorFactory() {
         // Prevent instantiation
@@ -74,5 +82,92 @@ public final class CalculatorFactory {
      */
     public static ReturnCalculator returnCalculator() {
         return RETURN_CALCULATOR;
+    }
+
+    /**
+     * Returns the withdrawal calculator instance.
+     *
+     * @return the withdrawal calculator
+     */
+    public static WithdrawalCalculator withdrawalCalculator() {
+        return WITHDRAWAL_CALCULATOR;
+    }
+
+    /**
+     * Creates a contribution router with the specified IRS rules.
+     *
+     * <p>Unlike other calculators that are singletons, the contribution router
+     * requires IRS rules which are typically Spring-managed. This factory method
+     * creates a new instance with the provided rules.
+     *
+     * <p>Usage:
+     * <pre>{@code
+     * // With Spring-managed rules
+     * @Autowired
+     * private IrsContributionRules irsRules;
+     *
+     * ContributionRouter router = CalculatorFactory.contributionRouter(irsRules);
+     * }</pre>
+     *
+     * @param irsRules the IRS contribution rules for SECURE 2.0 compliance
+     * @return a new ContributionRouter instance
+     */
+    public static ContributionRouter contributionRouter(IrsContributionRules irsRules) {
+        return new DefaultContributionRouter(irsRules);
+    }
+
+    /**
+     * Creates a new YTD contribution tracker.
+     *
+     * <p>The tracker is immutable - each {@code recordContribution()} call
+     * returns a new tracker instance with the contribution added.
+     *
+     * <p>Usage:
+     * <pre>{@code
+     * YTDContributionTracker tracker = CalculatorFactory.ytdTracker(irsRules);
+     *
+     * // Record contributions (returns new immutable tracker)
+     * tracker = tracker.recordContribution(record);
+     *
+     * // Get summary
+     * YTDSummary summary = tracker.getSummary(2025, 55, true);
+     * }</pre>
+     *
+     * @param irsRules the IRS contribution rules
+     * @return a new empty YTDContributionTracker
+     */
+    public static YTDContributionTracker ytdTracker(IrsContributionRules irsRules) {
+        return new DefaultYTDContributionTracker(irsRules);
+    }
+
+    /**
+     * Creates a contribution limit checker.
+     *
+     * <p>The limit checker validates proposed contributions against IRS limits,
+     * considering year-to-date contributions already made.
+     *
+     * <p>Usage:
+     * <pre>{@code
+     * ContributionLimitChecker checker = CalculatorFactory.limitChecker(irsRules, irsLimits);
+     *
+     * LimitCheckResult result = checker.check(
+     *     tracker,                      // YTD tracker
+     *     new BigDecimal("5000"),       // proposed amount
+     *     AccountType.TRADITIONAL_401K, // target account
+     *     ContributionType.PERSONAL,    // source
+     *     2025,                         // year
+     *     55,                           // age
+     *     new BigDecimal("100000"),     // prior year income
+     *     true                          // has spouse
+     * );
+     * }</pre>
+     *
+     * @param irsRules the IRS contribution rules
+     * @param irsLimits the IRS contribution limits configuration
+     * @return a new ContributionLimitChecker
+     */
+    public static ContributionLimitChecker limitChecker(
+            IrsContributionRules irsRules, IrsContributionLimits irsLimits) {
+        return new DefaultContributionLimitChecker(irsRules, irsLimits);
     }
 }

@@ -219,5 +219,22 @@ class ExceptionTest {
             assertEquals("Calc error", ex.getMessage());
             assertEquals(cause, ex.getCause());
         }
+
+        @Test
+        @DisplayName("negativeBalance should create proper message")
+        void negativeBalanceMessage() {
+            CalculationException ex = CalculationException.negativeBalance(
+                "return calculation", new BigDecimal("-100.50"));
+            assertEquals("Balance cannot be negative for return calculation: -100.50",
+                ex.getMessage());
+        }
+
+        @Test
+        @DisplayName("invalidPeriod should create proper message")
+        void invalidPeriodMessage() {
+            CalculationException ex = CalculationException.invalidPeriod(-5);
+            assertEquals("Calculation period cannot be negative: -5 months",
+                ex.getMessage());
+        }
     }
 }
