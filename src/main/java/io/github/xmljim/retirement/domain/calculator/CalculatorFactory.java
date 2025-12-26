@@ -5,6 +5,7 @@ import io.github.xmljim.retirement.domain.calculator.impl.DefaultContributionLim
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultContributionRouter;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultIncomeCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultInflationCalculator;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultMAGICalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultReturnCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultWithdrawalCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultYTDContributionTracker;
@@ -43,6 +44,9 @@ public final class CalculatorFactory {
 
     private static final WithdrawalCalculator WITHDRAWAL_CALCULATOR =
         new DefaultWithdrawalCalculator();
+
+    private static final MAGICalculator MAGI_CALCULATOR =
+        new DefaultMAGICalculator();
 
     private CalculatorFactory() {
         // Prevent instantiation
@@ -91,6 +95,15 @@ public final class CalculatorFactory {
      */
     public static WithdrawalCalculator withdrawalCalculator() {
         return WITHDRAWAL_CALCULATOR;
+    }
+
+    /**
+     * Returns the MAGI calculator instance.
+     *
+     * @return the MAGI calculator
+     */
+    public static MAGICalculator magiCalculator() {
+        return MAGI_CALCULATOR;
     }
 
     /**
