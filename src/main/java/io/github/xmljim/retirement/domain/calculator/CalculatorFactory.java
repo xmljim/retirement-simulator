@@ -4,6 +4,7 @@ import io.github.xmljim.retirement.domain.calculator.impl.DefaultContributionCal
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultIncomeCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultInflationCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultReturnCalculator;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultWithdrawalCalculator;
 
 /**
  * Factory for obtaining calculator instances.
@@ -35,6 +36,9 @@ public final class CalculatorFactory {
 
     private static final ReturnCalculator RETURN_CALCULATOR =
         new DefaultReturnCalculator();
+
+    private static final WithdrawalCalculator WITHDRAWAL_CALCULATOR =
+        new DefaultWithdrawalCalculator();
 
     private CalculatorFactory() {
         // Prevent instantiation
@@ -74,5 +78,14 @@ public final class CalculatorFactory {
      */
     public static ReturnCalculator returnCalculator() {
         return RETURN_CALCULATOR;
+    }
+
+    /**
+     * Returns the withdrawal calculator instance.
+     *
+     * @return the withdrawal calculator
+     */
+    public static WithdrawalCalculator withdrawalCalculator() {
+        return WITHDRAWAL_CALCULATOR;
     }
 }
