@@ -796,21 +796,57 @@ The following classes are deprecated and maintained for backwards compatibility:
 - [x] Integration tests verifying calculator interactions
 - [x] 80%+ line coverage maintained
 
-### Milestone 3: Multi-Account Portfolio & Contribution Rules
-**Goal**: Support multiple investment accounts with IRS-compliant contribution modeling
+### Milestone 3a: Contribution Routing & Tracking
+**Goal**: Route contributions to correct accounts and track against IRS limits
 
-**Multi-Account Support**:
-- Portfolio aggregation across accounts
-- Contribution routing to specific accounts
-- Cross-account balance tracking
+**Note**: Portfolio aggregation, IRS limits configuration, age-based catch-up, and SECURE 2.0 Roth catch-up were completed in M1.
 
-**IRS Contribution Rules**:
-- Contribution limits by account type (401k, IRA, Roth, HSA)
-- Age-based catch-up contributions (50+, 55+ for HSA, 60-63 super catch-up)
-- Income-based phase-outs (IRA deductibility, Roth eligibility)
-- SECURE 2.0 rule support (effective dates, Roth catch-up for high earners)
-- Base year limits with inflation projection
-- Year-to-date contribution tracking against limits
+**Contribution Routing** (5 points):
+- ContributionRouter class to determine target accounts
+- Support split contributions (e.g., 80% Traditional, 20% Roth)
+- Overflow handling when primary account hits limit
+- Employer match routing (always pre-tax)
+- Account priority ordering
+
+**YTD Tracking & Limit Enforcement** (8 points):
+- YTDContributionTracker by account type and person
+- Separate tracking for regular vs catch-up contributions
+- ContributionLimitChecker with remaining room calculation
+- Multi-account coordination (IRA limit across Traditional + Roth)
+- Couple portfolio support (combined view, per-spouse subtotals)
+
+**Test Coverage** (3 points):
+- Comprehensive tests for routing and tracking
+- Integration tests with M1 IRS rules
+
+**Total Points**: 16
+
+### Milestone 3b: Income-Based Phase-Outs
+**Goal**: Implement MAGI calculations and contribution eligibility phase-outs
+
+**Filing Status Support** (3 points):
+- FilingStatus enum (Single, MFJ, MFS, HOH, QW)
+- Phase-out threshold lookup by filing status and year
+- Integration with PersonProfile or TaxProfile
+
+**MAGI Calculator** (5 points):
+- Calculate Modified Adjusted Gross Income
+- Support common add-backs (student loan interest, foreign income, etc.)
+- IncomeDetails value object
+
+**Phase-Out Rules** (8 points):
+- Traditional IRA deductibility phase-out (when covered by employer plan)
+- Roth IRA contribution eligibility phase-out
+- Different thresholds by filing status
+- Calculate allowed contribution amounts
+- Backdoor Roth awareness flagging
+
+**Test Coverage** (3 points):
+- All filing status scenarios
+- Boundary testing at phase-out limits
+- Integration tests
+
+**Total Points**: 19
 
 ### Milestone 4: Income Modeling
 **Goal**: Comprehensive income source modeling
