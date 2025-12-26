@@ -1,6 +1,7 @@
 package io.github.xmljim.retirement.domain.calculator;
 
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultContributionCalculator;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultContributionRouter;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultIncomeCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultInflationCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultReturnCalculator;
@@ -87,5 +88,28 @@ public final class CalculatorFactory {
      */
     public static WithdrawalCalculator withdrawalCalculator() {
         return WITHDRAWAL_CALCULATOR;
+    }
+
+    /**
+     * Creates a contribution router with the specified IRS rules.
+     *
+     * <p>Unlike other calculators that are singletons, the contribution router
+     * requires IRS rules which are typically Spring-managed. This factory method
+     * creates a new instance with the provided rules.
+     *
+     * <p>Usage:
+     * <pre>{@code
+     * // With Spring-managed rules
+     * @Autowired
+     * private IrsContributionRules irsRules;
+     *
+     * ContributionRouter router = CalculatorFactory.contributionRouter(irsRules);
+     * }</pre>
+     *
+     * @param irsRules the IRS contribution rules for SECURE 2.0 compliance
+     * @return a new ContributionRouter instance
+     */
+    public static ContributionRouter contributionRouter(IrsContributionRules irsRules) {
+        return new DefaultContributionRouter(irsRules);
     }
 }
