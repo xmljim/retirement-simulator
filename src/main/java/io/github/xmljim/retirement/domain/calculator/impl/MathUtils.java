@@ -67,4 +67,44 @@ final class MathUtils {
     static BigDecimal pow(BigDecimal base, int exponent) {
         return pow(base, exponent, DEFAULT_SCALE, DEFAULT_ROUNDING);
     }
+
+    /**
+     * Calculates base raised to a fractional power.
+     *
+     * <p>Uses {@link Math#pow(double, double)} internally, which provides
+     * sufficient precision for financial calculations involving return rates.
+     *
+     * <p>This is used for true annual compounding:
+     * <pre>
+     * (1 + annualRate)^(months/12)
+     * </pre>
+     *
+     * @param base the base value
+     * @param exponent the fractional exponent
+     * @param scale the scale for the result
+     * @param roundingMode the rounding mode to use
+     * @return base^exponent as a BigDecimal
+     */
+    static BigDecimal pow(BigDecimal base, double exponent, int scale, RoundingMode roundingMode) {
+        if (exponent == 0.0) {
+            return BigDecimal.ONE;
+        }
+        if (exponent == 1.0) {
+            return base.setScale(scale, roundingMode);
+        }
+
+        double result = Math.pow(base.doubleValue(), exponent);
+        return BigDecimal.valueOf(result).setScale(scale, roundingMode);
+    }
+
+    /**
+     * Calculates base raised to a fractional power with default precision.
+     *
+     * @param base the base value
+     * @param exponent the fractional exponent
+     * @return base^exponent as a BigDecimal
+     */
+    static BigDecimal pow(BigDecimal base, double exponent) {
+        return pow(base, exponent, DEFAULT_SCALE, DEFAULT_ROUNDING);
+    }
 }
