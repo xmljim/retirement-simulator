@@ -136,7 +136,7 @@ See [Contributing](docs/CONTRIBUTING.md) for detailed guidelines.
 |-----------|-------------|--------|
 | M0 | Project Setup & CI/CD | Complete |
 | M1 | Domain Model Foundation | Complete |
-| M2 | Core Transaction & Account Operations | Planned |
+| M2 | Core Transaction & Account Operations | Complete |
 | M3 | Multi-Account Portfolio & Contribution Rules | Planned |
 | M4 | Income Modeling | Planned |
 | M5 | Expense & Budget Modeling | Planned |

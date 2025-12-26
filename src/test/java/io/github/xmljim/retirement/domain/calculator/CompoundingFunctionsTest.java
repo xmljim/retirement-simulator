@@ -245,4 +245,133 @@ class CompoundingFunctionsTest {
             assertEquals(0, defaultResult.compareTo(annualResult));
         }
     }
+
+    @Nested
+    @DisplayName("Custom CompoundingFunction")
+    class CustomCompoundingFunctionTests {
+
+        @Test
+        @DisplayName("Custom function should use default getName")
+        void customFunctionDefaultName() {
+            // Create a custom compounding function without overriding getName
+            CompoundingFunction custom = (principal, rate, periods) ->
+                principal.multiply(BigDecimal.valueOf(2));
+
+            assertEquals("Custom", custom.getName());
+        }
+
+        @Test
+        @DisplayName("Custom function should use default getFormula")
+        void customFunctionDefaultFormula() {
+            // Create a custom compounding function without overriding getFormula
+            CompoundingFunction custom = (principal, rate, periods) ->
+                principal.multiply(BigDecimal.valueOf(2));
+
+            assertEquals("Custom compounding formula", custom.getFormula());
+        }
+
+        @Test
+        @DisplayName("Custom function should work with calculator")
+        void customFunctionWithCalculator() {
+            // Double the principal regardless of rate/periods
+            CompoundingFunction doubler = (principal, rate, periods) ->
+                principal.multiply(BigDecimal.valueOf(2));
+
+            ReturnCalculator calculator = CalculatorFactory.returnCalculator();
+            BigDecimal result = calculator.calculateAccountGrowth(
+                PRINCIPAL, TEN_PERCENT, 12, doubler);
+
+            assertEquals(0, new BigDecimal("20000").compareTo(
+                result.setScale(0, java.math.RoundingMode.HALF_UP)));
+        }
+    }
+
+    @Nested
+    @DisplayName("Edge Cases for All Functions")
+    class AllFunctionsEdgeCaseTests {
+
+        @Test
+        @DisplayName("MONTHLY should handle null principal")
+        void monthlyNullPrincipal() {
+            BigDecimal result = CompoundingFunctions.MONTHLY.compound(null, TEN_PERCENT, 12);
+            assertEquals(0, BigDecimal.ZERO.compareTo(result));
+        }
+
+        @Test
+        @DisplayName("MONTHLY should handle null rate")
+        void monthlyNullRate() {
+            BigDecimal result = CompoundingFunctions.MONTHLY.compound(PRINCIPAL, null, 12);
+            assertEquals(0, PRINCIPAL.compareTo(result));
+        }
+
+        @Test
+        @DisplayName("DAILY should handle null principal")
+        void dailyNullPrincipal() {
+            BigDecimal result = CompoundingFunctions.DAILY.compound(null, TEN_PERCENT, 365);
+            assertEquals(0, BigDecimal.ZERO.compareTo(result));
+        }
+
+        @Test
+        @DisplayName("DAILY should handle null rate")
+        void dailyNullRate() {
+            BigDecimal result = CompoundingFunctions.DAILY.compound(PRINCIPAL, null, 365);
+            assertEquals(0, PRINCIPAL.compareTo(result));
+        }
+
+        @Test
+        @DisplayName("CONTINUOUS should handle null principal")
+        void continuousNullPrincipal() {
+            BigDecimal result = CompoundingFunctions.CONTINUOUS.compound(null, TEN_PERCENT, 12);
+            assertEquals(0, BigDecimal.ZERO.compareTo(result));
+        }
+
+        @Test
+        @DisplayName("CONTINUOUS should handle null rate")
+        void continuousNullRate() {
+            BigDecimal result = CompoundingFunctions.CONTINUOUS.compound(PRINCIPAL, null, 12);
+            assertEquals(0, PRINCIPAL.compareTo(result));
+        }
+
+        @Test
+        @DisplayName("MONTHLY should handle zero periods")
+        void monthlyZeroPeriods() {
+            BigDecimal result = CompoundingFunctions.MONTHLY.compound(PRINCIPAL, TEN_PERCENT, 0);
+            assertEquals(0, PRINCIPAL.compareTo(result));
+        }
+
+        @Test
+        @DisplayName("DAILY should handle zero periods")
+        void dailyZeroPeriods() {
+            BigDecimal result = CompoundingFunctions.DAILY.compound(PRINCIPAL, TEN_PERCENT, 0);
+            assertEquals(0, PRINCIPAL.compareTo(result));
+        }
+
+        @Test
+        @DisplayName("CONTINUOUS should handle zero periods")
+        void continuousZeroPeriods() {
+            BigDecimal result = CompoundingFunctions.CONTINUOUS.compound(PRINCIPAL, TEN_PERCENT, 0);
+            assertEquals(0, PRINCIPAL.compareTo(result));
+        }
+
+        @Test
+        @DisplayName("MONTHLY should handle zero principal")
+        void monthlyZeroPrincipal() {
+            BigDecimal result = CompoundingFunctions.MONTHLY.compound(BigDecimal.ZERO, TEN_PERCENT, 12);
+            assertEquals(0, BigDecimal.ZERO.compareTo(result));
+        }
+
+        @Test
+        @DisplayName("DAILY should handle zero principal")
+        void dailyZeroPrincipal() {
+            BigDecimal result = CompoundingFunctions.DAILY.compound(BigDecimal.ZERO, TEN_PERCENT, 365);
+            assertEquals(0, BigDecimal.ZERO.compareTo(result));
+        }
+
+        @Test
+        @DisplayName("CONTINUOUS should handle zero principal")
+        void continuousZeroPrincipal() {
+            BigDecimal result = CompoundingFunctions.CONTINUOUS.compound(BigDecimal.ZERO, TEN_PERCENT, 12);
+            assertEquals(0, BigDecimal.ZERO.compareTo(result));
+        }
+    }
 }
