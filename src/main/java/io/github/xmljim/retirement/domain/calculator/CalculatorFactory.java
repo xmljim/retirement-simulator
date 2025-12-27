@@ -6,9 +6,11 @@ import io.github.xmljim.retirement.domain.calculator.impl.DefaultContributionRou
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultIncomeCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultInflationCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultMAGICalculator;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultPhaseOutCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultReturnCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultWithdrawalCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultYTDContributionTracker;
+import io.github.xmljim.retirement.domain.config.IraPhaseOutLimits;
 import io.github.xmljim.retirement.domain.config.IrsContributionLimits;
 
 /**
@@ -182,5 +184,35 @@ public final class CalculatorFactory {
     public static ContributionLimitChecker limitChecker(
             IrsContributionRules irsRules, IrsContributionLimits irsLimits) {
         return new DefaultContributionLimitChecker(irsRules, irsLimits);
+    }
+
+    /**
+     * Creates a phase-out calculator for IRA contributions.
+     *
+     * <p>The phase-out calculator determines allowed IRA contributions
+     * based on MAGI and filing status, applying IRS income-based phase-out
+     * rules for both Roth IRA eligibility and Traditional IRA deductibility.
+     *
+     * <p>Usage:
+     * <pre>{@code
+     * PhaseOutCalculator calculator = CalculatorFactory.phaseOutCalculator(
+     *     phaseOutLimits, contributionLimits);
+     *
+     * PhaseOutResult result = calculator.calculateRothIraPhaseOut(
+     *     new BigDecimal("155000"),      // MAGI
+     *     FilingStatus.SINGLE,           // filing status
+     *     2025,                          // year
+     *     new BigDecimal("7000"),        // requested contribution
+     *     45                             // age
+     * );
+     * }</pre>
+     *
+     * @param phaseOutLimits the IRA phase-out thresholds configuration
+     * @param contributionLimits the IRS contribution limits configuration
+     * @return a new PhaseOutCalculator instance
+     */
+    public static PhaseOutCalculator phaseOutCalculator(
+            IraPhaseOutLimits phaseOutLimits, IrsContributionLimits contributionLimits) {
+        return new DefaultPhaseOutCalculator(phaseOutLimits, contributionLimits);
     }
 }
