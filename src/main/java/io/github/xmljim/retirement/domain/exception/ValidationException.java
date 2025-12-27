@@ -1,5 +1,7 @@
 package io.github.xmljim.retirement.domain.exception;
 
+import java.util.function.Predicate;
+
 /**
  * Exception thrown when validation of domain objects fails.
  *
@@ -50,5 +52,26 @@ public class ValidationException extends RetirementException {
      */
     public String getFieldName() {
         return fieldName;
+    }
+
+    /**
+     * Validates a value using a predicate, throwing an exception if validation fails.
+     *
+     * <p>This utility method provides a fluent way to validate values and return
+     * them if valid, enabling inline validation in builders and constructors.
+     *
+     * @param <T> the type of value being validated
+     * @param fieldName the name of the field for error messages
+     * @param value the value to validate
+     * @param test the predicate that returns true if the value is valid
+     * @param message the error message if validation fails
+     * @return the value if validation passes
+     * @throws ValidationException if the predicate returns false
+     */
+    public static <T> T validate(String fieldName, T value, Predicate<T> test, String message) {
+        if (!test.test(value)) {
+            throw new ValidationException(message, fieldName);
+        }
+        return value;
     }
 }
