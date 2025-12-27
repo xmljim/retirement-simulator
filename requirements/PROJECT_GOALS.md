@@ -627,7 +627,7 @@ Apply appropriate patterns where they add value:
 
 ## Current State
 
-### Implemented (Milestones 1, 2 & 3a Complete)
+### Implemented (Milestones 1, 2, 3a & 3b Complete)
 
 **Domain Model** (`io.github.xmljim.retirement.domain.model`):
 - `PersonProfile` - Individual with DOB, retirement date, life expectancy, linked spouse support
@@ -650,6 +650,8 @@ Apply appropriate patterns where they add value:
 - `RoutingConfiguration` - Configuration for contribution routing rules (M3a)
 - `RoutingRule` - Individual routing rule with account type and percentage (M3a)
 - `YTDSummary` - Year-to-date contribution summary with limits and remaining room (M3a)
+- `IncomeDetails` - MAGI add-back components value object (M3b)
+- `PhaseOutResult` - Phase-out calculation result with warnings (M3b)
 
 **Enums** (`io.github.xmljim.retirement.domain.enums`):
 - `AccountType` - 401K, IRA, ROTH variants, HSA, Taxable Brokerage with `TaxTreatment`
@@ -657,6 +659,7 @@ Apply appropriate patterns where they add value:
 - `TransactionType` - CONTRIBUTION, WITHDRAWAL, RETURN, FEE, TRANSFER (M2)
 - `TaxTreatment` - PRE_TAX, POST_TAX, TAX_FREE
 - `LimitCategory` - EMPLOYER_401K, IRA, HSA for IRS limit grouping (M3a)
+- `FilingStatus` - Tax filing status (Single, MFJ, MFS, HOH, QSS) with helper methods (M3b)
 
 **Calculator Framework** (`io.github.xmljim.retirement.domain.calculator`):
 - `Calculator` - Base interface with calculation lifecycle
@@ -674,6 +677,8 @@ Apply appropriate patterns where they add value:
 - `YTDContributionTracker` - Year-to-date contribution tracking interface (M3a)
 - `ContributionLimitChecker` - Pre-contribution limit validation (M3a)
 - `LimitCheckResult` - Result of contribution limit check (M3a)
+- `MAGICalculator` - Modified Adjusted Gross Income calculation interface (M3b)
+- `PhaseOutCalculator` - IRA contribution phase-out calculation interface (M3b)
 
 **Calculator Implementations** (`io.github.xmljim.retirement.domain.calculator.impl`):
 - `DefaultInflationCalculator` - Standard inflation adjustments
@@ -685,11 +690,15 @@ Apply appropriate patterns where they add value:
 - `DefaultContributionRouter` - Standard contribution routing with overflow (M3a)
 - `DefaultYTDContributionTracker` - Immutable YTD tracking implementation (M3a)
 - `DefaultContributionLimitChecker` - IRS limit enforcement (M3a)
+- `DefaultMAGICalculator` - MAGI calculation implementation (M3b)
+- `DefaultPhaseOutCalculator` - Phase-out calculation with linear interpolation (M3b)
 
 **Configuration** (`io.github.xmljim.retirement.domain.config`):
 - `IrsContributionLimits` - Spring `@ConfigurationProperties` for IRS limits from YAML
 - Supports 401(k), IRA, and HSA limits with year-by-year configuration
 - IRS-style COLA rounding for future year extrapolation
+- `IraPhaseOutLimits` - Phase-out threshold configuration with YAML-driven thresholds (M3b)
+- `PhaseOutRange` and `YearPhaseOuts` records for structured phase-out configuration (M3b)
 
 **Exceptions** (`io.github.xmljim.retirement.domain.exception`):
 - `ValidationException` - Domain validation errors
@@ -713,12 +722,14 @@ The following classes are deprecated and maintained for backwards compatibility:
 - Original enums - replaced by `domain.enums` equivalents
 
 ### Not Yet Implemented
-- Income phase-out rules for IRA/Roth (M3b)
+- Income modeling - Social Security, pensions, annuities (M4)
 - Expense/budget modeling (M5)
 - Distribution strategies (M6)
 - Simulation engine (M7)
+- Scenario analysis (M8)
 - Reporting module (M9)
 - API layer (M10)
+- UI (M11)
 
 ---
 
@@ -844,30 +855,44 @@ The following classes are deprecated and maintained for backwards compatibility:
 
 **Total Points**: 16
 
-### Milestone 3b: Income-Based Phase-Outs
+### Milestone 3b: Income-Based Phase-Outs ✅ COMPLETE
 **Goal**: Implement MAGI calculations and contribution eligibility phase-outs
 
-**Filing Status Support** (3 points):
-- FilingStatus enum (Single, MFJ, MFS, HOH, QW)
-- Phase-out threshold lookup by filing status and year
-- Integration with PersonProfile or TaxProfile
+**Status**: Completed December 2024
 
-**MAGI Calculator** (5 points):
-- Calculate Modified Adjusted Gross Income
-- Support common add-backs (student loan interest, foreign income, etc.)
-- IncomeDetails value object
+**Filing Status Support** (Completed):
+- [x] `FilingStatus` enum (Single, MFJ, MFS, HOH, QSS) with helper methods
+- [x] `IraPhaseOutLimits` configuration with YAML-driven thresholds
+- [x] `PhaseOutRange` and `YearPhaseOuts` records for structured configuration
+- [x] Extrapolation support for future years with IRS-style rounding
 
-**Phase-Out Rules** (8 points):
-- Traditional IRA deductibility phase-out (when covered by employer plan)
-- Roth IRA contribution eligibility phase-out
-- Different thresholds by filing status
-- Calculate allowed contribution amounts
-- Backdoor Roth awareness flagging
+**MAGI Calculator** (Completed):
+- [x] `MAGICalculator` interface with `DefaultMAGICalculator` implementation
+- [x] `IncomeDetails` value object with 6 add-back items
+- [x] Simple calculation: MAGI = AGI + total add-backs
 
-**Test Coverage** (3 points):
-- All filing status scenarios
-- Boundary testing at phase-out limits
-- Integration tests
+**Phase-Out Rules** (Completed):
+- [x] `PhaseOutCalculator` interface for Roth and Traditional IRA phase-outs
+- [x] `DefaultPhaseOutCalculator` with linear interpolation
+- [x] `PhaseOutResult` record with builder pattern
+- [x] Traditional IRA deductibility phase-out (covered by employer plan, spouse covered, not covered)
+- [x] Roth IRA contribution eligibility phase-out
+- [x] Backdoor Roth awareness flagging with warning messages
+- [x] IRS rounding rules (up to nearest $10, $200 minimum)
+
+**Test Coverage** (Completed):
+- [x] `PhaseOutCalculatorTest` - 13 unit tests
+- [x] `PhaseOutIntegrationTest` - 12 end-to-end tests
+- [x] `MAGICalculatorTest` - 15 tests
+- [x] `IncomeDetailsTest` - 9 tests
+- [x] `FilingStatusTest` - 6 tests
+- [x] `IraPhaseOutLimitsTest` - 8 tests
+
+**Technical Debt Resolution** (Completed):
+- [x] Extracted `TestIrsLimitsFixture` shared test utility
+- [x] Extracted `TestPhaseOutFixture` shared test utility
+- [x] Removed CPD-OFF suppressions from test files
+- [x] Created `DEPRECATED_CODE_MIGRATION.md` documenting M1 deprecated types
 
 **Total Points**: 19
 
