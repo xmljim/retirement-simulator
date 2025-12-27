@@ -4,13 +4,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import io.github.xmljim.retirement.domain.enums.MaritalStatus;
+import io.github.xmljim.retirement.domain.enums.MarriageEndReason;
 
 @DisplayName("MarriageInfo")
 class MarriageInfoTest {
@@ -203,6 +206,92 @@ class MarriageInfoTest {
             assertFalse(MarriageInfo.single().isEligibleForSurvivorBenefits(LocalDate.now()));
             assertFalse(MarriageInfo.married(LocalDate.of(2020, 1, 1))
                 .isEligibleForSurvivorBenefits(LocalDate.now()));
+        }
+    }
+
+    @Nested
+    @DisplayName("Marriage History")
+    class MarriageHistoryTests {
+
+        @Test
+        @DisplayName("finds qualifying divorced spouse from history")
+        void findsQualifyingDivorcedSpouse() {
+            PastMarriage exSpouse = PastMarriage.withBenefit(
+                new BigDecimal("3000"),
+                LocalDate.of(2000, 1, 1),
+                LocalDate.of(2012, 1, 1), // 12 years
+                MarriageEndReason.DIVORCED
+            );
+
+            MarriageInfo info = MarriageInfo.married(
+                LocalDate.of(2015, 1, 1),
+                true,
+                List.of(exSpouse)
+            );
+
+            LocalDate asOf = LocalDate.of(2025, 1, 1);
+            assertTrue(info.hasQualifyingDivorcedSpouse(asOf));
+            assertEquals(1, info.getQualifyingDivorcedSpouseMarriages(asOf).size());
+        }
+
+        @Test
+        @DisplayName("finds best divorced spouse option by benefit amount")
+        void findsBestDivorcedSpouseOption() {
+            PastMarriage exSpouse1 = PastMarriage.withBenefit(
+                new BigDecimal("2000"),
+                LocalDate.of(1990, 1, 1),
+                LocalDate.of(2005, 1, 1), // 15 years
+                MarriageEndReason.DIVORCED
+            );
+            PastMarriage exSpouse2 = PastMarriage.withBenefit(
+                new BigDecimal("4000"),
+                LocalDate.of(2006, 1, 1),
+                LocalDate.of(2020, 1, 1), // 14 years
+                MarriageEndReason.DIVORCED
+            );
+
+            MarriageInfo info = MarriageInfo.divorced(
+                LocalDate.of(2006, 1, 1),
+                LocalDate.of(2020, 1, 1),
+                List.of(exSpouse1) // exSpouse2 is the current divorce
+            );
+
+            LocalDate asOf = LocalDate.of(2025, 1, 1);
+            var best = info.findBestDivorcedSpouseOption(asOf);
+            assertTrue(best.isPresent());
+            assertEquals(new BigDecimal("2000"), best.get().exSpouseFraBenefit().orElse(null));
+        }
+
+        @Test
+        @DisplayName("empty history returns no qualifying marriages")
+        void emptyHistoryReturnsNoQualifying() {
+            MarriageInfo info = MarriageInfo.married(LocalDate.of(2020, 1, 1));
+
+            LocalDate asOf = LocalDate.of(2025, 1, 1);
+            assertFalse(info.hasQualifyingDivorcedSpouse(asOf));
+            assertTrue(info.marriageHistory().isEmpty());
+        }
+
+        @Test
+        @DisplayName("finds qualifying survivor from history")
+        void findsQualifyingSurvivor() {
+            PastMarriage deceasedSpouse = PastMarriage.withBenefit(
+                new BigDecimal("3500"),
+                LocalDate.of(2000, 1, 1),
+                LocalDate.of(2022, 1, 1),
+                MarriageEndReason.SPOUSE_DIED
+            );
+
+            MarriageInfo info = MarriageInfo.married(
+                LocalDate.of(2023, 1, 1),
+                true,
+                List.of(deceasedSpouse)
+            );
+
+            assertEquals(1, info.getQualifyingSurvivorMarriages().size());
+            var best = info.findBestSurvivorOption();
+            assertTrue(best.isPresent());
+            assertEquals(new BigDecimal("3500"), best.get().exSpouseFraBenefit().orElse(null));
         }
     }
 }
