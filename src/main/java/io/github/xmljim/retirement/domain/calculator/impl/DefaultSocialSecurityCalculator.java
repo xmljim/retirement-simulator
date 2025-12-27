@@ -146,6 +146,10 @@ public class DefaultSocialSecurityCalculator implements SocialSecurityCalculator
      *
      * @return the Social Security rules
      */
+    @SuppressFBWarnings(
+        value = "EI_EXPOSE_REP",
+        justification = "SocialSecurityRules is a Spring-managed singleton bean; returning reference is intentional"
+    )
     public SocialSecurityRules getRules() {
         return rules;
     }
