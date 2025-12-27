@@ -3,6 +3,7 @@ package io.github.xmljim.retirement.domain.config;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
@@ -72,15 +73,30 @@ public class SocialSecurityRules {
     /**
      * Full Retirement Age entry for a range of birth years.
      *
-     * @param birthYearStart the first birth year in the range
-     * @param birthYearEnd the last birth year in the range (null for "and later")
+     * <p>Uses {@code Optional<Integer>} for range bounds to clearly express
+     * that absent values represent open-ended ranges:
+     * <ul>
+     *   <li>Empty birthYearStart: "birth year X and earlier"</li>
+     *   <li>Empty birthYearEnd: "birth year X and later"</li>
+     * </ul>
+     *
+     * @param birthYearStart the first birth year in the range, or empty for open start
+     * @param birthYearEnd the last birth year in the range, or empty for open end
      * @param fraMonths the FRA in months for this range
      */
     public record FraEntry(
-        Integer birthYearStart,
-        Integer birthYearEnd,
+        Optional<Integer> birthYearStart,
+        Optional<Integer> birthYearEnd,
         int fraMonths
-    ) { }
+    ) {
+        /**
+         * Canonical constructor ensuring non-null Optionals.
+         */
+        public FraEntry {
+            birthYearStart = birthYearStart != null ? birthYearStart : Optional.empty();
+            birthYearEnd = birthYearEnd != null ? birthYearEnd : Optional.empty();
+        }
+    }
 
     /**
      * Claiming age limits.
@@ -387,21 +403,26 @@ public class SocialSecurityRules {
     /**
      * Checks if a birth year falls within an FRA entry's range.
      *
+     * <p>Uses Optional's map/orElse pattern for clean null handling:
+     * <ul>
+     *   <li>Empty start bound: any year satisfies the "after start" check</li>
+     *   <li>Empty end bound: any year satisfies the "before end" check</li>
+     * </ul>
+     *
      * @param entry the FRA entry to check
      * @param birthYear the birth year to test
      * @return true if birth year is within the entry's range
      */
     private boolean isWithinRange(FraEntry entry, int birthYear) {
-        // Check if birth year is before range start (if start is defined)
-        if (entry.birthYearStart() != null && birthYear < entry.birthYearStart()) {
-            return false;
-        }
-        // Check if birth year is after range end (if end is defined)
-        if (entry.birthYearEnd() != null && birthYear > entry.birthYearEnd()) {
-            return false;
-        }
-        // Birth year is within this range (or range is open-ended)
-        return true;
+        boolean afterStart = entry.birthYearStart()
+            .map(start -> birthYear >= start)
+            .orElse(true);
+
+        boolean beforeEnd = entry.birthYearEnd()
+            .map(end -> birthYear <= end)
+            .orElse(true);
+
+        return afterStart && beforeEnd;
     }
 
     public List<FraEntry> getFraTable() {
