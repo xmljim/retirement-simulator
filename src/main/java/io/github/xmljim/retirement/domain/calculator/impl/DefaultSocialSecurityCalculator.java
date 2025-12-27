@@ -3,6 +3,7 @@ package io.github.xmljim.retirement.domain.calculator.impl;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -219,19 +220,19 @@ public class DefaultSocialSecurityCalculator implements SocialSecurityCalculator
 
         // FRA table per SSA
         defaultRules.getFraTable().add(
-            new SocialSecurityRules.FraEntry(null, 1954, 792));  // 66 years
+            new SocialSecurityRules.FraEntry(Optional.empty(), Optional.of(1954), 792));  // 66 years
         defaultRules.getFraTable().add(
-            new SocialSecurityRules.FraEntry(1955, 1955, 794));  // 66y 2m
+            new SocialSecurityRules.FraEntry(Optional.of(1955), Optional.of(1955), 794));  // 66y 2m
         defaultRules.getFraTable().add(
-            new SocialSecurityRules.FraEntry(1956, 1956, 796));  // 66y 4m
+            new SocialSecurityRules.FraEntry(Optional.of(1956), Optional.of(1956), 796));  // 66y 4m
         defaultRules.getFraTable().add(
-            new SocialSecurityRules.FraEntry(1957, 1957, 798));  // 66y 6m
+            new SocialSecurityRules.FraEntry(Optional.of(1957), Optional.of(1957), 798));  // 66y 6m
         defaultRules.getFraTable().add(
-            new SocialSecurityRules.FraEntry(1958, 1958, 800));  // 66y 8m
+            new SocialSecurityRules.FraEntry(Optional.of(1958), Optional.of(1958), 800));  // 66y 8m
         defaultRules.getFraTable().add(
-            new SocialSecurityRules.FraEntry(1959, 1959, 802));  // 66y 10m
+            new SocialSecurityRules.FraEntry(Optional.of(1959), Optional.of(1959), 802));  // 66y 10m
         defaultRules.getFraTable().add(
-            new SocialSecurityRules.FraEntry(1960, null, 804));  // 67 years
+            new SocialSecurityRules.FraEntry(Optional.of(1960), Optional.empty(), 804));  // 67 years
 
         // Claiming limits (62-70)
         defaultRules.getClaiming().setMinimumAgeMonths(744);  // 62 years
