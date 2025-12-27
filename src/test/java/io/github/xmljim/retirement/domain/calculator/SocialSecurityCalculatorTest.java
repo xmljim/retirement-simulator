@@ -155,6 +155,50 @@ class SocialSecurityCalculatorTest {
     }
 
     @Nested
+    @DisplayName("Claiming Age Benefit Adjustment Tests")
+    class ClaimingAgeBenefitTests {
+
+        private static final BigDecimal FRA_BENEFIT = new BigDecimal("2000");
+        private static final int FRA_67_MONTHS = 804; // FRA for birth year 1960+
+
+        /**
+         * Parameterized test for claiming ages 62-70 with FRA of 67.
+         * SSA formulas:
+         * - Early: 5/9% per month for first 36 months, 5/12% beyond
+         * - Delayed: 8% per year (2/3% per month)
+         *
+         * @param claimingAge The age in years when claiming begins
+         * @param claimingMonths The age in months when claiming begins
+         * @param expectedPercent The expected benefit percentage of FRA benefit
+         */
+        @ParameterizedTest(name = "Claiming at age {0} ({1} months) should yield {2}% of FRA benefit")
+        @CsvSource({
+            "62, 744, 70.00",   // 60 months early: 30% reduction
+            "63, 756, 75.00",   // 48 months early: 25% reduction
+            "64, 768, 80.00",   // 36 months early: 20% reduction
+            "65, 780, 86.67",   // 24 months early: 13.33% reduction
+            "66, 792, 93.33",   // 12 months early: 6.67% reduction
+            "67, 804, 100.00",  // FRA: no adjustment
+            "68, 816, 108.00",  // 12 months delayed: 8% increase
+            "69, 828, 116.00",  // 24 months delayed: 16% increase
+            "70, 840, 124.00"   // 36 months delayed: 24% increase
+        })
+        void claimingAgeAdjustment(int claimingAge, int claimingMonths, String expectedPercent) {
+            BigDecimal adjusted = calculator.calculateAdjustedBenefit(
+                FRA_BENEFIT, FRA_67_MONTHS, claimingMonths);
+
+            BigDecimal expectedBenefit = FRA_BENEFIT
+                .multiply(new BigDecimal(expectedPercent))
+                .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+
+            assertEquals(0, expectedBenefit.setScale(0, RoundingMode.HALF_UP)
+                .compareTo(adjusted.setScale(0, RoundingMode.HALF_UP)),
+                "At age " + claimingAge + ", expected $" + expectedBenefit.setScale(0, RoundingMode.HALF_UP)
+                    + " but got $" + adjusted.setScale(0, RoundingMode.HALF_UP));
+        }
+    }
+
+    @Nested
     @DisplayName("Adjusted Benefit Calculation Tests")
     class AdjustedBenefitTests {
 
