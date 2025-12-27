@@ -7,6 +7,8 @@ import java.util.Objects;
 import io.github.xmljim.retirement.domain.annotation.Generated;
 import io.github.xmljim.retirement.domain.calculator.CalculatorFactory;
 import io.github.xmljim.retirement.domain.calculator.SocialSecurityCalculator;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultSocialSecurityCalculator;
+import io.github.xmljim.retirement.domain.config.SocialSecurityRules;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
 import io.github.xmljim.retirement.domain.exception.ValidationException;
 
@@ -321,11 +323,28 @@ public final class SocialSecurityBenefit {
                 throw new ValidationException(
                     "Birth year must be between 1900 and 2100", "birthYear");
             }
-            if (claimingAgeMonths < 744 || claimingAgeMonths > 840) {
+
+            // Get claiming limits from configuration
+            SocialSecurityRules rules = getConfiguredRules();
+            int minAge = rules.getClaiming().getMinimumAgeMonths();
+            int maxAge = rules.getClaiming().getMaximumAgeMonths();
+
+            if (claimingAgeMonths < minAge || claimingAgeMonths > maxAge) {
+                int minYears = minAge / 12;
+                int maxYears = maxAge / 12;
                 throw new ValidationException(
-                    "Claiming age must be between 62 (744 months) and 70 (840 months)",
+                    String.format("Claiming age must be between %d (%d months) and %d (%d months)",
+                        minYears, minAge, maxYears, maxAge),
                     "claimingAgeMonths");
             }
+        }
+
+        private SocialSecurityRules getConfiguredRules() {
+            if (calculator instanceof DefaultSocialSecurityCalculator defaultCalc) {
+                return defaultCalc.getRules();
+            }
+            // Fallback to defaults for custom calculators
+            return new SocialSecurityRules();
         }
     }
 }

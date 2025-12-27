@@ -4,7 +4,12 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.github.xmljim.retirement.domain.calculator.SocialSecurityCalculator;
+import io.github.xmljim.retirement.domain.config.SocialSecurityRules;
 
 /**
  * Default implementation of Social Security benefit calculations.
@@ -16,61 +21,48 @@ import io.github.xmljim.retirement.domain.calculator.SocialSecurityCalculator;
  * </ul>
  *
  * <p>These values were established by the Social Security Amendments of 1983
- * (Public Law 98-21) and may be updated by future legislation.
+ * (Public Law 98-21) and may be updated by future legislation. All values are
+ * configurable via {@link SocialSecurityRules}.
  *
  * <p>This calculator is stateless and thread-safe.
  */
+@Service
 public class DefaultSocialSecurityCalculator implements SocialSecurityCalculator {
 
     private static final int INTERNAL_SCALE = 10;
     private static final RoundingMode ROUNDING = RoundingMode.HALF_UP;
     private static final MathContext PRECISION = MathContext.DECIMAL128;
 
-    // FRA constants in months
-    private static final int FRA_66_YEARS = 792;  // 66 * 12
-    private static final int FRA_67_YEARS = 804;  // 67 * 12
-
-    // Birth year thresholds
-    private static final int BIRTH_YEAR_1955 = 1955;
-    private static final int BIRTH_YEAR_1960 = 1960;
-
-    // Early claiming reduction rates (per month)
-    // First 36 months: 5/9 of 1% = 0.00555556
-    private static final BigDecimal EARLY_REDUCTION_RATE_FIRST_36 =
-        BigDecimal.valueOf(5).divide(BigDecimal.valueOf(900), INTERNAL_SCALE, ROUNDING);
-
-    // Additional months beyond 36: 5/12 of 1% = 0.00416667
-    private static final BigDecimal EARLY_REDUCTION_RATE_BEYOND_36 =
-        BigDecimal.valueOf(5).divide(BigDecimal.valueOf(1200), INTERNAL_SCALE, ROUNDING);
-
-    // Threshold for switching between reduction rates
-    private static final int EARLY_REDUCTION_THRESHOLD_MONTHS = 36;
-
-    // Delayed retirement credit rate (per month)
-    // 8% per year = 2/3% per month = 0.00666667
-    private static final BigDecimal DELAYED_CREDIT_RATE =
-        BigDecimal.valueOf(8).divide(BigDecimal.valueOf(1200), INTERNAL_SCALE, ROUNDING);
+    private final SocialSecurityRules rules;
 
     /**
-     * Creates a new DefaultSocialSecurityCalculator.
+     * Creates a new DefaultSocialSecurityCalculator with the given rules.
+     *
+     * @param rules the Social Security rules configuration
+     */
+    @Autowired
+    @SuppressFBWarnings(
+        value = "EI_EXPOSE_REP2",
+        justification = "SocialSecurityRules is a Spring-managed singleton bean"
+    )
+    public DefaultSocialSecurityCalculator(SocialSecurityRules rules) {
+        this.rules = rules;
+    }
+
+    /**
+     * Creates a calculator with default rules (for non-Spring usage).
+     *
+     * <p>This constructor creates a calculator with hardcoded default values
+     * for use in tests or non-Spring contexts. The defaults match current
+     * SSA rules as of 2024.
      */
     public DefaultSocialSecurityCalculator() {
-        // Stateless - no initialization needed
+        this.rules = createDefaultRules();
     }
 
     @Override
     public int calculateFraMonths(int birthYear) {
-        if (birthYear <= 1954) {
-            return FRA_66_YEARS;
-        }
-        if (birthYear >= BIRTH_YEAR_1960) {
-            return FRA_67_YEARS;
-        }
-
-        // Birth years 1955-1959: FRA increases by 2 months each year
-        // 1955 → 66y 2m (794), 1956 → 66y 4m (796), etc.
-        int additionalMonths = (birthYear - 1954) * 2;
-        return FRA_66_YEARS + additionalMonths;
+        return rules.getFraMonthsForBirthYear(birthYear);
     }
 
     @Override
@@ -79,22 +71,26 @@ public class DefaultSocialSecurityCalculator implements SocialSecurityCalculator
             return BigDecimal.ZERO;
         }
 
-        if (monthsEarly <= EARLY_REDUCTION_THRESHOLD_MONTHS) {
-            // First 36 months: 5/9 of 1% per month
-            return EARLY_REDUCTION_RATE_FIRST_36
+        SocialSecurityRules.EarlyReduction er = rules.getEarlyReduction();
+        int firstTierMonths = er.getFirstTierMonths();
+        BigDecimal firstTierRate = er.getFirstTierRate(INTERNAL_SCALE);
+        BigDecimal secondTierRate = er.getSecondTierRate(INTERNAL_SCALE);
+
+        if (monthsEarly <= firstTierMonths) {
+            return firstTierRate
                 .multiply(BigDecimal.valueOf(monthsEarly), PRECISION)
                 .setScale(INTERNAL_SCALE, ROUNDING);
         }
 
-        // Beyond 36 months: first 36 at higher rate, rest at lower rate
-        BigDecimal first36Reduction = EARLY_REDUCTION_RATE_FIRST_36
-            .multiply(BigDecimal.valueOf(EARLY_REDUCTION_THRESHOLD_MONTHS), PRECISION);
+        // Beyond threshold: first tier at higher rate, rest at lower rate
+        BigDecimal firstTierReduction = firstTierRate
+            .multiply(BigDecimal.valueOf(firstTierMonths), PRECISION);
 
-        int additionalMonths = monthsEarly - EARLY_REDUCTION_THRESHOLD_MONTHS;
-        BigDecimal additionalReduction = EARLY_REDUCTION_RATE_BEYOND_36
+        int additionalMonths = monthsEarly - firstTierMonths;
+        BigDecimal additionalReduction = secondTierRate
             .multiply(BigDecimal.valueOf(additionalMonths), PRECISION);
 
-        return first36Reduction.add(additionalReduction).setScale(INTERNAL_SCALE, ROUNDING);
+        return firstTierReduction.add(additionalReduction).setScale(INTERNAL_SCALE, ROUNDING);
     }
 
     @Override
@@ -103,8 +99,8 @@ public class DefaultSocialSecurityCalculator implements SocialSecurityCalculator
             return BigDecimal.ZERO;
         }
 
-        // 8% per year (2/3% per month)
-        return DELAYED_CREDIT_RATE
+        BigDecimal rate = rules.getDelayedCredits().getRate(INTERNAL_SCALE);
+        return rate
             .multiply(BigDecimal.valueOf(monthsDelayed), PRECISION)
             .setScale(INTERNAL_SCALE, ROUNDING);
     }
@@ -116,19 +112,16 @@ public class DefaultSocialSecurityCalculator implements SocialSecurityCalculator
         }
 
         if (claimingMonths == fraMonths) {
-            // Claiming at FRA - no adjustment
             return fraBenefit;
         }
 
         if (claimingMonths < fraMonths) {
-            // Early claiming - apply reduction
             int monthsEarly = fraMonths - claimingMonths;
             BigDecimal reduction = calculateEarlyReduction(monthsEarly);
             BigDecimal multiplier = BigDecimal.ONE.subtract(reduction);
             return fraBenefit.multiply(multiplier, PRECISION).setScale(INTERNAL_SCALE, ROUNDING);
         }
 
-        // Delayed claiming - apply credits
         int monthsDelayed = claimingMonths - fraMonths;
         BigDecimal credit = calculateDelayedCredits(monthsDelayed);
         BigDecimal multiplier = BigDecimal.ONE.add(credit);
@@ -144,8 +137,56 @@ public class DefaultSocialSecurityCalculator implements SocialSecurityCalculator
             return benefit;
         }
 
-        // Compound: benefit * (1 + colaRate)^years
         BigDecimal multiplier = BigDecimal.ONE.add(colaRate).pow(years, PRECISION);
         return benefit.multiply(multiplier, PRECISION).setScale(INTERNAL_SCALE, ROUNDING);
+    }
+
+    /**
+     * Returns the rules configuration.
+     *
+     * @return the Social Security rules
+     */
+    public SocialSecurityRules getRules() {
+        return rules;
+    }
+
+    /**
+     * Creates default rules for non-Spring usage.
+     */
+    private static SocialSecurityRules createDefaultRules() {
+        SocialSecurityRules defaultRules = new SocialSecurityRules();
+
+        // FRA table per SSA
+        defaultRules.getFraTable().add(
+            new SocialSecurityRules.FraEntry(null, 1954, 792));  // 66 years
+        defaultRules.getFraTable().add(
+            new SocialSecurityRules.FraEntry(1955, 1955, 794));  // 66y 2m
+        defaultRules.getFraTable().add(
+            new SocialSecurityRules.FraEntry(1956, 1956, 796));  // 66y 4m
+        defaultRules.getFraTable().add(
+            new SocialSecurityRules.FraEntry(1957, 1957, 798));  // 66y 6m
+        defaultRules.getFraTable().add(
+            new SocialSecurityRules.FraEntry(1958, 1958, 800));  // 66y 8m
+        defaultRules.getFraTable().add(
+            new SocialSecurityRules.FraEntry(1959, 1959, 802));  // 66y 10m
+        defaultRules.getFraTable().add(
+            new SocialSecurityRules.FraEntry(1960, null, 804));  // 67 years
+
+        // Claiming limits (62-70)
+        defaultRules.getClaiming().setMinimumAgeMonths(744);  // 62 years
+        defaultRules.getClaiming().setMaximumAgeMonths(840);  // 70 years
+
+        // Early reduction rates: 5/9 of 1% for first 36, 5/12 of 1% additional
+        defaultRules.getEarlyReduction().setFirstTierMonths(36);
+        defaultRules.getEarlyReduction().setFirstTierRateNumerator(5);
+        defaultRules.getEarlyReduction().setFirstTierRateDenominator(900);
+        defaultRules.getEarlyReduction().setSecondTierRateNumerator(5);
+        defaultRules.getEarlyReduction().setSecondTierRateDenominator(1200);
+
+        // Delayed credits: 8% per year
+        defaultRules.getDelayedCredits().setRateNumerator(8);
+        defaultRules.getDelayedCredits().setRateDenominator(1200);
+
+        return defaultRules;
     }
 }
