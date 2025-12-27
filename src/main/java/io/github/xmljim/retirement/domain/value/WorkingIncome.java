@@ -31,7 +31,7 @@ import io.github.xmljim.retirement.domain.exception.ValidationException;
  */
 public final class WorkingIncome {
 
-    private static final int SCALE = 2;
+    private static final int INTERNAL_SCALE = 10;
     private static final RoundingMode ROUNDING = RoundingMode.HALF_UP;
     private static final BigDecimal MONTHS_PER_YEAR = BigDecimal.valueOf(12);
     private static final MathContext PRECISION = MathContext.DECIMAL128;
@@ -79,7 +79,7 @@ public final class WorkingIncome {
      * @return the base monthly salary
      */
     public BigDecimal getBaseMonthlySalary() {
-        return annualSalary.divide(MONTHS_PER_YEAR, SCALE, ROUNDING);
+        return annualSalary.divide(MONTHS_PER_YEAR, INTERNAL_SCALE, ROUNDING);
     }
 
     /**
@@ -130,7 +130,7 @@ public final class WorkingIncome {
             return BigDecimal.ZERO;
         }
         BigDecimal adjustedAnnual = getAnnualSalary(date.getYear());
-        return adjustedAnnual.divide(MONTHS_PER_YEAR, SCALE, ROUNDING);
+        return adjustedAnnual.divide(MONTHS_PER_YEAR, INTERNAL_SCALE, ROUNDING);
     }
 
     /**
@@ -208,7 +208,7 @@ public final class WorkingIncome {
             return amount;
         }
         BigDecimal multiplier = BigDecimal.ONE.add(colaRate).pow(years, PRECISION);
-        return amount.multiply(multiplier).setScale(SCALE, ROUNDING);
+        return amount.multiply(multiplier).setScale(INTERNAL_SCALE, ROUNDING);
     }
 
     /**

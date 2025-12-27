@@ -301,10 +301,11 @@ class WorkingIncomeTest {
                 .endDate(LocalDate.of(2035, 1, 1))
                 .build();
 
-            // 100000 * (1.03)^5 = 115927.41
-            BigDecimal expected = new BigDecimal("115927.41");
+            // 100000 * (1.03)^5 = 115927.407... (high precision)
             BigDecimal actual = income.getAnnualSalary(2025);
-            assertEquals(0, expected.compareTo(actual));
+            // Compare to 2 decimal places for validation
+            BigDecimal rounded = actual.setScale(2, java.math.RoundingMode.HALF_UP);
+            assertEquals(0, new BigDecimal("115927.41").compareTo(rounded));
         }
 
         @Test
