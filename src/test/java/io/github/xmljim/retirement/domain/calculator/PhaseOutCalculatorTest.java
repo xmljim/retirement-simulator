@@ -7,8 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,10 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultPhaseOutCalculator;
 import io.github.xmljim.retirement.domain.config.IraPhaseOutLimits;
-import io.github.xmljim.retirement.domain.config.IraPhaseOutLimits.PhaseOutRange;
-import io.github.xmljim.retirement.domain.config.IraPhaseOutLimits.YearPhaseOuts;
 import io.github.xmljim.retirement.domain.config.IrsContributionLimits;
-import io.github.xmljim.retirement.domain.config.IrsContributionLimits.IraLimits;
 import io.github.xmljim.retirement.domain.enums.AccountType;
 import io.github.xmljim.retirement.domain.enums.FilingStatus;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
@@ -34,50 +29,9 @@ class PhaseOutCalculatorTest {
 
     @BeforeEach
     void setUp() {
-        phaseOutLimits = createTestPhaseOutLimits();
-        contributionLimits = createTestContributionLimits();
+        phaseOutLimits = TestPhaseOutFixture.createTestPhaseOutLimits();
+        contributionLimits = TestPhaseOutFixture.createTestContributionLimits();
         calculator = new DefaultPhaseOutCalculator(phaseOutLimits, contributionLimits);
-    }
-
-    private IraPhaseOutLimits createTestPhaseOutLimits() {
-        IraPhaseOutLimits limits = new IraPhaseOutLimits();
-
-        // Roth IRA 2025 thresholds
-        Map<Integer, YearPhaseOuts> rothIra = new HashMap<>();
-        rothIra.put(2025, new YearPhaseOuts(
-            new PhaseOutRange(new BigDecimal("150000"), new BigDecimal("165000")),
-            new PhaseOutRange(new BigDecimal("236000"), new BigDecimal("246000")),
-            new PhaseOutRange(BigDecimal.ZERO, new BigDecimal("10000"))
-        ));
-        limits.setRothIra(rothIra);
-
-        // Traditional IRA covered 2025 thresholds
-        Map<Integer, YearPhaseOuts> tradCovered = new HashMap<>();
-        tradCovered.put(2025, new YearPhaseOuts(
-            new PhaseOutRange(new BigDecimal("79000"), new BigDecimal("89000")),
-            new PhaseOutRange(new BigDecimal("126000"), new BigDecimal("146000")),
-            new PhaseOutRange(BigDecimal.ZERO, new BigDecimal("10000"))
-        ));
-        limits.setTraditionalIraCovered(tradCovered);
-
-        // Traditional IRA spouse covered 2025 thresholds
-        Map<Integer, YearPhaseOuts> spouseCovered = new HashMap<>();
-        spouseCovered.put(2025, new YearPhaseOuts(
-            PhaseOutRange.ZERO,
-            new PhaseOutRange(new BigDecimal("236000"), new BigDecimal("246000")),
-            PhaseOutRange.ZERO
-        ));
-        limits.setTraditionalIraSpouseCovered(spouseCovered);
-
-        return limits;
-    }
-
-    private IrsContributionLimits createTestContributionLimits() {
-        IrsContributionLimits limits = new IrsContributionLimits();
-        Map<Integer, IraLimits> iraLimits = new HashMap<>();
-        iraLimits.put(2025, new IraLimits(new BigDecimal("7000"), new BigDecimal("1000")));
-        limits.setIraLimits(iraLimits);
-        return limits;
     }
 
     @Nested
