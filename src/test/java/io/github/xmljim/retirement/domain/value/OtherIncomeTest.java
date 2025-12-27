@@ -338,12 +338,25 @@ class OtherIncomeTest {
     class EarnedIncomeTests {
 
         @Test
-        @DisplayName("Rental income should be earned")
-        void rentalIsEarned() {
+        @DisplayName("Rental income should be passive (not earned)")
+        void rentalIsPassive() {
             OtherIncome income = OtherIncome.builder()
                 .name("Rental")
                 .incomeType(OtherIncomeType.RENTAL)
                 .monthlyAmount(1000.00)
+                .startDate(START_DATE)
+                .build();
+
+            assertFalse(income.isEarnedIncome());
+        }
+
+        @Test
+        @DisplayName("Part-time work should be earned income")
+        void partTimeWorkIsEarned() {
+            OtherIncome income = OtherIncome.builder()
+                .name("Consulting")
+                .incomeType(OtherIncomeType.PART_TIME_WORK)
+                .monthlyAmount(2000.00)
                 .startDate(START_DATE)
                 .build();
 

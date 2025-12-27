@@ -57,9 +57,9 @@ class OtherIncomeTypeTest {
     class EarnedIncomeTests {
 
         @Test
-        @DisplayName("RENTAL should be earned income")
-        void rentalIsEarned() {
-            assertTrue(OtherIncomeType.RENTAL.isEarnedIncome());
+        @DisplayName("RENTAL should not be earned income (passive)")
+        void rentalIsPassive() {
+            assertFalse(OtherIncomeType.RENTAL.isEarnedIncome());
         }
 
         @Test

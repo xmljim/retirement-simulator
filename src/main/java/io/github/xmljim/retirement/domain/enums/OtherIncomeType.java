@@ -13,9 +13,11 @@ public enum OtherIncomeType {
      * Rental property income.
      *
      * <p>Net income from rental properties after expenses.
+     * Generally considered passive income by the IRS (IRC Section 469),
+     * not subject to Social Security earnings test or payroll taxes.
      * Taxed as ordinary income, with potential depreciation benefits.
      */
-    RENTAL("Rental Income", true),
+    RENTAL("Rental Income", false),
 
     /**
      * Part-time employment income.
