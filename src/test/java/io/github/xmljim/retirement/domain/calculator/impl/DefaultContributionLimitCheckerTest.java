@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.xmljim.retirement.domain.calculator.ContributionLimitChecker;
 import io.github.xmljim.retirement.domain.calculator.LimitCheckResult;
+import io.github.xmljim.retirement.domain.calculator.TestIrsLimitsFixture;
 import io.github.xmljim.retirement.domain.calculator.YTDContributionTracker;
 import io.github.xmljim.retirement.domain.config.IrsContributionLimits;
 import io.github.xmljim.retirement.domain.enums.AccountType;
@@ -33,30 +34,11 @@ class DefaultContributionLimitCheckerTest {
 
     @BeforeEach
     void setUp() {
-        limits = createTestLimits();
+        limits = TestIrsLimitsFixture.createTestLimits();
         irsRules = new Secure2ContributionRules(limits);
         checker = new DefaultContributionLimitChecker(irsRules, limits);
         tracker = new DefaultYTDContributionTracker(irsRules);
     }
-
-    // CPD-OFF - Test setup duplicated across test files intentionally
-    @SuppressWarnings("PMD.AvoidDuplicateLiterals")
-    private IrsContributionLimits createTestLimits() {
-        IrsContributionLimits limits = new IrsContributionLimits();
-
-        limits.getLimits().put(2025, new IrsContributionLimits.YearLimits(
-            new BigDecimal("23500"), new BigDecimal("7500"),
-            new BigDecimal("11250"), new BigDecimal("145000")));
-
-        limits.getIraLimits().put(2025, new IrsContributionLimits.IraLimits(
-            new BigDecimal("7000"), new BigDecimal("1000")));
-
-        limits.getHsaLimits().put(2025, new IrsContributionLimits.HsaLimits(
-            new BigDecimal("4300"), new BigDecimal("8550"), new BigDecimal("1000")));
-
-        return limits;
-    }
-    // CPD-ON
 
     @Nested
     @DisplayName("401k Limit Tests")

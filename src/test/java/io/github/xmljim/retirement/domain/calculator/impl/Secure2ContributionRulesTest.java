@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import io.github.xmljim.retirement.domain.calculator.TestIrsLimitsFixture;
 import io.github.xmljim.retirement.domain.config.IrsContributionLimits;
 import io.github.xmljim.retirement.domain.enums.AccountType;
 import io.github.xmljim.retirement.domain.enums.ContributionType;
@@ -24,22 +25,15 @@ class Secure2ContributionRulesTest {
 
     @BeforeEach
     void setUp() {
-        limits = createTestLimits();
-        rules = new Secure2ContributionRules(limits);
-    }
-
-    private IrsContributionLimits createTestLimits() {
-        IrsContributionLimits testLimits = new IrsContributionLimits();
-        testLimits.getLimits().put(2024, new IrsContributionLimits.YearLimits(
+        limits = TestIrsLimitsFixture.createTestLimits();
+        // Add 2024 (no super catch-up) and 2026 for year-specific tests
+        limits.getLimits().put(2024, new IrsContributionLimits.YearLimits(
             new BigDecimal("23000"), new BigDecimal("7500"),
             BigDecimal.ZERO, new BigDecimal("145000")));
-        testLimits.getLimits().put(2025, new IrsContributionLimits.YearLimits(
-            new BigDecimal("23500"), new BigDecimal("7500"),
-            new BigDecimal("11250"), new BigDecimal("145000")));
-        testLimits.getLimits().put(2026, new IrsContributionLimits.YearLimits(
+        limits.getLimits().put(2026, new IrsContributionLimits.YearLimits(
             new BigDecimal("24000"), new BigDecimal("7500"),
             new BigDecimal("11250"), new BigDecimal("145000")));
-        return testLimits;
+        rules = new Secure2ContributionRules(limits);
     }
 
     @Nested

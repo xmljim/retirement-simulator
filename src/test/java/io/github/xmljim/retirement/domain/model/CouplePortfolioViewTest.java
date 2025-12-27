@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import io.github.xmljim.retirement.domain.calculator.CalculatorFactory;
+import io.github.xmljim.retirement.domain.calculator.TestIrsLimitsFixture;
 import io.github.xmljim.retirement.domain.calculator.YTDContributionTracker;
 import io.github.xmljim.retirement.domain.calculator.impl.Secure2ContributionRules;
 import io.github.xmljim.retirement.domain.config.IrsContributionLimits;
@@ -37,7 +38,7 @@ class CouplePortfolioViewTest {
 
     @BeforeEach
     void setUp() {
-        IrsContributionLimits limits = createTestLimits();
+        IrsContributionLimits limits = TestIrsLimitsFixture.createTestLimits();
         irsRules = new Secure2ContributionRules(limits);
 
         PersonProfile primary = PersonProfile.builder()
@@ -58,18 +59,6 @@ class CouplePortfolioViewTest {
 
         primaryTracker = CalculatorFactory.ytdTracker(irsRules);
         secondaryTracker = CalculatorFactory.ytdTracker(irsRules);
-    }
-
-    private IrsContributionLimits createTestLimits() {
-        IrsContributionLimits limits = new IrsContributionLimits();
-        limits.getLimits().put(2025, new IrsContributionLimits.YearLimits(
-            new BigDecimal("23500"), new BigDecimal("7500"),
-            new BigDecimal("11250"), new BigDecimal("145000")));
-        limits.getIraLimits().put(2025, new IrsContributionLimits.IraLimits(
-            new BigDecimal("7000"), new BigDecimal("1000")));
-        limits.getHsaLimits().put(2025, new IrsContributionLimits.HsaLimits(
-            new BigDecimal("4300"), new BigDecimal("8550"), new BigDecimal("1000")));
-        return limits;
     }
 
     private InvestmentAccount createAccount(String name, AccountType type, double balance) {
