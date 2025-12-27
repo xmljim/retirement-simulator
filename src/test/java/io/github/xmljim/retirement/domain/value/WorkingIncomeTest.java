@@ -1,11 +1,14 @@
 package io.github.xmljim.retirement.domain.value;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -190,6 +193,331 @@ class WorkingIncomeTest {
         void notEqualDifferentClass() {
             WorkingIncome w1 = WorkingIncome.of(100000.00, 0.02);
             assertNotEquals("string", w1);
+        }
+    }
+
+    @Nested
+    @DisplayName("Date Range Tests")
+    class DateRangeTests {
+
+        @Test
+        @DisplayName("Should set and get start date")
+        void setAndGetStartDate() {
+            LocalDate startDate = LocalDate.of(2020, 1, 1);
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .colaRate(0.03)
+                .startDate(startDate)
+                .build();
+
+            assertEquals(startDate, income.getStartDate());
+        }
+
+        @Test
+        @DisplayName("Should set and get end date")
+        void setAndGetEndDate() {
+            LocalDate endDate = LocalDate.of(2035, 1, 1);
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .colaRate(0.03)
+                .endDate(endDate)
+                .build();
+
+            assertEquals(endDate, income.getEndDate());
+        }
+
+        @Test
+        @DisplayName("Should allow null start and end dates")
+        void allowNullDates() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .colaRate(0.03)
+                .build();
+
+            assertNull(income.getStartDate());
+            assertNull(income.getEndDate());
+        }
+
+        @Test
+        @DisplayName("Should default colaMonth to January")
+        void defaultColaMonth() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .build();
+
+            assertEquals(1, income.getColaMonth());
+        }
+
+        @Test
+        @DisplayName("Should set custom colaMonth")
+        void customColaMonth() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .colaMonth(7)
+                .build();
+
+            assertEquals(7, income.getColaMonth());
+        }
+    }
+
+    @Nested
+    @DisplayName("COLA-Adjusted Annual Salary Tests")
+    class ColaAdjustedAnnualSalaryTests {
+
+        @Test
+        @DisplayName("Should return base salary in start year")
+        void baseSalaryInStartYear() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .colaRate(0.03)
+                .startDate(LocalDate.of(2020, 1, 1))
+                .endDate(LocalDate.of(2035, 1, 1))
+                .build();
+
+            assertEquals(0, new BigDecimal("100000").compareTo(income.getAnnualSalary(2020)));
+        }
+
+        @Test
+        @DisplayName("Should apply COLA for one year")
+        void colaAfterOneYear() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .colaRate(0.03)
+                .startDate(LocalDate.of(2020, 1, 1))
+                .endDate(LocalDate.of(2035, 1, 1))
+                .build();
+
+            // 100000 * 1.03 = 103000
+            assertEquals(0, new BigDecimal("103000.00").compareTo(income.getAnnualSalary(2021)));
+        }
+
+        @Test
+        @DisplayName("Should compound COLA over multiple years")
+        void colaAfterFiveYears() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .colaRate(0.03)
+                .startDate(LocalDate.of(2020, 1, 1))
+                .endDate(LocalDate.of(2035, 1, 1))
+                .build();
+
+            // 100000 * (1.03)^5 = 115927.41
+            BigDecimal expected = new BigDecimal("115927.41");
+            BigDecimal actual = income.getAnnualSalary(2025);
+            assertEquals(0, expected.compareTo(actual));
+        }
+
+        @Test
+        @DisplayName("Should return zero before start date")
+        void zeroBeforeStartDate() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .colaRate(0.03)
+                .startDate(LocalDate.of(2020, 1, 1))
+                .endDate(LocalDate.of(2035, 1, 1))
+                .build();
+
+            assertEquals(0, BigDecimal.ZERO.compareTo(income.getAnnualSalary(2019)));
+        }
+
+        @Test
+        @DisplayName("Should return zero after end date")
+        void zeroAfterEndDate() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .colaRate(0.03)
+                .startDate(LocalDate.of(2020, 1, 1))
+                .endDate(LocalDate.of(2035, 1, 1))
+                .build();
+
+            assertEquals(0, BigDecimal.ZERO.compareTo(income.getAnnualSalary(2035)));
+        }
+
+        @Test
+        @DisplayName("Should handle zero COLA (salary freeze)")
+        void zeroCola() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .colaRate(0.0)
+                .startDate(LocalDate.of(2020, 1, 1))
+                .endDate(LocalDate.of(2035, 1, 1))
+                .build();
+
+            assertEquals(0, new BigDecimal("100000").compareTo(income.getAnnualSalary(2025)));
+        }
+
+        @Test
+        @DisplayName("Should return base salary when no start date")
+        void noStartDate() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .colaRate(0.03)
+                .build();
+
+            assertEquals(0, new BigDecimal("100000").compareTo(income.getAnnualSalary(2025)));
+        }
+    }
+
+    @Nested
+    @DisplayName("COLA-Adjusted Monthly Salary Tests")
+    class ColaAdjustedMonthlySalaryTests {
+
+        @Test
+        @DisplayName("Should return monthly salary for date in employment period")
+        void monthlySalaryDuringEmployment() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(120000.00)
+                .colaRate(0.03)
+                .startDate(LocalDate.of(2020, 1, 1))
+                .endDate(LocalDate.of(2035, 1, 1))
+                .build();
+
+            // 2020: 120000/12 = 10000
+            LocalDate date = LocalDate.of(2020, 6, 15);
+            assertEquals(0, new BigDecimal("10000.00").compareTo(income.getMonthlySalary(date)));
+        }
+
+        @Test
+        @DisplayName("Should apply COLA to monthly salary")
+        void monthlySalaryWithCola() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(120000.00)
+                .colaRate(0.03)
+                .startDate(LocalDate.of(2020, 1, 1))
+                .endDate(LocalDate.of(2035, 1, 1))
+                .build();
+
+            // 2021: 120000 * 1.03 / 12 = 10300
+            LocalDate date = LocalDate.of(2021, 6, 15);
+            assertEquals(0, new BigDecimal("10300.00").compareTo(income.getMonthlySalary(date)));
+        }
+
+        @Test
+        @DisplayName("Should return zero before start date")
+        void zeroBeforeStartDate() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(120000.00)
+                .colaRate(0.03)
+                .startDate(LocalDate.of(2020, 1, 1))
+                .endDate(LocalDate.of(2035, 1, 1))
+                .build();
+
+            LocalDate date = LocalDate.of(2019, 6, 15);
+            assertEquals(0, BigDecimal.ZERO.compareTo(income.getMonthlySalary(date)));
+        }
+
+        @Test
+        @DisplayName("Should return zero after end date")
+        void zeroAfterEndDate() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(120000.00)
+                .colaRate(0.03)
+                .startDate(LocalDate.of(2020, 1, 1))
+                .endDate(LocalDate.of(2035, 1, 1))
+                .build();
+
+            LocalDate date = LocalDate.of(2035, 6, 15);
+            assertEquals(0, BigDecimal.ZERO.compareTo(income.getMonthlySalary(date)));
+        }
+
+        @Test
+        @DisplayName("Should return zero for null date")
+        void zeroForNullDate() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(120000.00)
+                .colaRate(0.03)
+                .startDate(LocalDate.of(2020, 1, 1))
+                .build();
+
+            assertEquals(0, BigDecimal.ZERO.compareTo(income.getMonthlySalary(null)));
+        }
+    }
+
+    @Nested
+    @DisplayName("isActiveOn Tests")
+    class IsActiveOnTests {
+
+        @Test
+        @DisplayName("Should be active on start date")
+        void activeOnStartDate() {
+            LocalDate startDate = LocalDate.of(2020, 1, 1);
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .startDate(startDate)
+                .endDate(LocalDate.of(2035, 1, 1))
+                .build();
+
+            assertTrue(income.isActiveOn(startDate));
+        }
+
+        @Test
+        @DisplayName("Should not be active before start date")
+        void notActiveBeforeStartDate() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .startDate(LocalDate.of(2020, 1, 1))
+                .endDate(LocalDate.of(2035, 1, 1))
+                .build();
+
+            assertFalse(income.isActiveOn(LocalDate.of(2019, 12, 31)));
+        }
+
+        @Test
+        @DisplayName("Should not be active on end date")
+        void notActiveOnEndDate() {
+            LocalDate endDate = LocalDate.of(2035, 1, 1);
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .startDate(LocalDate.of(2020, 1, 1))
+                .endDate(endDate)
+                .build();
+
+            assertFalse(income.isActiveOn(endDate));
+        }
+
+        @Test
+        @DisplayName("Should be active day before end date")
+        void activeBeforeEndDate() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .startDate(LocalDate.of(2020, 1, 1))
+                .endDate(LocalDate.of(2035, 1, 1))
+                .build();
+
+            assertTrue(income.isActiveOn(LocalDate.of(2034, 12, 31)));
+        }
+
+        @Test
+        @DisplayName("Should be active when no end date")
+        void activeWhenNoEndDate() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .startDate(LocalDate.of(2020, 1, 1))
+                .build();
+
+            assertTrue(income.isActiveOn(LocalDate.of(2050, 6, 15)));
+        }
+
+        @Test
+        @DisplayName("Should be active when no start date")
+        void activeWhenNoStartDate() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .endDate(LocalDate.of(2035, 1, 1))
+                .build();
+
+            assertTrue(income.isActiveOn(LocalDate.of(2020, 6, 15)));
+        }
+
+        @Test
+        @DisplayName("Should handle null date")
+        void handleNullDate() {
+            WorkingIncome income = WorkingIncome.builder()
+                .annualSalary(100000.00)
+                .startDate(LocalDate.of(2020, 1, 1))
+                .build();
+
+            assertFalse(income.isActiveOn(null));
         }
     }
 }
