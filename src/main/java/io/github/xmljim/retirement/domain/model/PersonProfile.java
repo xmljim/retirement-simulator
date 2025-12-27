@@ -9,6 +9,7 @@ import java.util.UUID;
 import io.github.xmljim.retirement.domain.annotation.Generated;
 import io.github.xmljim.retirement.domain.exception.InvalidDateRangeException;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
+import io.github.xmljim.retirement.domain.value.MarriageInfo;
 
 /**
  * Represents an individual in the retirement simulation.
@@ -36,6 +37,7 @@ public final class PersonProfile {
     private final int lifeExpectancy;
     private final LocalDate socialSecurityStartDate;
     private final PersonProfile spouse;
+    private final MarriageInfo marriageInfo;
 
     private PersonProfile(Builder builder) {
         // Validation is performed in Builder.build() before this constructor is called,
@@ -47,6 +49,7 @@ public final class PersonProfile {
         this.lifeExpectancy = builder.lifeExpectancy;
         this.socialSecurityStartDate = builder.socialSecurityStartDate;
         this.spouse = builder.spouse;
+        this.marriageInfo = builder.marriageInfo != null ? builder.marriageInfo : MarriageInfo.single();
     }
 
     /**
@@ -110,6 +113,18 @@ public final class PersonProfile {
      */
     public Optional<PersonProfile> getSpouse() {
         return Optional.ofNullable(spouse);
+    }
+
+    /**
+     * Returns the marriage information for this person.
+     *
+     * <p>Marriage info includes current marital status, marriage dates,
+     * and history of past marriages for Social Security benefit calculations.
+     *
+     * @return the marriage information (defaults to SINGLE if not specified)
+     */
+    public MarriageInfo getMarriageInfo() {
+        return marriageInfo;
     }
 
     /**
@@ -190,7 +205,8 @@ public final class PersonProfile {
             .retirementDate(this.retirementDate)
             .lifeExpectancy(this.lifeExpectancy)
             .socialSecurityStartDate(this.socialSecurityStartDate)
-            .spouse(this.spouse);
+            .spouse(this.spouse)
+            .marriageInfo(this.marriageInfo);
     }
 
     @Generated
@@ -235,6 +251,7 @@ public final class PersonProfile {
         private int lifeExpectancy = 90;
         private LocalDate socialSecurityStartDate;
         private PersonProfile spouse;
+        private MarriageInfo marriageInfo;
 
         /**
          * Sets the profile ID.
@@ -310,6 +327,19 @@ public final class PersonProfile {
          */
         public Builder spouse(PersonProfile spouse) {
             this.spouse = spouse;
+            return this;
+        }
+
+        /**
+         * Sets the marriage information.
+         *
+         * <p>If not specified, defaults to SINGLE status.
+         *
+         * @param marriageInfo the marriage information
+         * @return this builder
+         */
+        public Builder marriageInfo(MarriageInfo marriageInfo) {
+            this.marriageInfo = marriageInfo;
             return this;
         }
 

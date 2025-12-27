@@ -1,0 +1,97 @@
+# Social Security Rules Configuration
+# Source: Social Security Administration
+# - FRA by birth year: https://www.ssa.gov/oact/ProgData/nra.html
+# - Early/Delayed adjustments: https://www.ssa.gov/oact/ProgData/ar_drc.html
+#
+# Established by Social Security Amendments of 1983 (Public Law 98-21)
+# These values may be updated by future legislation.
+
+social-security:
+  # Full Retirement Age by birth year
+  # FRA gradually increased from 65 to 67 based on birth year
+  fra-table:
+    - birth-year-end: 1954      # 1954 and earlier
+      fra-months: 792            # 66 years
+    - birth-year-start: 1955
+      birth-year-end: 1955
+      fra-months: 794            # 66 years, 2 months
+    - birth-year-start: 1956
+      birth-year-end: 1956
+      fra-months: 796            # 66 years, 4 months
+    - birth-year-start: 1957
+      birth-year-end: 1957
+      fra-months: 798            # 66 years, 6 months
+    - birth-year-start: 1958
+      birth-year-end: 1958
+      fra-months: 800            # 66 years, 8 months
+    - birth-year-start: 1959
+      birth-year-end: 1959
+      fra-months: 802            # 66 years, 10 months
+    - birth-year-start: 1960     # 1960 and later
+      fra-months: 804            # 67 years
+
+  # Claiming age limits
+  claiming:
+    minimum-age-months: 744      # 62 years - earliest claiming age
+    maximum-age-months: 840      # 70 years - no benefit increase after 70
+
+  # Early claiming reduction rates
+  # Benefits reduced permanently when claimed before FRA
+  early-reduction:
+    first-tier-months: 36        # First 36 months have higher reduction
+    first-tier-rate-numerator: 5
+    first-tier-rate-denominator: 900    # 5/9 of 1% per month = 6.67%/year
+    second-tier-rate-numerator: 5
+    second-tier-rate-denominator: 1200  # 5/12 of 1% per month = 5%/year
+
+  # Delayed retirement credits
+  # Benefits increased when claimed after FRA (up to age 70)
+  delayed-credits:
+    rate-numerator: 8
+    rate-denominator: 1200       # 8%/year = 2/3% per month
+
+  # Spousal benefit rules
+  # Source: https://www.ssa.gov/benefits/retirement/planner/applying7.html
+  spousal:
+    benefit-percentage: 0.50     # Up to 50% of higher earner's FRA benefit
+    minimum-marriage-months: 12  # Must be married at least 1 year
+    divorced-minimum-marriage-years: 10  # Divorced spouse: marriage must have lasted 10+ years
+    divorced-minimum-divorce-years: 2    # Must be divorced at least 2 years
+
+  # Survivor benefit rules
+  # Source: https://www.ssa.gov/benefits/survivors/
+  survivor:
+    minimum-marriage-months: 9   # Must be married at least 9 months
+    minimum-claiming-age-months: 720   # 60 years - earliest survivor claiming age
+    disabled-minimum-age-months: 600   # 50 years - if disabled
+    remarriage-age-months: 720         # Can remarry at 60 without losing benefits
+    # Survivor reduction is different from regular early claiming
+    # Max reduction ~28.5% at age 60 (survivor receives ~71.5% of full benefit)
+    reduction-rate-numerator: 285
+    reduction-rate-denominator: 10000
+
+  # Earnings test rules - limits ARE indexed annually by SSA
+  # Source: https://www.ssa.gov/benefits/retirement/planner/whileworking.html
+  # Source: https://www.ssa.gov/oact/cola/rtea.html
+  earnings-test:
+    below-fra-reduction-ratio: 2    # $1 reduction per $2 over limit
+    fra-year-reduction-ratio: 3     # $1 reduction per $3 over limit (year reaching FRA)
+    limits:
+      - year: 2024
+        below-fra-limit: 22320      # Annual exempt amount below FRA
+        fra-year-limit: 59520       # Annual exempt amount in year reaching FRA
+      - year: 2025
+        below-fra-limit: 23400
+        fra-year-limit: 62160
+
+  # Benefit taxation thresholds - NOT indexed (fixed since 1984/1993)
+  # Source: IRS Publication 915 (https://www.irs.gov/publications/p915)
+  # NOTE: These thresholds create "bracket creep" as more benefits become
+  # taxable over time due to inflation. Congress has not adjusted these.
+  taxation:
+    single-lower-threshold: 25000   # Combined income threshold for 50% taxable (Single/HOH/QSS)
+    single-upper-threshold: 34000   # Combined income threshold for 85% taxable (Single/HOH/QSS)
+    joint-lower-threshold: 32000    # Combined income threshold for 50% taxable (MFJ)
+    joint-upper-threshold: 44000    # Combined income threshold for 85% taxable (MFJ)
+    lower-tier-percentage: 0.50     # Up to 50% of benefits taxable
+    upper-tier-percentage: 0.85     # Up to 85% of benefits taxable

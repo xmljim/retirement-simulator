@@ -156,6 +156,32 @@ class ExceptionTest {
             ValidationException ex = new ValidationException("Message", "myField");
             assertEquals("myField", ex.getFieldName());
         }
+
+        @Test
+        @DisplayName("validate should return value when predicate passes")
+        void validateReturnsValue() {
+            Integer value = 10;
+            Integer result = ValidationException.validate("age", value, v -> v > 0, "Age must be positive");
+            assertEquals(value, result);
+        }
+
+        @Test
+        @DisplayName("validate should throw when predicate fails")
+        void validateThrowsOnFailure() {
+            ValidationException ex = assertThrows(ValidationException.class, () ->
+                ValidationException.validate("age", -5, v -> v > 0, "Age must be positive"));
+            assertEquals("Age must be positive", ex.getMessage());
+            assertEquals("age", ex.getFieldName());
+        }
+
+        @Test
+        @DisplayName("validate with default message should work")
+        void validateWithDefaultMessage() {
+            ValidationException ex = assertThrows(ValidationException.class, () ->
+                ValidationException.validate("amount", BigDecimal.ZERO, v -> v.compareTo(BigDecimal.ZERO) > 0));
+            assertEquals("Invalid value for amount", ex.getMessage());
+            assertEquals("amount", ex.getFieldName());
+        }
     }
 
     @Nested
@@ -218,6 +244,23 @@ class ExceptionTest {
             CalculationException ex = new CalculationException("Calc error", cause);
             assertEquals("Calc error", ex.getMessage());
             assertEquals(cause, ex.getCause());
+        }
+
+        @Test
+        @DisplayName("negativeBalance should create proper message")
+        void negativeBalanceMessage() {
+            CalculationException ex = CalculationException.negativeBalance(
+                "return calculation", new BigDecimal("-100.50"));
+            assertEquals("Balance cannot be negative for return calculation: -100.50",
+                ex.getMessage());
+        }
+
+        @Test
+        @DisplayName("invalidPeriod should create proper message")
+        void invalidPeriodMessage() {
+            CalculationException ex = CalculationException.invalidPeriod(-5);
+            assertEquals("Calculation period cannot be negative: -5 months",
+                ex.getMessage());
         }
     }
 }

@@ -7,6 +7,13 @@ import java.util.function.Predicate;
  *
  * <p>This exception serves as the base for all validation-related
  * exceptions in the retirement simulator domain.
+ *
+ * <p>Example usage with static validate method:
+ * <pre>{@code
+ * ValidationException.validate("monthlyBenefit", benefit,
+ *     v -> v.compareTo(BigDecimal.ZERO) >= 0,
+ *     "Monthly benefit cannot be negative");
+ * }</pre>
  */
 public class ValidationException extends RetirementException {
 
@@ -55,16 +62,20 @@ public class ValidationException extends RetirementException {
     }
 
     /**
-     * Validates a value using a predicate, throwing an exception if validation fails.
+     * Validates a value against a predicate, throwing if validation fails.
      *
-     * <p>This utility method provides a fluent way to validate values and return
-     * them if valid, enabling inline validation in builders and constructors.
+     * <p>Example usage:
+     * <pre>{@code
+     * ValidationException.validate("age", age,
+     *     v -> v >= 0 && v <= 120,
+     *     "Age must be between 0 and 120");
+     * }</pre>
      *
-     * @param <T> the type of value being validated
-     * @param fieldName the name of the field for error messages
+     * @param fieldName the name of the field being validated
      * @param value the value to validate
-     * @param test the predicate that returns true if the value is valid
+     * @param test the predicate that must return true for valid values
      * @param message the error message if validation fails
+     * @param <T> the type of the value
      * @return the value if validation passes
      * @throws ValidationException if the predicate returns false
      */
@@ -73,5 +84,19 @@ public class ValidationException extends RetirementException {
             throw new ValidationException(message, fieldName);
         }
         return value;
+    }
+
+    /**
+     * Validates a value against a predicate with a default message.
+     *
+     * @param fieldName the name of the field being validated
+     * @param value the value to validate
+     * @param test the predicate that must return true for valid values
+     * @param <T> the type of the value
+     * @return the value if validation passes
+     * @throws ValidationException if the predicate returns false
+     */
+    public static <T> T validate(String fieldName, T value, Predicate<T> test) {
+        return validate(fieldName, value, test, "Invalid value for " + fieldName);
     }
 }

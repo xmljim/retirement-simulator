@@ -1,3 +1,8 @@
+spring:
+  config:
+    import:
+      - application-social-security.yml
+
 # IRS Contribution Limits Configuration
 # SECURE 2.0 Act limits for 401(k), 403(b), and 457(b) plans
 #
@@ -64,3 +69,41 @@ irs:
         individual-limit: 4400   # Estimated
         family-limit: 8750       # Estimated
         catch-up-limit: 1000     # Not indexed for inflation
+
+  # IRA Phase-Out Limits
+  # Sources: IRS Publication 590-A, IRS News Releases
+  phase-out:
+    default-annual-increase-rate: 0.02
+
+    # Roth IRA contribution phase-outs by MAGI
+    roth-ira:
+      2024:
+        single: { lower-bound: 146000, upper-bound: 161000 }
+        married-filing-jointly: { lower-bound: 230000, upper-bound: 240000 }
+        married-filing-separately: { lower-bound: 0, upper-bound: 10000 }
+      2025:
+        single: { lower-bound: 150000, upper-bound: 165000 }
+        married-filing-jointly: { lower-bound: 236000, upper-bound: 246000 }
+        married-filing-separately: { lower-bound: 0, upper-bound: 10000 }
+
+    # Traditional IRA deductibility phase-outs (when covered by employer plan)
+    traditional-ira-covered:
+      2024:
+        single: { lower-bound: 77000, upper-bound: 87000 }
+        married-filing-jointly: { lower-bound: 123000, upper-bound: 143000 }
+        married-filing-separately: { lower-bound: 0, upper-bound: 10000 }
+      2025:
+        single: { lower-bound: 79000, upper-bound: 89000 }
+        married-filing-jointly: { lower-bound: 126000, upper-bound: 146000 }
+        married-filing-separately: { lower-bound: 0, upper-bound: 10000 }
+
+    # Traditional IRA deductibility phase-outs (not covered, but spouse is)
+    traditional-ira-spouse-covered:
+      2024:
+        single: { lower-bound: 0, upper-bound: 0 }  # N/A for single
+        married-filing-jointly: { lower-bound: 230000, upper-bound: 240000 }
+        married-filing-separately: { lower-bound: 0, upper-bound: 10000 }
+      2025:
+        single: { lower-bound: 0, upper-bound: 0 }  # N/A for single
+        married-filing-jointly: { lower-bound: 236000, upper-bound: 246000 }
+        married-filing-separately: { lower-bound: 0, upper-bound: 10000 }
