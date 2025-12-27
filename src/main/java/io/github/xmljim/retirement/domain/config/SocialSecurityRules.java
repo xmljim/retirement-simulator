@@ -229,23 +229,31 @@ public class SocialSecurityRules {
      * @return the FRA in months, or 804 (67 years) if not found
      */
     public int getFraMonthsForBirthYear(int birthYear) {
-        for (FraEntry entry : fraTable) {
-            // Check if birth year is before range start (if start is defined)
-            if (entry.birthYearStart() != null && birthYear < entry.birthYearStart()) {
-                continue;
-            }
-            // Check if birth year is after range end (if end is defined)
-            if (entry.birthYearEnd() != null && birthYear > entry.birthYearEnd()) {
-                continue;
-            }
-            // Birth year is within this range (or range is open-ended)
-            // Either: no start (open-ended early) with birth year <= end
-            // Or: start <= birth year with no end (open-ended late)
-            // Or: start <= birth year <= end (bounded range)
-            return entry.fraMonths();
+        return fraTable.stream()
+            .filter(entry -> isWithinRange(entry, birthYear))
+            .findFirst()
+            .map(FraEntry::fraMonths)
+            .orElse(804);  // Default to 67 years (804 months) if not found
+    }
+
+    /**
+     * Checks if a birth year falls within an FRA entry's range.
+     *
+     * @param entry the FRA entry to check
+     * @param birthYear the birth year to test
+     * @return true if birth year is within the entry's range
+     */
+    private boolean isWithinRange(FraEntry entry, int birthYear) {
+        // Check if birth year is before range start (if start is defined)
+        if (entry.birthYearStart() != null && birthYear < entry.birthYearStart()) {
+            return false;
         }
-        // Default to 67 years (804 months) if not found
-        return 804;
+        // Check if birth year is after range end (if end is defined)
+        if (entry.birthYearEnd() != null && birthYear > entry.birthYearEnd()) {
+            return false;
+        }
+        // Birth year is within this range (or range is open-ended)
+        return true;
     }
 
     public List<FraEntry> getFraTable() {
