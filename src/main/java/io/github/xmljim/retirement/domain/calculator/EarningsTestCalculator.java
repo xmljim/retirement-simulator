@@ -28,7 +28,17 @@ public interface EarningsTestCalculator {
     /**
      * Calculates the earnings test result for a Social Security beneficiary.
      *
-     * @param annualEarnings the beneficiary's annual earned income from work
+     * <p><b>Important:</b> The earnings test only applies to earned income from work
+     * (wages, salaries, self-employment). It does NOT include:
+     * <ul>
+     *   <li>Retirement account distributions (401k, IRA, pension)</li>
+     *   <li>Investment income (dividends, interest, capital gains)</li>
+     *   <li>Rental income</li>
+     *   <li>Annuity payments</li>
+     *   <li>Government benefits</li>
+     * </ul>
+     *
+     * @param annualEarnings the beneficiary's annual earned income from work only
      * @param ssAnnualBenefit the annual Social Security benefit before reduction
      * @param ageMonths the beneficiary's age in months
      * @param fraMonths the beneficiary's Full Retirement Age in months
