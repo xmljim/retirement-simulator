@@ -19,14 +19,59 @@ import io.github.xmljim.retirement.domain.enums.MaritalStatus;
  *   <li>Survivor benefits (requires 9+ months marriage)</li>
  * </ul>
  *
- * <p>All date fields use {@link Optional} to clearly express optionality.
- * Use the static factory methods for convenient creation:
+ * <h2>Marriage History and PersonProfile Relationships</h2>
+ *
+ * <p>For couple simulations (Person A + Person C), each person may have their own
+ * marriage history that affects their benefit calculations:
+ *
+ * <pre>
+ *                     ┌─────────────┐
+ *                     │  Person B   │ (A's ex)
+ *                     │  (history)  │
+ *                     └──────▲──────┘
+ *                            │ ex-spouse
+ *     ┌──────────────────────┴───────────────────────┐
+ *     │                                              │
+ * ┌───┴───────┐                              ┌───────┴───┐
+ * │ Person A  │◄────── current spouse ──────►│ Person C  │
+ * │ (primary) │                              │ (spouse)  │
+ * └───────────┘                              └───────┬───┘
+ *                                                    │ ex-spouse
+ *                                            ┌───────▼──────┐
+ *                                            │   Person D   │ (C's ex)
+ *                                            │   (history)  │
+ *                                            └──────────────┘
+ * </pre>
+ *
+ * <p><b>Key SSA rule:</b> Spousal/divorced spouse benefits do NOT reduce the
+ * primary earner's benefit. Each person evaluates their own options independently:
+ * <ul>
+ *   <li><b>Person A:</b> Own benefit (history doesn't affect their amount)</li>
+ *   <li><b>Person C:</b> max(own, spousal from A, divorced spouse from D if eligible)</li>
+ * </ul>
+ *
+ * <p>The {@code marriageHistory} field tracks past marriages for benefit optimization.
+ * Use {@link #findBestDivorcedSpouseOption} to find the ex-spouse with the highest
+ * benefit when multiple qualifying ex-spouses exist.
+ *
+ * <h2>Usage Examples</h2>
+ *
  * <pre>{@code
  * // Single person
  * MarriageInfo single = MarriageInfo.single();
  *
  * // Married couple
  * MarriageInfo married = MarriageInfo.married(LocalDate.of(2010, 6, 15));
+ *
+ * // Married with history of prior marriage
+ * PastMarriage exSpouse = PastMarriage.withBenefit(
+ *     new BigDecimal("3000"),
+ *     LocalDate.of(2000, 1, 1),
+ *     LocalDate.of(2012, 1, 1),
+ *     MarriageEndReason.DIVORCED
+ * );
+ * MarriageInfo marriedWithHistory = MarriageInfo.married(
+ *     LocalDate.of(2015, 6, 1), true, List.of(exSpouse));
  *
  * // Divorced
  * MarriageInfo divorced = MarriageInfo.divorced(
@@ -42,11 +87,13 @@ import io.github.xmljim.retirement.domain.enums.MaritalStatus;
  * }</pre>
  *
  * @param status the current marital status
- * @param marriageDate the date of marriage (empty for SINGLE)
+ * @param marriageDate the date of current/most recent marriage (empty for SINGLE)
  * @param divorceDate the date of divorce (only for DIVORCED status)
  * @param spouseDeathDate the date spouse died (only for WIDOWED status)
  * @param livingWithSpouse whether currently living with spouse (affects MFS filing)
+ * @param marriageHistory past marriages for divorced spouse/survivor benefit calculations
  *
+ * @see PastMarriage
  * @see <a href="https://www.ssa.gov/benefits/retirement/planner/applying7.html">SSA Spousal Benefits</a>
  * @see <a href="https://www.ssa.gov/benefits/retirement/planner/applying6.html">SSA Divorced Spouse</a>
  * @see <a href="https://www.ssa.gov/benefits/survivors/">SSA Survivor Benefits</a>
