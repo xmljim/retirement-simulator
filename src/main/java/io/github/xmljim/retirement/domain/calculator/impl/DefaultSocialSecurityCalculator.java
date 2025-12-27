@@ -173,16 +173,14 @@ public class DefaultSocialSecurityCalculator implements SocialSecurityCalculator
         }
 
         int minimumAge = getSurvivorMinimumClaimingAge();
-        if (claimingAgeMonths < minimumAge) {
-            // Can't claim before minimum age; return max reduction
-            claimingAgeMonths = minimumAge;
-        }
+        // Use effective claiming age - can't claim before minimum age
+        int effectiveClaimingAge = Math.max(claimingAgeMonths, minimumAge);
 
         // Survivor reduction is linear from age 60 to FRA
         // Max reduction is ~28.5% at age 60 for FRA 67
         BigDecimal maxReduction = rules.getSurvivor().getMaxReduction(INTERNAL_SCALE);
 
-        int monthsUntilFra = fraMonths - claimingAgeMonths;
+        int monthsUntilFra = fraMonths - effectiveClaimingAge;
         int totalMonthsRange = fraMonths - minimumAge;
 
         if (totalMonthsRange <= 0) {
