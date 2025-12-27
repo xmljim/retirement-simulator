@@ -627,7 +627,7 @@ Apply appropriate patterns where they add value:
 
 ## Current State
 
-### Implemented (Milestones 1, 2, 3a & 3b Complete)
+### Implemented (Milestones 1, 2, 3a, 3b & 4 Complete)
 
 **Domain Model** (`io.github.xmljim.retirement.domain.model`):
 - `PersonProfile` - Individual with DOB, retirement date, life expectancy, linked spouse support
@@ -706,6 +706,42 @@ Apply appropriate patterns where they add value:
 - `CalculationException` - Calculation-specific errors (M2)
 - `InvalidDateRangeException` - Date range validation (M2)
 
+**Income Sources** (`io.github.xmljim.retirement.domain.value`):
+- `WorkingIncome` - Salary with COLA, start/end dates, `priorYearIncome` for SECURE 2.0 (M1, enhanced M4)
+- `SocialSecurityBenefit` - SS benefit with FRA, claiming age, early/delayed adjustments, COLA (M4)
+- `Pension` - Defined benefit with payment forms, survivor options, COLA (M4)
+- `Annuity` - Fixed/deferred/variable annuity support with COLA (M4)
+- `OtherIncome` - Rental, part-time work, royalties, dividends, business income (M4)
+
+**Marriage & Spousal Benefits** (`io.github.xmljim.retirement.domain.value`):
+- `MarriageInfo` - Current marriage with spousal benefits eligibility (M4)
+- `PastMarriage` - Marriage history for divorced spouse benefits (M4)
+- `SpousalBenefitResult` - Spousal benefit calculation result (M4)
+- `SurvivorBenefitResult` - Survivor benefit calculation result (M4)
+- `CoupleClaimingStrategy` - Coordinated SS claiming strategy for couples (M4)
+
+**Income Aggregation** (`io.github.xmljim.retirement.domain.value`, `io.github.xmljim.retirement.domain.calculator`):
+- `IncomeSources` - Container for all income sources per person (M4)
+- `IncomeBreakdown` - Income breakdown by source type with earned/passive classification (M4)
+- `IncomeAggregator` - Aggregates income across sources for a date (M4)
+
+**SS Earnings Test & Taxation** (`io.github.xmljim.retirement.domain.calculator`, `io.github.xmljim.retirement.domain.value`):
+- `EarningsTestCalculator` - SS earnings test (benefit reduction when working before FRA) (M4)
+- `EarningsTestResult` - Earnings test result with reduction details (M4)
+- `BenefitTaxationCalculator` - SS benefit taxation (0%/50%/85% thresholds) (M4)
+- `TaxationResult` - Taxation calculation result with combined income (M4)
+
+**Spousal/Survivor Calculator** (`io.github.xmljim.retirement.domain.calculator`):
+- `SpousalBenefitCalculator` - Spousal and survivor benefit calculations (M4)
+- `DefaultSpousalBenefitCalculator` - Implementation with SSA rules (M4)
+
+**Income-Related Enums** (`io.github.xmljim.retirement.domain.enums`):
+- `AnnuityType` - FIXED_IMMEDIATE, FIXED_DEFERRED, VARIABLE (M4)
+- `OtherIncomeType` - RENTAL, PART_TIME_WORK, ROYALTIES, DIVIDENDS, BUSINESS, OTHER (M4)
+- `PensionPaymentForm` - SINGLE_LIFE, JOINT_100, JOINT_75, JOINT_50, PERIOD_CERTAIN (M4)
+- `MaritalStatus` - MARRIED, SINGLE, DIVORCED, WIDOWED (M4)
+- `MarriageEndReason` - DIVORCE, DEATH (M4)
+
 ### Legacy Code (Deprecated)
 
 The following classes are deprecated and maintained for backwards compatibility:
@@ -722,7 +758,6 @@ The following classes are deprecated and maintained for backwards compatibility:
 - Original enums - replaced by `domain.enums` equivalents
 
 ### Not Yet Implemented
-- Income modeling - Social Security, pensions, annuities (M4)
 - Expense/budget modeling (M5)
 - Distribution strategies (M6)
 - Simulation engine (M7)
@@ -738,7 +773,7 @@ The following classes are deprecated and maintained for backwards compatibility:
 ### Milestone 1: Domain Model Foundation ✅ COMPLETE
 **Goal**: Establish core domain model with clean architecture; refactor existing code
 
-**Status**: Completed December 2024
+**Status**: Completed December 2025
 
 **Domain Entities** (Completed):
 - [x] Created `PersonProfile` model (DOB, retirement date, life expectancy, linked spouse)
@@ -782,7 +817,7 @@ The following classes are deprecated and maintained for backwards compatibility:
 ### Milestone 2: Core Transaction & Account Operations ✅ COMPLETE
 **Goal**: Fully functional transaction processing for individual accounts
 
-**Status**: Completed December 2024
+**Status**: Completed December 2025
 
 **Transaction Model** (Completed):
 - [x] Created new `Transaction` class (`domain.model`) with complete balance tracking
@@ -823,7 +858,7 @@ The following classes are deprecated and maintained for backwards compatibility:
 ### Milestone 3a: Contribution Routing & Tracking ✅ COMPLETE
 **Goal**: Route contributions to correct accounts and track against IRS limits
 
-**Status**: Completed December 2024
+**Status**: Completed December 2025
 
 **Note**: Portfolio aggregation, IRS limits configuration, age-based catch-up, and SECURE 2.0 Roth catch-up were completed in M1.
 
@@ -858,7 +893,7 @@ The following classes are deprecated and maintained for backwards compatibility:
 ### Milestone 3b: Income-Based Phase-Outs ✅ COMPLETE
 **Goal**: Implement MAGI calculations and contribution eligibility phase-outs
 
-**Status**: Completed December 2024
+**Status**: Completed December 2025
 
 **Filing Status Support** (Completed):
 - [x] `FilingStatus` enum (Single, MFJ, MFS, HOH, QSS) with helper methods
@@ -896,31 +931,119 @@ The following classes are deprecated and maintained for backwards compatibility:
 
 **Total Points**: 19
 
-### Milestone 4: Income Modeling
+### Milestone 4: Income Modeling ✅ COMPLETE
 **Goal**: Comprehensive income source modeling
 
-**Working Income**:
-- Salary with configurable COLA
-- Income start/end dates
+**Status**: Completed December 2025
 
-**Social Security**:
-- FRA benefit input from SSA.gov
-- Early/delayed claiming adjustments
-- Spousal benefits
-- Survivor benefits
-- Earnings test
-- Benefit taxation thresholds
+#### Working Income (Completed)
+- [x] `WorkingIncome` value object with salary, COLA rate, start/end dates
+- [x] `getAnnualSalary(year)` with COLA compounding from start date
+- [x] `getMonthlySalary(date)` for date-specific salary lookup
+- [x] `isActiveOn(date)` for employment period validation
+- [x] `priorYearIncome` field for SECURE 2.0 catch-up rules
 
-**Pensions & Annuities**:
-- Defined benefit pension modeling
-- Survivor benefit options
-- Fixed/variable annuity support
-- COLA adjustments
+#### Social Security Benefits (Completed)
+- [x] `SocialSecurityBenefit` value object with FRA benefit, birth year, claiming age
+- [x] `SocialSecurityCalculator` with FRA lookup by birth year (SSA tables)
+- [x] Early claiming reduction: 5/9% per month for first 36 months, 5/12% beyond
+- [x] Delayed retirement credits: 8% per year (2/3% per month) up to age 70
+- [x] COLA adjustments with configurable rate and compounding
+- [x] `getMonthlyBenefit(date)` returning adjusted benefit for any date
 
-**Other Income**:
-- Rental income
-- Part-time retirement work
-- Other recurring sources
+#### Social Security Spousal & Survivor Benefits (Completed)
+- [x] `SpousalBenefitCalculator` interface with `DefaultSpousalBenefitCalculator`
+- [x] Spousal benefits: 50% of higher earner's FRA benefit (if greater than own)
+- [x] Divorced spouse benefits: requires 10+ year marriage, age 62+, unmarried
+- [x] Survivor benefits: 100% of deceased spouse's benefit
+- [x] Divorced survivor benefits: requires 10+ year marriage, 9+ month marriage duration
+- [x] **Critical SSA rule**: Spousal benefits do NOT reduce primary earner's benefit
+- [x] `MarriageInfo` for current marriage (spouse reference, marriage date, status)
+- [x] `PastMarriage` for marriage history (ex-spouse DOB, dates, end reason)
+- [x] `SpousalBenefitResult` and `SurvivorBenefitResult` records
+
+**Marriage History Model**:
+```
+                    ┌─────────────┐
+                    │  Person B   │ (A's ex)
+                    │  (history)  │
+                    └──────▲──────┘
+                           │ ex-spouse
+    ┌──────────────────────┴───────────────────────┐
+    │                                              │
+┌───┴───────┐                              ┌───────┴───┐
+│ Person A  │◄────── current spouse ──────►│ Person C  │
+│ (primary) │                              │ (spouse)  │
+└───────────┘                              └───────┬───┘
+                                                   │ ex-spouse
+                                           ┌───────▼──────┐
+                                           │   Person D   │ (C's ex)
+                                           │   (history)  │
+                                           └──────────────┘
+```
+
+#### Social Security Earnings Test (Completed)
+- [x] `EarningsTestCalculator` interface with `DefaultEarningsTestCalculator`
+- [x] Below FRA: $1 reduction per $2 earned over annual limit
+- [x] Year reaching FRA (months before FRA): $1 reduction per $3 over higher limit
+- [x] At/after FRA: No earnings test applies
+- [x] `EarningsTestResult` record with reduction amount, months withheld, exempt reason
+- [x] Year-specific limits from SSA (indexed annually via YAML configuration)
+- [x] 2024 limits: $22,320 (below FRA) / $59,520 (FRA year)
+- [x] 2025 limits: $23,400 (below FRA) / $62,160 (FRA year)
+
+#### Social Security Benefit Taxation (Completed)
+- [x] `BenefitTaxationCalculator` interface with `DefaultBenefitTaxationCalculator`
+- [x] Combined income formula: AGI + non-taxable interest + 50% of SS benefits
+- [x] `TaxationResult` record with taxable amount, percentage, tier
+- [x] **Thresholds are NOT indexed** (fixed since 1984/1993):
+  - Single/HOH/QSS: $25,000 (50% tier) / $34,000 (85% tier)
+  - MFJ: $32,000 (50% tier) / $44,000 (85% tier)
+  - MFS (living with spouse): $0 threshold - always up to 85% taxable
+
+#### Pension / Defined Benefit Plans (Completed)
+- [x] `Pension` value object with name, monthly benefit, start date
+- [x] `PensionPaymentForm` enum: SINGLE_LIFE, JOINT_100, JOINT_75, JOINT_50, PERIOD_CERTAIN
+- [x] Survivor benefit calculation based on payment form
+- [x] Optional COLA with annual compounding
+- [x] `getMonthlyBenefit(date)` with COLA applied
+- [x] `getAnnualBenefit(year)` for yearly totals
+- [x] `getSurvivorBenefit(date)` for survivor benefit amount
+- [x] `isActiveOn(date)` for benefit period validation
+
+#### Annuities (Completed)
+- [x] `Annuity` value object with builder pattern
+- [x] `AnnuityType` enum: FIXED_IMMEDIATE, FIXED_DEFERRED, VARIABLE
+- [x] Monthly payment calculation with optional COLA
+- [x] Start date and optional end date support
+- [x] `getMonthlyPayment(date)` for date-specific payment lookup
+- [x] `isActiveOn(date)` for payout period validation
+
+#### Other Income Sources (Completed)
+- [x] `OtherIncome` value object with builder pattern
+- [x] `OtherIncomeType` enum with earned/passive classification:
+  - RENTAL (passive) - per IRS IRC Section 469
+  - PART_TIME_WORK (earned)
+  - ROYALTIES (passive)
+  - DIVIDENDS (passive)
+  - BUSINESS (earned)
+  - OTHER (passive)
+- [x] Optional inflation/COLA adjustment
+- [x] Start date and optional end date support
+- [x] `getMonthlyIncome(date)` with inflation applied
+- [x] Earned income flag for SS earnings test integration
+
+#### Income Aggregation Service (Completed)
+- [x] `IncomeSources` container for all income sources per person
+- [x] `IncomeBreakdown` record for income breakdown by source type
+- [x] `IncomeAggregator` interface with `DefaultIncomeAggregator`
+- [x] `getMonthlyIncome(sources, date)` aggregating all active sources
+- [x] `getAnnualIncome(sources, year)` for yearly totals
+- [x] Earned vs passive income classification for SS earnings test
+- [x] Working income, Social Security, pensions, annuities, other income
+- [x] `combineForCouple(sources1, sources2, date)` for household aggregation
+
+**Total Points**: 34
 
 ### Milestone 5: Expense & Budget Modeling
 **Goal**: Category-based expense tracking with differentiated inflation
