@@ -3,8 +3,16 @@ package io.github.xmljim.retirement.domain.calculator.impl;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 
+import io.github.xmljim.retirement.domain.calculator.CompoundingFunction;
+import io.github.xmljim.retirement.domain.calculator.CompoundingFunctions;
 import io.github.xmljim.retirement.domain.calculator.ReturnCalculator;
+import io.github.xmljim.retirement.domain.exception.CalculationException;
+import io.github.xmljim.retirement.domain.exception.InvalidDateRangeException;
+import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
+import io.github.xmljim.retirement.domain.model.InvestmentAccount;
 import io.github.xmljim.retirement.domain.model.Scenario;
 import io.github.xmljim.retirement.domain.value.AssetAllocation;
 
@@ -83,22 +91,33 @@ public class DefaultReturnCalculator implements ReturnCalculator {
 
     @Override
     public BigDecimal calculateAccountGrowth(BigDecimal balance, BigDecimal annualReturnRate, int months) {
-        if (balance == null) {
-            throw new IllegalArgumentException("Balance cannot be null");
+        // Default to true annual compounding
+        return calculateAccountGrowth(balance, annualReturnRate, months, CompoundingFunctions.ANNUAL);
+    }
+
+    @Override
+    public BigDecimal calculateAccountGrowth(BigDecimal balance, BigDecimal annualReturnRate,
+                                             int periods, CompoundingFunction compounding) {
+        MissingRequiredFieldException.requireNonNull(balance, "balance");
+        MissingRequiredFieldException.requireNonNull(compounding, "compounding");
+
+        if (balance.compareTo(BigDecimal.ZERO) < 0) {
+            throw CalculationException.negativeBalance("account growth calculation", balance);
         }
-        if (months < 0) {
-            throw new IllegalArgumentException("Months cannot be negative: " + months);
+        if (periods < 0) {
+            throw CalculationException.invalidPeriod(periods);
         }
-        if (months == 0) {
+        if (periods == 0 || balance.compareTo(BigDecimal.ZERO) == 0) {
             return balance;
         }
 
-        // Convert annual rate to monthly rate
-        BigDecimal monthlyRate = toMonthlyRate(annualReturnRate);
+        // Handle zero or null rate
+        if (annualReturnRate == null || annualReturnRate.compareTo(BigDecimal.ZERO) == 0) {
+            return balance;
+        }
 
-        // Calculate growth: balance * (1 + monthlyRate)^months
-        BigDecimal growthFactor = pow(BigDecimal.ONE.add(monthlyRate), months);
-        return balance.multiply(growthFactor).setScale(SCALE, ROUNDING_MODE);
+        // Delegate to the compounding function
+        return compounding.compound(balance, annualReturnRate, periods);
     }
 
     @Override
@@ -107,15 +126,67 @@ public class DefaultReturnCalculator implements ReturnCalculator {
             return BigDecimal.ZERO;
         }
 
-        // For compound interest: monthlyRate = (1 + annualRate)^(1/12) - 1
-        // Using approximation: monthlyRate ≈ annualRate / 12 for small rates
-        // More accurate formula requires nth root which we approximate
+        // True annual compounding: monthlyRate = (1 + annualRate)^(1/12) - 1
+        BigDecimal base = BigDecimal.ONE.add(annualRate);
+        BigDecimal monthlyFactor = MathUtils.pow(base, 1.0 / 12.0, SCALE, ROUNDING_MODE);
 
-        // Simple approximation for typical return rates
-        return annualRate.divide(TWELVE, SCALE, ROUNDING_MODE);
+        return monthlyFactor.subtract(BigDecimal.ONE).setScale(SCALE, ROUNDING_MODE);
     }
 
-    private BigDecimal pow(BigDecimal base, int exponent) {
-        return MathUtils.pow(base, exponent, SCALE, ROUNDING_MODE);
+    @Override
+    public BigDecimal calculateReturn(BigDecimal balance, BigDecimal annualReturnRate,
+                                      YearMonth start, YearMonth end) {
+        MissingRequiredFieldException.requireNonNull(balance, "balance");
+        MissingRequiredFieldException.requireNonNull(start, "start");
+        MissingRequiredFieldException.requireNonNull(end, "end");
+
+        if (balance.compareTo(BigDecimal.ZERO) < 0) {
+            throw CalculationException.negativeBalance("return calculation", balance);
+        }
+        if (end.isBefore(start)) {
+            throw InvalidDateRangeException.dateMustBeAfter("end", "start");
+        }
+
+        // Calculate months between (inclusive of both months)
+        int months = (int) ChronoUnit.MONTHS.between(start, end) + 1;
+
+        return calculateAccountGrowth(balance, annualReturnRate, months);
+    }
+
+    @Override
+    public BigDecimal calculateMonthlyReturn(BigDecimal balance, BigDecimal annualReturnRate) {
+        MissingRequiredFieldException.requireNonNull(balance, "balance");
+
+        if (balance.compareTo(BigDecimal.ZERO) < 0) {
+            throw CalculationException.negativeBalance("monthly return calculation", balance);
+        }
+        if (balance.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+
+        // monthlyReturn = balance * ((1 + annualRate)^(1/12) - 1)
+        BigDecimal monthlyRate = toMonthlyRate(annualReturnRate);
+        return balance.multiply(monthlyRate).setScale(SCALE, ROUNDING_MODE);
+    }
+
+    @Override
+    public BigDecimal calculateMonthlyReturn(InvestmentAccount account, boolean isRetired) {
+        MissingRequiredFieldException.requireNonNull(account, "account");
+
+        BigDecimal rate = isRetired
+            ? account.getPostRetirementReturnRate()
+            : account.getPreRetirementReturnRate();
+
+        return calculateMonthlyReturn(account.getBalance(), rate);
+    }
+
+    @Override
+    public InvestmentAccount applyMonthlyReturn(InvestmentAccount account, boolean isRetired) {
+        MissingRequiredFieldException.requireNonNull(account, "account");
+
+        BigDecimal monthlyReturn = calculateMonthlyReturn(account, isRetired);
+        BigDecimal newBalance = account.getBalance().add(monthlyReturn);
+
+        return account.withBalance(newBalance);
     }
 }

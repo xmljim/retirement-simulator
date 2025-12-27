@@ -627,115 +627,274 @@ Apply appropriate patterns where they add value:
 
 ## Current State
 
-### Existing Code
+### Implemented (Milestones 1, 2, 3a & 3b Complete)
 
-**`PortfolioParameters.java`**:
-- Full parameter model with builders for investments, contributions, income
-- Contains nested classes: Investments, Contribution, WorkingIncome, WithdrawalIncome, MonthlyRetirementIncome
-- Uses Builder pattern appropriately
-- **Refactoring needed**: May need restructuring to align with new Person Profile / Portfolio concepts
+**Domain Model** (`io.github.xmljim.retirement.domain.model`):
+- `PersonProfile` - Individual with DOB, retirement date, life expectancy, linked spouse support
+- `Portfolio` - Container for investment accounts with aggregation
+- `InvestmentAccount` - Account with type, allocation, return rates, balance
+- `Scenario` - Simulation configuration (time horizon, assumptions, strategies)
+- `Transaction` - Complete transaction with balance tracking, chaining, and metadata (M2)
+- `TransactionHistory` - Immutable collection of transactions with query and aggregation (M2)
+- `CouplePortfolioView` - Aggregate view across spouse portfolios with per-spouse YTD tracking (M3a)
 
-**`Functions.java`**:
-- Core financial calculations (inflation, COLA, contributions, SS, other income)
-- Functional interfaces with lambda implementations
-- **Refactoring needed**: Consider breaking into separate classes by responsibility (InflationCalculator, ContributionCalculator, etc.) to follow Single Responsibility Principle
+**Value Objects** (`io.github.xmljim.retirement.domain.value`):
+- `WorkingIncome` - Salary with COLA, includes `priorYearIncome` for SECURE 2.0
+- `ContributionConfig` - Contribution settings with `targetAccountType` and `matchingPolicy`
+- `AssetAllocation` - Stock/bond/cash allocation with validation
+- `RetirementIncome` - Social Security, pension, annuity income sources
+- `MatchingPolicy` - Interface with `SimpleMatchingPolicy`, `TieredMatchingPolicy`, `NoMatchingPolicy`
+- `MatchTier` - Record for tiered matching configuration
+- `WithdrawalResult` - Record capturing withdrawal amount, account details, and remaining balance (M2)
+- `ContributionRecord` - Immutable record of a single contribution (M3a)
+- `RoutingConfiguration` - Configuration for contribution routing rules (M3a)
+- `RoutingRule` - Individual routing rule with account type and percentage (M3a)
+- `YTDSummary` - Year-to-date contribution summary with limits and remaining room (M3a)
+- `IncomeDetails` - MAGI add-back components value object (M3b)
+- `PhaseOutResult` - Phase-out calculation result with warnings (M3b)
 
-**`Transaction.java`**:
-- Partial implementation with retirement status, contribution rates, income calculations
-- `getEndBalance()` returns hardcoded 0.0
-- **Refactoring needed**: Significant work needed to complete; may need redesign for multi-account support
+**Enums** (`io.github.xmljim.retirement.domain.enums`):
+- `AccountType` - 401K, IRA, ROTH variants, HSA, Taxable Brokerage with `TaxTreatment`
+- `ContributionType` - PERSONAL, EMPLOYER
+- `TransactionType` - CONTRIBUTION, WITHDRAWAL, RETURN, FEE, TRANSFER (M2)
+- `TaxTreatment` - PRE_TAX, POST_TAX, TAX_FREE
+- `LimitCategory` - EMPLOYER_401K, IRA, HSA for IRS limit grouping (M3a)
+- `FilingStatus` - Tax filing status (Single, MFJ, MFS, HOH, QSS) with helper methods (M3b)
 
-**Enums**:
-- `TransactionType`: CONTRIBUTION, WITHDRAWAL
-- `ContributionType`: PERSONAL, EMPLOYER
-- `WithdrawalType`: FIXED, SALARY
-- **May need expansion** for new distribution strategies
+**Calculator Framework** (`io.github.xmljim.retirement.domain.calculator`):
+- `Calculator` - Base interface with calculation lifecycle
+- `InflationCalculator` - Inflation adjustment calculations
+- `ContributionCalculator` - Contribution amount calculations
+- `SocialSecurityCalculator` - SS benefit calculations with claiming age adjustments
+- `IrsContributionRules` - Interface for IRS rule implementations
+- `Secure2ContributionRules` - SECURE 2.0 implementation with catch-up rules
+- `ReturnCalculator` - Investment return calculations with compounding options (M2)
+- `WithdrawalCalculator` - Withdrawal amount calculations with strategy support (M2)
+- `CompoundingFunction` - Functional interface for compounding strategies (M2)
+- `CompoundingFunctions` - Standard implementations: ANNUAL, MONTHLY, DAILY, CONTINUOUS (M2)
+- `ContributionRouter` - Routes contributions to appropriate accounts (M3a)
+- `ContributionAllocation` - Tracks allocated contribution amounts (M3a)
+- `YTDContributionTracker` - Year-to-date contribution tracking interface (M3a)
+- `ContributionLimitChecker` - Pre-contribution limit validation (M3a)
+- `LimitCheckResult` - Result of contribution limit check (M3a)
+- `MAGICalculator` - Modified Adjusted Gross Income calculation interface (M3b)
+- `PhaseOutCalculator` - IRA contribution phase-out calculation interface (M3b)
 
-**Tests**:
-- `FunctionsTest.java`: 17 tests covering calculation functions
-- `TransactionTest.java`: 16 tests covering Transaction behavior
-- **Refactoring needed**: Tests may need updates as code is refactored
+**Calculator Implementations** (`io.github.xmljim.retirement.domain.calculator.impl`):
+- `DefaultInflationCalculator` - Standard inflation adjustments
+- `DefaultContributionCalculator` - Standard contribution calculations
+- `DefaultSocialSecurityCalculator` - SS benefit with claiming age adjustments
+- `DefaultReturnCalculator` - Investment growth with pluggable compounding (M2)
+- `DefaultWithdrawalCalculator` - Basic withdrawal logic (M2)
+- `MathUtils` - BigDecimal power functions for financial calculations (M2)
+- `DefaultContributionRouter` - Standard contribution routing with overflow (M3a)
+- `DefaultYTDContributionTracker` - Immutable YTD tracking implementation (M3a)
+- `DefaultContributionLimitChecker` - IRS limit enforcement (M3a)
+- `DefaultMAGICalculator` - MAGI calculation implementation (M3b)
+- `DefaultPhaseOutCalculator` - Phase-out calculation with linear interpolation (M3b)
 
-### Refactoring Considerations
+**Configuration** (`io.github.xmljim.retirement.domain.config`):
+- `IrsContributionLimits` - Spring `@ConfigurationProperties` for IRS limits from YAML
+- Supports 401(k), IRA, and HSA limits with year-by-year configuration
+- IRS-style COLA rounding for future year extrapolation
+- `IraPhaseOutLimits` - Phase-out threshold configuration with YAML-driven thresholds (M3b)
+- `PhaseOutRange` and `YearPhaseOuts` records for structured phase-out configuration (M3b)
 
-Based on the expanded requirements, the existing code needs:
+**Exceptions** (`io.github.xmljim.retirement.domain.exception`):
+- `ValidationException` - Domain validation errors
+- `MissingRequiredFieldException` - Required field validation
+- `CalculationException` - Calculation-specific errors (M2)
+- `InvalidDateRangeException` - Date range validation (M2)
 
-1. **Domain Model Restructuring**:
-   - Introduce `PersonProfile` as top-level entity
-   - Separate `Portfolio` from `PortfolioParameters`
-   - Create `InvestmentAccount` for individual accounts
-   - Extract `Scenario` as simulation configuration
+### Legacy Code (Deprecated)
 
-2. **Functions Decomposition**:
-   - Break monolithic Functions class into focused calculators
-   - Consider Strategy pattern for different calculation approaches
+The following classes are deprecated and maintained for backwards compatibility:
 
-3. **Transaction Redesign**:
-   - Complete `getEndBalance()` implementation
-   - Support multi-account transactions
-   - Align with monthly simulation loop requirements
+**`PortfolioParameters.java`** (`@Deprecated`):
+- Original parameter model - replaced by domain model classes
+- Migration guide in Javadoc
+
+**`Functions.java`** (`@Deprecated`):
+- Original calculations - replaced by Calculator framework
+- Migration guide in Javadoc
+
+**`model/ContributionType.java`, `model/WithdrawalType.java`, `model/TransactionType.java`** (`@Deprecated`):
+- Original enums - replaced by `domain.enums` equivalents
 
 ### Not Yet Implemented
-- Person Profile model
-- Multi-account portfolio support
-- IRS contribution limits and rules
-- Expense/budget modeling
-- Distribution strategies (beyond basic)
-- Simulation engine
-- Reporting module
-- API layer
+- Income modeling - Social Security, pensions, annuities (M4)
+- Expense/budget modeling (M5)
+- Distribution strategies (M6)
+- Simulation engine (M7)
+- Scenario analysis (M8)
+- Reporting module (M9)
+- API layer (M10)
+- UI (M11)
 
 ---
 
 ## Proposed Milestones
 
-### Milestone 1: Domain Model Foundation
+### Milestone 1: Domain Model Foundation ✅ COMPLETE
 **Goal**: Establish core domain model with clean architecture; refactor existing code
 
-**Domain Entities**:
-- Create `PersonProfile` model (DOB, retirement date, life expectancy, linked spouse)
-- Create `Portfolio` as container for investment accounts
-- Create `InvestmentAccount` model (type, allocation, return rates, balance)
-- Create `Scenario` configuration model
-- Define account type enum (401k, IRA, Roth IRA, Roth 401k, HSA, Taxable)
+**Status**: Completed December 2024
 
-**Refactoring**:
-- Restructure `PortfolioParameters` to align with new domain model
-- Decompose `Functions` class into focused calculator classes (Single Responsibility)
-- Apply Strategy pattern where appropriate
-- Update existing tests to match refactored code
+**Domain Entities** (Completed):
+- [x] Created `PersonProfile` model (DOB, retirement date, life expectancy, linked spouse)
+- [x] Created `Portfolio` as container for investment accounts
+- [x] Created `InvestmentAccount` model (type, allocation, return rates, balance)
+- [x] Created `Scenario` configuration model
+- [x] Defined `AccountType` enum (401k, IRA, Roth IRA, Roth 401k, HSA, Taxable Brokerage) with `TaxTreatment`
 
-**Foundation**:
-- Establish package structure following layered architecture
-- Set up proper interfaces for extensibility
-- Full test coverage for domain model
+**Calculator Framework** (Completed):
+- [x] Created `Calculator` base interface with calculation lifecycle
+- [x] Implemented `InflationCalculator`, `ContributionCalculator`, `SocialSecurityCalculator`
+- [x] Applied Strategy pattern for extensibility
+- [x] Decomposed monolithic `Functions` class (marked `@Deprecated`)
 
-### Milestone 2: Core Transaction & Account Operations
+**IRS Contribution Rules - SECURE 2.0** (Completed):
+- [x] Created `IrsContributionLimits` with Spring `@ConfigurationProperties`
+- [x] Implemented `IrsContributionRules` interface and `Secure2ContributionRules`
+- [x] Age-based catch-up (50+) and super catch-up (60-63, effective 2025)
+- [x] ROTH-only catch-up for high earners ($145K+, effective 2026)
+- [x] HSA contribution limits with age 55+ catch-up
+- [x] IRS-style COLA rounding ($500 for limits, $50 for HSA)
+- [x] YAML configuration with year-by-year limits through 2026
+
+**Matching Policies** (Completed):
+- [x] Created `MatchingPolicy` interface with `SimpleMatchingPolicy`, `TieredMatchingPolicy`, `NoMatchingPolicy`
+- [x] Created `MatchTier` record for tiered matching configuration
+
+**Value Objects** (Completed):
+- [x] Created `WorkingIncome` with `priorYearIncome` for SECURE 2.0 rules
+- [x] Created `ContributionConfig` with `targetAccountType` and `matchingPolicy`
+- [x] Created `AssetAllocation`, `RetirementIncome` and related value objects
+
+**Foundation** (Completed):
+- [x] Established package structure: `domain.model`, `domain.value`, `domain.enums`, `domain.calculator`, `domain.config`, `domain.exception`
+- [x] Set up proper interfaces for extensibility
+- [x] Full test coverage with 80%+ line coverage
+- [x] Quality gates: Checkstyle, SpotBugs, PMD all passing
+- [x] Package-level Javadoc for all packages
+- [x] Legacy code marked `@Deprecated` with migration guides
+
+### Milestone 2: Core Transaction & Account Operations ✅ COMPLETE
 **Goal**: Fully functional transaction processing for individual accounts
 
-- Implement `Transaction` with complete balance calculations
-- Calculate investment returns (monthly compounding)
-- Calculate actual contribution amounts (rate × salary)
-- Calculate actual withdrawal amounts
-- Support transaction chaining (previous balance → current start balance)
-- Account-level transaction history
-- Full test coverage
+**Status**: Completed December 2024
 
-### Milestone 3: Multi-Account Portfolio & Contribution Rules
-**Goal**: Support multiple investment accounts with IRS-compliant contribution modeling
+**Transaction Model** (Completed):
+- [x] Created new `Transaction` class (`domain.model`) with complete balance tracking
+- [x] Transaction fields: type, amount, description, account type, start balance, end balance, date, previous transaction
+- [x] Support transaction chaining via `previous` reference for balance continuity
+- [x] Builder pattern with fluent API for transaction construction
+- [x] Created new `TransactionType` enum (`domain.enums`) - CONTRIBUTION, WITHDRAWAL, RETURN, FEE, TRANSFER
+- [x] Deprecated legacy `TransactionType` in `domain.model` with migration guide
 
-**Multi-Account Support**:
-- Portfolio aggregation across accounts
-- Contribution routing to specific accounts
-- Cross-account balance tracking
+**Transaction History** (Completed):
+- [x] Created `TransactionHistory` class for account-level transaction tracking
+- [x] Immutable design with `append()` returning new instance
+- [x] Query methods: `getByType()`, `getByDateRange()`, `getLatest()`
+- [x] Aggregation: `getTotalContributions()`, `getTotalWithdrawals()`, `getNetChange()`
+- [x] Balance tracking: `getCurrentBalance()` from latest transaction
 
-**IRS Contribution Rules**:
-- Contribution limits by account type (401k, IRA, Roth, HSA)
-- Age-based catch-up contributions (50+, 55+ for HSA, 60-63 super catch-up)
-- Income-based phase-outs (IRA deductibility, Roth eligibility)
-- SECURE 2.0 rule support (effective dates, Roth catch-up for high earners)
-- Base year limits with inflation projection
-- Year-to-date contribution tracking against limits
+**Withdrawal Calculations** (Completed):
+- [x] Created `WithdrawalResult` record capturing withdrawal details and remaining balance
+- [x] Created `WithdrawalCalculator` interface for withdrawal strategy abstraction
+- [x] Implemented `DefaultWithdrawalCalculator` with basic withdrawal logic
+
+**Investment Returns** (Completed):
+- [x] Created `CompoundingFunction` functional interface (Strategy pattern)
+- [x] Created `CompoundingFunctions` utility class with standard implementations:
+  - `ANNUAL` - True annual compounding: `principal * (1 + rate)^(months/12)`
+  - `MONTHLY` - Discrete monthly: `principal * (1 + rate/12)^months`
+  - `DAILY` - Daily compounding: `principal * (1 + rate/365)^days`
+  - `CONTINUOUS` - Continuous: `principal * e^(rate * years)`
+- [x] Updated `ReturnCalculator` with `calculateAccountGrowth(balance, rate, periods, compounding)` overload
+- [x] Made `MathUtils` public for reuse across calculators
+
+**Test Coverage** (Completed):
+- [x] Comprehensive tests for all new classes
+- [x] Edge case coverage: null handling, zero values, negative values
+- [x] Integration tests verifying calculator interactions
+- [x] 80%+ line coverage maintained
+
+### Milestone 3a: Contribution Routing & Tracking ✅ COMPLETE
+**Goal**: Route contributions to correct accounts and track against IRS limits
+
+**Status**: Completed December 2024
+
+**Note**: Portfolio aggregation, IRS limits configuration, age-based catch-up, and SECURE 2.0 Roth catch-up were completed in M1.
+
+**Contribution Routing** (Completed):
+- [x] `ContributionRouter` interface and `DefaultContributionRouter` implementation
+- [x] `RoutingConfiguration` and `RoutingRule` for configurable routing
+- [x] Support split contributions (e.g., 80% Traditional, 20% Roth)
+- [x] Overflow handling when primary account hits limit
+- [x] Employer match routing (always to Traditional)
+- [x] High earner ROTH catch-up routing per SECURE 2.0
+- [x] `ContributionAllocation` for tracking routed amounts
+
+**YTD Tracking & Limit Enforcement** (Completed):
+- [x] `YTDContributionTracker` interface with immutable `DefaultYTDContributionTracker`
+- [x] `ContributionRecord` for tracking individual contributions
+- [x] `LimitCategory` enum (EMPLOYER_401K, IRA, HSA) for limit grouping
+- [x] `ContributionLimitChecker` with `LimitCheckResult` for pre-contribution validation
+- [x] Combined IRA limit enforcement (Traditional + Roth share limit)
+- [x] HSA family vs individual limit based on spouse linkage
+- [x] `YTDSummary` for contribution status reporting
+- [x] `CouplePortfolioView` for combined view with per-spouse YTD tracking
+
+**Test Coverage** (Completed):
+- [x] Comprehensive tests for routing (single, split, overflow, employer match)
+- [x] YTD tracking tests (contributions, year rollover, at-limit scenarios)
+- [x] Limit checker tests (all account types, catch-up, HSA family/individual)
+- [x] Integration tests (full year, couple with different ages)
+- [x] Birthday edge case tests for catch-up eligibility transitions
+
+**Total Points**: 16
+
+### Milestone 3b: Income-Based Phase-Outs ✅ COMPLETE
+**Goal**: Implement MAGI calculations and contribution eligibility phase-outs
+
+**Status**: Completed December 2024
+
+**Filing Status Support** (Completed):
+- [x] `FilingStatus` enum (Single, MFJ, MFS, HOH, QSS) with helper methods
+- [x] `IraPhaseOutLimits` configuration with YAML-driven thresholds
+- [x] `PhaseOutRange` and `YearPhaseOuts` records for structured configuration
+- [x] Extrapolation support for future years with IRS-style rounding
+
+**MAGI Calculator** (Completed):
+- [x] `MAGICalculator` interface with `DefaultMAGICalculator` implementation
+- [x] `IncomeDetails` value object with 6 add-back items
+- [x] Simple calculation: MAGI = AGI + total add-backs
+
+**Phase-Out Rules** (Completed):
+- [x] `PhaseOutCalculator` interface for Roth and Traditional IRA phase-outs
+- [x] `DefaultPhaseOutCalculator` with linear interpolation
+- [x] `PhaseOutResult` record with builder pattern
+- [x] Traditional IRA deductibility phase-out (covered by employer plan, spouse covered, not covered)
+- [x] Roth IRA contribution eligibility phase-out
+- [x] Backdoor Roth awareness flagging with warning messages
+- [x] IRS rounding rules (up to nearest $10, $200 minimum)
+
+**Test Coverage** (Completed):
+- [x] `PhaseOutCalculatorTest` - 13 unit tests
+- [x] `PhaseOutIntegrationTest` - 12 end-to-end tests
+- [x] `MAGICalculatorTest` - 15 tests
+- [x] `IncomeDetailsTest` - 9 tests
+- [x] `FilingStatusTest` - 6 tests
+- [x] `IraPhaseOutLimitsTest` - 8 tests
+
+**Technical Debt Resolution** (Completed):
+- [x] Extracted `TestIrsLimitsFixture` shared test utility
+- [x] Extracted `TestPhaseOutFixture` shared test utility
+- [x] Removed CPD-OFF suppressions from test files
+- [x] Created `DEPRECATED_CODE_MIGRATION.md` documenting M1 deprecated types
+
+**Total Points**: 19
 
 ### Milestone 4: Income Modeling
 **Goal**: Comprehensive income source modeling

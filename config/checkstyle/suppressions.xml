@@ -17,8 +17,9 @@
 
     <!--
         LEGACY CODE SUPPRESSIONS
-        These files predate the quality gates and will be refactored in M1.
-        TODO: Remove after completing issues #7 and #8
+        These files are deprecated and will be removed in a future milestone.
+        Kept for backwards compatibility during transition period.
+        See: Issues #7, #8 (completed in M1)
     -->
     <!-- Suppress all checks for legacy model files (to be refactored in #7) -->
     <suppress files="io[\\/]github[\\/]xmljim[\\/]retirement[\\/]model[\\/].*\.java$" checks=".*"/>
