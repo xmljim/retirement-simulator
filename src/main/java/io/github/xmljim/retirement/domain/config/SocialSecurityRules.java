@@ -66,6 +66,8 @@ public class SocialSecurityRules {
     private DelayedCredits delayedCredits = new DelayedCredits();
     private SpousalRules spousal = new SpousalRules();
     private SurvivorRules survivor = new SurvivorRules();
+    private EarningsTestRules earningsTest = new EarningsTestRules();
+    private TaxationRules taxation = new TaxationRules();
 
     /**
      * Full Retirement Age entry for a range of birth years.
@@ -448,5 +450,189 @@ public class SocialSecurityRules {
 
     public void setSurvivor(SurvivorRules survivor) {
         this.survivor = survivor;
+    }
+
+    public EarningsTestRules getEarningsTest() {
+        return earningsTest;
+    }
+
+    public void setEarningsTest(EarningsTestRules earningsTest) {
+        this.earningsTest = earningsTest;
+    }
+
+    public TaxationRules getTaxation() {
+        return taxation;
+    }
+
+    public void setTaxation(TaxationRules taxation) {
+        this.taxation = taxation;
+    }
+
+    /**
+     * Year-specific earnings test limits.
+     *
+     * <p>Limits are indexed annually by SSA based on national wage trends.
+     *
+     * @param year the tax year
+     * @param belowFraLimit annual exempt amount for those below FRA all year
+     * @param fraYearLimit annual exempt amount for year reaching FRA
+     */
+    public record EarningsTestLimits(
+        int year,
+        BigDecimal belowFraLimit,
+        BigDecimal fraYearLimit
+    ) { }
+
+    /**
+     * Earnings test rules for Social Security benefit reduction.
+     *
+     * <p>Per SSA rules, benefits are reduced when working before FRA:
+     * <ul>
+     *   <li>Below FRA all year: $1 reduction per $2 earned over limit</li>
+     *   <li>Year reaching FRA (months before): $1 per $3 earned over higher limit</li>
+     *   <li>At/after FRA: No earnings test</li>
+     * </ul>
+     *
+     * <p>Limits are indexed annually. Withheld benefits are not lost - they're
+     * added back at FRA through benefit recalculation.
+     *
+     * @see <a href="https://www.ssa.gov/benefits/retirement/planner/whileworking.html">SSA Earnings Test</a>
+     * @see <a href="https://www.ssa.gov/oact/cola/rtea.html">SSA Earnings Test Limits</a>
+     */
+    public static class EarningsTestRules {
+        private List<EarningsTestLimits> limits = new ArrayList<>();
+        private int belowFraReductionRatio = 2;  // $1 per $2 over
+        private int fraYearReductionRatio = 3;   // $1 per $3 over
+
+        public List<EarningsTestLimits> getLimits() {
+            return limits;
+        }
+
+        public void setLimits(List<EarningsTestLimits> limits) {
+            this.limits = limits;
+        }
+
+        public int getBelowFraReductionRatio() {
+            return belowFraReductionRatio;
+        }
+
+        public void setBelowFraReductionRatio(int belowFraReductionRatio) {
+            this.belowFraReductionRatio = belowFraReductionRatio;
+        }
+
+        public int getFraYearReductionRatio() {
+            return fraYearReductionRatio;
+        }
+
+        public void setFraYearReductionRatio(int fraYearReductionRatio) {
+            this.fraYearReductionRatio = fraYearReductionRatio;
+        }
+
+        /**
+         * Gets the below-FRA earnings limit for a specific year.
+         *
+         * @param year the tax year
+         * @return the limit, or default of $22,320 (2024) if year not found
+         */
+        public BigDecimal getBelowFraLimit(int year) {
+            return limits.stream()
+                .filter(l -> l.year() == year)
+                .findFirst()
+                .map(EarningsTestLimits::belowFraLimit)
+                .orElse(new BigDecimal("22320"));  // 2024 default
+        }
+
+        /**
+         * Gets the FRA-year earnings limit for a specific year.
+         *
+         * @param year the tax year
+         * @return the limit, or default of $59,520 (2024) if year not found
+         */
+        public BigDecimal getFraYearLimit(int year) {
+            return limits.stream()
+                .filter(l -> l.year() == year)
+                .findFirst()
+                .map(EarningsTestLimits::fraYearLimit)
+                .orElse(new BigDecimal("59520"));  // 2024 default
+        }
+    }
+
+    /**
+     * Benefit taxation rules per IRS Publication 915.
+     *
+     * <p>Determines what percentage of Social Security benefits are taxable.
+     * Combined income = AGI + non-taxable interest + 50% of SS benefits.
+     *
+     * <p><b>IMPORTANT:</b> These thresholds are NOT indexed for inflation.
+     * They have remained fixed since 1984/1993, creating "bracket creep"
+     * where more benefits become taxable over time as incomes rise.
+     *
+     * <p>Thresholds by filing status:
+     * <ul>
+     *   <li>Single/HOH/QSS: $25,000 (50% tier) / $34,000 (85% tier)</li>
+     *   <li>MFJ: $32,000 (50% tier) / $44,000 (85% tier)</li>
+     *   <li>MFS (living with spouse): $0 - always up to 85% taxable</li>
+     * </ul>
+     *
+     * @see <a href="https://www.irs.gov/publications/p915">IRS Publication 915</a>
+     */
+    public static class TaxationRules {
+        // Single/HOH/QSS thresholds (NOT indexed - fixed since 1984/1993)
+        private BigDecimal singleLowerThreshold = new BigDecimal("25000");
+        private BigDecimal singleUpperThreshold = new BigDecimal("34000");
+        // MFJ thresholds
+        private BigDecimal jointLowerThreshold = new BigDecimal("32000");
+        private BigDecimal jointUpperThreshold = new BigDecimal("44000");
+        // Taxable percentages
+        private BigDecimal lowerTierPercentage = new BigDecimal("0.50");
+        private BigDecimal upperTierPercentage = new BigDecimal("0.85");
+
+        public BigDecimal getSingleLowerThreshold() {
+            return singleLowerThreshold;
+        }
+
+        public void setSingleLowerThreshold(BigDecimal singleLowerThreshold) {
+            this.singleLowerThreshold = singleLowerThreshold;
+        }
+
+        public BigDecimal getSingleUpperThreshold() {
+            return singleUpperThreshold;
+        }
+
+        public void setSingleUpperThreshold(BigDecimal singleUpperThreshold) {
+            this.singleUpperThreshold = singleUpperThreshold;
+        }
+
+        public BigDecimal getJointLowerThreshold() {
+            return jointLowerThreshold;
+        }
+
+        public void setJointLowerThreshold(BigDecimal jointLowerThreshold) {
+            this.jointLowerThreshold = jointLowerThreshold;
+        }
+
+        public BigDecimal getJointUpperThreshold() {
+            return jointUpperThreshold;
+        }
+
+        public void setJointUpperThreshold(BigDecimal jointUpperThreshold) {
+            this.jointUpperThreshold = jointUpperThreshold;
+        }
+
+        public BigDecimal getLowerTierPercentage() {
+            return lowerTierPercentage;
+        }
+
+        public void setLowerTierPercentage(BigDecimal lowerTierPercentage) {
+            this.lowerTierPercentage = lowerTierPercentage;
+        }
+
+        public BigDecimal getUpperTierPercentage() {
+            return upperTierPercentage;
+        }
+
+        public void setUpperTierPercentage(BigDecimal upperTierPercentage) {
+            this.upperTierPercentage = upperTierPercentage;
+        }
     }
 }

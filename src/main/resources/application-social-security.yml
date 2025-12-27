@@ -69,3 +69,29 @@ social-security:
     # Max reduction ~28.5% at age 60 (survivor receives ~71.5% of full benefit)
     reduction-rate-numerator: 285
     reduction-rate-denominator: 10000
+
+  # Earnings test rules - limits ARE indexed annually by SSA
+  # Source: https://www.ssa.gov/benefits/retirement/planner/whileworking.html
+  # Source: https://www.ssa.gov/oact/cola/rtea.html
+  earnings-test:
+    below-fra-reduction-ratio: 2    # $1 reduction per $2 over limit
+    fra-year-reduction-ratio: 3     # $1 reduction per $3 over limit (year reaching FRA)
+    limits:
+      - year: 2024
+        below-fra-limit: 22320      # Annual exempt amount below FRA
+        fra-year-limit: 59520       # Annual exempt amount in year reaching FRA
+      - year: 2025
+        below-fra-limit: 23400
+        fra-year-limit: 62160
+
+  # Benefit taxation thresholds - NOT indexed (fixed since 1984/1993)
+  # Source: IRS Publication 915 (https://www.irs.gov/publications/p915)
+  # NOTE: These thresholds create "bracket creep" as more benefits become
+  # taxable over time due to inflation. Congress has not adjusted these.
+  taxation:
+    single-lower-threshold: 25000   # Combined income threshold for 50% taxable (Single/HOH/QSS)
+    single-upper-threshold: 34000   # Combined income threshold for 85% taxable (Single/HOH/QSS)
+    joint-lower-threshold: 32000    # Combined income threshold for 50% taxable (MFJ)
+    joint-upper-threshold: 44000    # Combined income threshold for 85% taxable (MFJ)
+    lower-tier-percentage: 0.50     # Up to 50% of benefits taxable
+    upper-tier-percentage: 0.85     # Up to 85% of benefits taxable

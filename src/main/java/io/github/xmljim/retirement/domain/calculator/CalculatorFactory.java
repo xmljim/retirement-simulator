@@ -1,8 +1,10 @@
 package io.github.xmljim.retirement.domain.calculator;
 
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultBenefitTaxationCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultContributionCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultContributionLimitChecker;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultContributionRouter;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultEarningsTestCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultIncomeCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultInflationCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultMAGICalculator;
@@ -240,5 +242,54 @@ public final class CalculatorFactory {
     public static PhaseOutCalculator phaseOutCalculator(
             IraPhaseOutLimits phaseOutLimits, IrsContributionLimits contributionLimits) {
         return new DefaultPhaseOutCalculator(phaseOutLimits, contributionLimits);
+    }
+
+    /**
+     * Returns a new Social Security earnings test calculator.
+     *
+     * <p>The earnings test determines how much of a beneficiary's Social Security
+     * benefits are withheld when they earn income from work before Full Retirement Age.
+     *
+     * <p>Usage:
+     * <pre>{@code
+     * EarningsTestCalculator calculator = CalculatorFactory.earningsTestCalculator();
+     *
+     * EarningsTestResult result = calculator.calculate(
+     *     new BigDecimal("50000"),  // annual earnings
+     *     new BigDecimal("24000"),  // annual SS benefit
+     *     780,                       // age in months (65 years)
+     *     804,                       // FRA in months (67 years)
+     *     2025                       // tax year
+     * );
+     * }</pre>
+     *
+     * @return a new EarningsTestCalculator instance
+     */
+    public static EarningsTestCalculator earningsTestCalculator() {
+        return new DefaultEarningsTestCalculator();
+    }
+
+    /**
+     * Returns a new Social Security benefit taxation calculator.
+     *
+     * <p>The taxation calculator determines what percentage of Social Security
+     * benefits are taxable based on combined income and filing status.
+     *
+     * <p>Usage:
+     * <pre>{@code
+     * BenefitTaxationCalculator calculator = CalculatorFactory.benefitTaxationCalculator();
+     *
+     * TaxationResult result = calculator.calculate(
+     *     new BigDecimal("24000"),  // annual SS benefit
+     *     new BigDecimal("50000"),  // AGI
+     *     new BigDecimal("1000"),   // non-taxable interest
+     *     FilingStatus.SINGLE       // filing status
+     * );
+     * }</pre>
+     *
+     * @return a new BenefitTaxationCalculator instance
+     */
+    public static BenefitTaxationCalculator benefitTaxationCalculator() {
+        return new DefaultBenefitTaxationCalculator();
     }
 }
