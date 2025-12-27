@@ -1,7 +1,10 @@
 package io.github.xmljim.retirement.domain.value;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.Period;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 
 import io.github.xmljim.retirement.domain.enums.MaritalStatus;
@@ -53,7 +56,8 @@ public record MarriageInfo(
     Optional<LocalDate> marriageDate,
     Optional<LocalDate> divorceDate,
     Optional<LocalDate> spouseDeathDate,
-    boolean livingWithSpouse
+    boolean livingWithSpouse,
+    List<PastMarriage> marriageHistory
 ) {
 
     /**
@@ -66,6 +70,7 @@ public record MarriageInfo(
         marriageDate = marriageDate != null ? marriageDate : Optional.empty();
         divorceDate = divorceDate != null ? divorceDate : Optional.empty();
         spouseDeathDate = spouseDeathDate != null ? spouseDeathDate : Optional.empty();
+        marriageHistory = marriageHistory != null ? List.copyOf(marriageHistory) : List.of();
     }
 
     // ==================== Factory Methods ====================
@@ -81,7 +86,8 @@ public record MarriageInfo(
             Optional.empty(),
             Optional.empty(),
             Optional.empty(),
-            false
+            false,
+            List.of()
         );
     }
 
@@ -97,7 +103,8 @@ public record MarriageInfo(
             Optional.of(marriageDate),
             Optional.empty(),
             Optional.empty(),
-            true
+            true,
+            List.of()
         );
     }
 
@@ -109,12 +116,26 @@ public record MarriageInfo(
      * @return MarriageInfo with MARRIED status
      */
     public static MarriageInfo married(LocalDate marriageDate, boolean livingTogether) {
+        return married(marriageDate, livingTogether, List.of());
+    }
+
+    /**
+     * Creates a MarriageInfo for a married person with history of past marriages.
+     *
+     * @param marriageDate the date of current marriage
+     * @param livingTogether whether currently living with spouse
+     * @param history past marriages for benefit calculations
+     * @return MarriageInfo with MARRIED status
+     */
+    public static MarriageInfo married(LocalDate marriageDate, boolean livingTogether,
+            List<PastMarriage> history) {
         return new MarriageInfo(
             MaritalStatus.MARRIED,
             Optional.of(marriageDate),
             Optional.empty(),
             Optional.empty(),
-            livingTogether
+            livingTogether,
+            history
         );
     }
 
@@ -126,12 +147,26 @@ public record MarriageInfo(
      * @return MarriageInfo with DIVORCED status
      */
     public static MarriageInfo divorced(LocalDate marriageDate, LocalDate divorceDate) {
+        return divorced(marriageDate, divorceDate, List.of());
+    }
+
+    /**
+     * Creates a MarriageInfo for a divorced person with additional marriage history.
+     *
+     * @param marriageDate the date of most recent marriage
+     * @param divorceDate the date of most recent divorce
+     * @param additionalHistory other past marriages
+     * @return MarriageInfo with DIVORCED status
+     */
+    public static MarriageInfo divorced(LocalDate marriageDate, LocalDate divorceDate,
+            List<PastMarriage> additionalHistory) {
         return new MarriageInfo(
             MaritalStatus.DIVORCED,
             Optional.of(marriageDate),
             Optional.of(divorceDate),
             Optional.empty(),
-            false
+            false,
+            additionalHistory
         );
     }
 
@@ -143,12 +178,26 @@ public record MarriageInfo(
      * @return MarriageInfo with WIDOWED status
      */
     public static MarriageInfo widowed(LocalDate marriageDate, LocalDate spouseDeathDate) {
+        return widowed(marriageDate, spouseDeathDate, List.of());
+    }
+
+    /**
+     * Creates a MarriageInfo for a widowed person with additional marriage history.
+     *
+     * @param marriageDate the date of most recent marriage
+     * @param spouseDeathDate the date spouse died
+     * @param additionalHistory other past marriages
+     * @return MarriageInfo with WIDOWED status
+     */
+    public static MarriageInfo widowed(LocalDate marriageDate, LocalDate spouseDeathDate,
+            List<PastMarriage> additionalHistory) {
         return new MarriageInfo(
             MaritalStatus.WIDOWED,
             Optional.of(marriageDate),
             Optional.empty(),
             Optional.of(spouseDeathDate),
-            false
+            false,
+            additionalHistory
         );
     }
 
@@ -291,5 +340,64 @@ public record MarriageInfo(
      */
     public boolean remarriedAfterAge(int ageMonthsAtRemarriage, int thresholdMonths) {
         return ageMonthsAtRemarriage >= thresholdMonths;
+    }
+
+    // ==================== Marriage History Methods ====================
+
+    /**
+     * Finds all past marriages that qualify for divorced spouse benefits.
+     *
+     * @param asOf the reference date
+     * @return list of qualifying past marriages
+     */
+    public List<PastMarriage> getQualifyingDivorcedSpouseMarriages(LocalDate asOf) {
+        return marriageHistory.stream()
+            .filter(PastMarriage::qualifiesForDivorcedSpouseBenefits)
+            .filter(m -> m.divorcedAtLeastYearsAgo(2, asOf))
+            .toList();
+    }
+
+    /**
+     * Finds the best ex-spouse for divorced spouse benefits based on FRA benefit amount.
+     *
+     * @param asOf the reference date
+     * @return the past marriage with highest ex-spouse FRA benefit, if any qualify
+     */
+    public Optional<PastMarriage> findBestDivorcedSpouseOption(LocalDate asOf) {
+        return getQualifyingDivorcedSpouseMarriages(asOf).stream()
+            .filter(m -> m.getExSpouseFraBenefitAmount().isPresent())
+            .max(Comparator.comparing(m -> m.getExSpouseFraBenefitAmount().orElse(BigDecimal.ZERO)));
+    }
+
+    /**
+     * Finds all past marriages that qualify for survivor benefits.
+     *
+     * @return list of qualifying past marriages where spouse died
+     */
+    public List<PastMarriage> getQualifyingSurvivorMarriages() {
+        return marriageHistory.stream()
+            .filter(PastMarriage::qualifiesForSurvivorBenefits)
+            .toList();
+    }
+
+    /**
+     * Finds the best deceased spouse for survivor benefits based on benefit amount.
+     *
+     * @return the past marriage with highest deceased spouse benefit, if any qualify
+     */
+    public Optional<PastMarriage> findBestSurvivorOption() {
+        return getQualifyingSurvivorMarriages().stream()
+            .filter(m -> m.getExSpouseFraBenefitAmount().isPresent())
+            .max(Comparator.comparing(m -> m.getExSpouseFraBenefitAmount().orElse(BigDecimal.ZERO)));
+    }
+
+    /**
+     * Checks if there are any qualifying ex-spouses for divorced spouse benefits.
+     *
+     * @param asOf the reference date
+     * @return true if at least one ex-spouse qualifies
+     */
+    public boolean hasQualifyingDivorcedSpouse(LocalDate asOf) {
+        return !getQualifyingDivorcedSpouseMarriages(asOf).isEmpty();
     }
 }
