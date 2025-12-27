@@ -72,37 +72,8 @@ public class DefaultEarningsTestCalculator implements EarningsTestCalculator {
             return EarningsTestResult.noReduction(ssAnnualBenefit);
         }
 
-        // Calculate reduction: $1 for every $2 over limit
         int reductionRatio = rules.getEarningsTest().getBelowFraReductionRatio();
-        BigDecimal reductionAmount = excessEarnings
-            .divide(BigDecimal.valueOf(reductionRatio), SCALE, RoundingMode.HALF_UP);
-
-        // Reduction cannot exceed total benefit
-        if (reductionAmount.compareTo(ssAnnualBenefit) > 0) {
-            reductionAmount = ssAnnualBenefit;
-        }
-
-        BigDecimal reducedBenefit = ssAnnualBenefit.subtract(reductionAmount);
-
-        // Estimate months withheld (for informational purposes)
-        BigDecimal monthlyBenefit = ssAnnualBenefit
-            .divide(BigDecimal.valueOf(MONTHS_PER_YEAR), SCALE, RoundingMode.HALF_UP);
-        int monthsWithheld = 0;
-        if (monthlyBenefit.compareTo(BigDecimal.ZERO) > 0) {
-            monthsWithheld = reductionAmount
-                .divide(monthlyBenefit, 0, RoundingMode.CEILING)
-                .intValue();
-            if (monthsWithheld > MONTHS_PER_YEAR) {
-                monthsWithheld = MONTHS_PER_YEAR;
-            }
-        }
-
-        return EarningsTestResult.reduced(
-            ssAnnualBenefit,
-            reducedBenefit.setScale(2, RoundingMode.HALF_UP),
-            reductionAmount.setScale(2, RoundingMode.HALF_UP),
-            excessEarnings.setScale(2, RoundingMode.HALF_UP),
-            monthsWithheld);
+        return calculateReduction(ssAnnualBenefit, excessEarnings, reductionRatio, MONTHS_PER_YEAR);
     }
 
     @Override
@@ -121,7 +92,6 @@ public class DefaultEarningsTestCalculator implements EarningsTestCalculator {
         BigDecimal limit = getFraYearLimit(year);
 
         // Prorate earnings to months before FRA
-        // (Only earnings in months before FRA count against the test)
         BigDecimal proratedEarnings = annualEarnings
             .multiply(BigDecimal.valueOf(monthsBeforeFra))
             .divide(BigDecimal.valueOf(MONTHS_PER_YEAR), SCALE, RoundingMode.HALF_UP);
@@ -137,8 +107,25 @@ public class DefaultEarningsTestCalculator implements EarningsTestCalculator {
             return EarningsTestResult.noReduction(ssAnnualBenefit);
         }
 
-        // Calculate reduction: $1 for every $3 over limit (FRA year uses more favorable ratio)
         int reductionRatio = rules.getEarningsTest().getFraYearReductionRatio();
+        return calculateReduction(ssAnnualBenefit, excessEarnings, reductionRatio, monthsBeforeFra);
+    }
+
+    /**
+     * Calculates the benefit reduction and creates the result.
+     *
+     * @param ssAnnualBenefit the annual SS benefit
+     * @param excessEarnings earnings over the applicable limit
+     * @param reductionRatio the reduction ratio (2 for below FRA, 3 for FRA year)
+     * @param maxMonthsWithheld maximum months that can be withheld
+     * @return the earnings test result with reduction details
+     */
+    private EarningsTestResult calculateReduction(
+            BigDecimal ssAnnualBenefit,
+            BigDecimal excessEarnings,
+            int reductionRatio,
+            int maxMonthsWithheld) {
+
         BigDecimal reductionAmount = excessEarnings
             .divide(BigDecimal.valueOf(reductionRatio), SCALE, RoundingMode.HALF_UP);
 
@@ -149,18 +136,8 @@ public class DefaultEarningsTestCalculator implements EarningsTestCalculator {
 
         BigDecimal reducedBenefit = ssAnnualBenefit.subtract(reductionAmount);
 
-        // Estimate months withheld (limited to months before FRA)
-        BigDecimal monthlyBenefit = ssAnnualBenefit
-            .divide(BigDecimal.valueOf(MONTHS_PER_YEAR), SCALE, RoundingMode.HALF_UP);
-        int monthsWithheld = 0;
-        if (monthlyBenefit.compareTo(BigDecimal.ZERO) > 0) {
-            monthsWithheld = reductionAmount
-                .divide(monthlyBenefit, 0, RoundingMode.CEILING)
-                .intValue();
-            if (monthsWithheld > monthsBeforeFra) {
-                monthsWithheld = monthsBeforeFra;
-            }
-        }
+        // Estimate months withheld
+        int monthsWithheld = calculateMonthsWithheld(ssAnnualBenefit, reductionAmount, maxMonthsWithheld);
 
         return EarningsTestResult.reduced(
             ssAnnualBenefit,
@@ -168,6 +145,29 @@ public class DefaultEarningsTestCalculator implements EarningsTestCalculator {
             reductionAmount.setScale(2, RoundingMode.HALF_UP),
             excessEarnings.setScale(2, RoundingMode.HALF_UP),
             monthsWithheld);
+    }
+
+    /**
+     * Calculates the estimated number of months' benefits withheld.
+     *
+     * @param ssAnnualBenefit the annual SS benefit
+     * @param reductionAmount the total reduction amount
+     * @param maxMonths maximum months that can be withheld
+     * @return estimated months withheld
+     */
+    private int calculateMonthsWithheld(BigDecimal ssAnnualBenefit, BigDecimal reductionAmount, int maxMonths) {
+        BigDecimal monthlyBenefit = ssAnnualBenefit
+            .divide(BigDecimal.valueOf(MONTHS_PER_YEAR), SCALE, RoundingMode.HALF_UP);
+
+        if (monthlyBenefit.compareTo(BigDecimal.ZERO) <= 0) {
+            return 0;
+        }
+
+        int monthsWithheld = reductionAmount
+            .divide(monthlyBenefit, 0, RoundingMode.CEILING)
+            .intValue();
+
+        return Math.min(monthsWithheld, maxMonths);
     }
 
     @Override
