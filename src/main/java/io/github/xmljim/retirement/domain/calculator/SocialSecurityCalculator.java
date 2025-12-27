@@ -95,4 +95,52 @@ public interface SocialSecurityCalculator {
      * @return the COLA-adjusted benefit
      */
     BigDecimal applyColaAdjustment(BigDecimal benefit, BigDecimal colaRate, int years);
+
+    // ==================== Survivor Benefit Methods ====================
+
+    /**
+     * Returns the minimum age in months at which survivor benefits can be claimed.
+     *
+     * <p>Per SSA rules, survivors can claim as early as age 60 (720 months),
+     * or age 50 (600 months) if disabled.
+     *
+     * @return the minimum claiming age in months (typically 720)
+     */
+    int getSurvivorMinimumClaimingAge();
+
+    /**
+     * Returns the minimum age in months for disabled survivors.
+     *
+     * @return the disabled minimum claiming age in months (typically 600)
+     */
+    int getSurvivorDisabledMinimumClaimingAge();
+
+    /**
+     * Calculates the reduction applied to survivor benefits for early claiming.
+     *
+     * <p>Survivor reduction is different from regular early claiming reduction.
+     * The maximum reduction is approximately 28.5% at age 60 (for FRA of 67).
+     * The reduction is prorated linearly from age 60 to FRA.
+     *
+     * @param claimingAgeMonths the age in months when claiming survivor benefit
+     * @param fraMonths the survivor's Full Retirement Age in months
+     * @return the reduction as a decimal (e.g., 0.285 for 28.5% reduction)
+     */
+    BigDecimal calculateSurvivorReduction(int claimingAgeMonths, int fraMonths);
+
+    /**
+     * Calculates the adjusted survivor benefit based on claiming age.
+     *
+     * <p>Applies the survivor reduction formula if claiming before FRA.
+     *
+     * @param deceasedBenefit the deceased spouse's benefit amount
+     * @param claimingAgeMonths the survivor's claiming age in months
+     * @param fraMonths the survivor's FRA in months
+     * @return the adjusted survivor benefit
+     */
+    BigDecimal calculateAdjustedSurvivorBenefit(
+        BigDecimal deceasedBenefit,
+        int claimingAgeMonths,
+        int fraMonths
+    );
 }

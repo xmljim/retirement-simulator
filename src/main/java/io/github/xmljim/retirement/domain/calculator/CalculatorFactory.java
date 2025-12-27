@@ -9,6 +9,7 @@ import io.github.xmljim.retirement.domain.calculator.impl.DefaultMAGICalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultPhaseOutCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultReturnCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultSocialSecurityCalculator;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultSpousalBenefitCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultWithdrawalCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultYTDContributionTracker;
 import io.github.xmljim.retirement.domain.config.IraPhaseOutLimits;
@@ -119,6 +120,18 @@ public final class CalculatorFactory {
      */
     public static SocialSecurityCalculator socialSecurityCalculator() {
         return SOCIAL_SECURITY_CALCULATOR;
+    }
+
+    /**
+     * Returns a new spousal/survivor benefit calculator.
+     *
+     * <p>Unlike some other calculators, this creates a new instance each time
+     * as it requires the base SS calculator and rules.
+     *
+     * @return a new SpousalBenefitCalculator instance
+     */
+    public static SpousalBenefitCalculator spousalBenefitCalculator() {
+        return new DefaultSpousalBenefitCalculator();
     }
 
     /**
