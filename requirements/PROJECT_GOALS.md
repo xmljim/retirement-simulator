@@ -773,7 +773,7 @@ The following classes are deprecated and maintained for backwards compatibility:
 ### Milestone 1: Domain Model Foundation ✅ COMPLETE
 **Goal**: Establish core domain model with clean architecture; refactor existing code
 
-**Status**: Completed December 2024
+**Status**: Completed December 2025
 
 **Domain Entities** (Completed):
 - [x] Created `PersonProfile` model (DOB, retirement date, life expectancy, linked spouse)
@@ -817,7 +817,7 @@ The following classes are deprecated and maintained for backwards compatibility:
 ### Milestone 2: Core Transaction & Account Operations ✅ COMPLETE
 **Goal**: Fully functional transaction processing for individual accounts
 
-**Status**: Completed December 2024
+**Status**: Completed December 2025
 
 **Transaction Model** (Completed):
 - [x] Created new `Transaction` class (`domain.model`) with complete balance tracking
@@ -858,7 +858,7 @@ The following classes are deprecated and maintained for backwards compatibility:
 ### Milestone 3a: Contribution Routing & Tracking ✅ COMPLETE
 **Goal**: Route contributions to correct accounts and track against IRS limits
 
-**Status**: Completed December 2024
+**Status**: Completed December 2025
 
 **Note**: Portfolio aggregation, IRS limits configuration, age-based catch-up, and SECURE 2.0 Roth catch-up were completed in M1.
 
@@ -893,7 +893,7 @@ The following classes are deprecated and maintained for backwards compatibility:
 ### Milestone 3b: Income-Based Phase-Outs ✅ COMPLETE
 **Goal**: Implement MAGI calculations and contribution eligibility phase-outs
 
-**Status**: Completed December 2024
+**Status**: Completed December 2025
 
 **Filing Status Support** (Completed):
 - [x] `FilingStatus` enum (Single, MFJ, MFS, HOH, QSS) with helper methods
@@ -934,7 +934,7 @@ The following classes are deprecated and maintained for backwards compatibility:
 ### Milestone 4: Income Modeling ✅ COMPLETE
 **Goal**: Comprehensive income source modeling
 
-**Status**: Completed December 2024
+**Status**: Completed December 2025
 
 #### Working Income (Completed)
 - [x] `WorkingIncome` value object with salary, COLA rate, start/end dates
