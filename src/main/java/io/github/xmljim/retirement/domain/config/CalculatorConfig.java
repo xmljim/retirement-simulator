@@ -9,10 +9,12 @@ import io.github.xmljim.retirement.domain.calculator.IncomeCalculator;
 import io.github.xmljim.retirement.domain.calculator.InflationCalculator;
 import io.github.xmljim.retirement.domain.calculator.IrsContributionRules;
 import io.github.xmljim.retirement.domain.calculator.ReturnCalculator;
+import io.github.xmljim.retirement.domain.calculator.SocialSecurityCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultContributionCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultIncomeCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultInflationCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultReturnCalculator;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultSocialSecurityCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.Secure2ContributionRules;
 
 /**
@@ -28,10 +30,11 @@ import io.github.xmljim.retirement.domain.calculator.impl.Secure2ContributionRul
  *   <li>{@link InflationCalculator} - Inflation and COLA calculations</li>
  *   <li>{@link IncomeCalculator} - Income projections</li>
  *   <li>{@link ReturnCalculator} - Investment return calculations</li>
+ *   <li>{@link SocialSecurityCalculator} - Social Security benefit calculations</li>
  * </ul>
  */
 @Configuration
-@EnableConfigurationProperties(IrsContributionLimits.class)
+@EnableConfigurationProperties({IrsContributionLimits.class, SocialSecurityRules.class})
 public class CalculatorConfig {
 
     /**
@@ -84,5 +87,16 @@ public class CalculatorConfig {
     @Bean
     public ReturnCalculator returnCalculator() {
         return new DefaultReturnCalculator();
+    }
+
+    /**
+     * Creates the Social Security calculator bean.
+     *
+     * @param rules the Social Security rules from configuration
+     * @return the Social Security calculator
+     */
+    @Bean
+    public SocialSecurityCalculator socialSecurityCalculator(SocialSecurityRules rules) {
+        return new DefaultSocialSecurityCalculator(rules);
     }
 }

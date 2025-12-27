@@ -8,6 +8,7 @@ import io.github.xmljim.retirement.domain.calculator.impl.DefaultInflationCalcul
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultMAGICalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultPhaseOutCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultReturnCalculator;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultSocialSecurityCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultWithdrawalCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultYTDContributionTracker;
 import io.github.xmljim.retirement.domain.config.IraPhaseOutLimits;
@@ -49,6 +50,9 @@ public final class CalculatorFactory {
 
     private static final MAGICalculator MAGI_CALCULATOR =
         new DefaultMAGICalculator();
+
+    private static final SocialSecurityCalculator SOCIAL_SECURITY_CALCULATOR =
+        new DefaultSocialSecurityCalculator();
 
     private CalculatorFactory() {
         // Prevent instantiation
@@ -106,6 +110,15 @@ public final class CalculatorFactory {
      */
     public static MAGICalculator magiCalculator() {
         return MAGI_CALCULATOR;
+    }
+
+    /**
+     * Returns the Social Security calculator instance.
+     *
+     * @return the Social Security calculator
+     */
+    public static SocialSecurityCalculator socialSecurityCalculator() {
+        return SOCIAL_SECURITY_CALCULATOR;
     }
 
     /**
