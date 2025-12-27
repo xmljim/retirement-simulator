@@ -49,3 +49,23 @@ social-security:
   delayed-credits:
     rate-numerator: 8
     rate-denominator: 1200       # 8%/year = 2/3% per month
+
+  # Spousal benefit rules
+  # Source: https://www.ssa.gov/benefits/retirement/planner/applying7.html
+  spousal:
+    benefit-percentage: 0.50     # Up to 50% of higher earner's FRA benefit
+    minimum-marriage-months: 12  # Must be married at least 1 year
+    divorced-minimum-marriage-years: 10  # Divorced spouse: marriage must have lasted 10+ years
+    divorced-minimum-divorce-years: 2    # Must be divorced at least 2 years
+
+  # Survivor benefit rules
+  # Source: https://www.ssa.gov/benefits/survivors/
+  survivor:
+    minimum-marriage-months: 9   # Must be married at least 9 months
+    minimum-claiming-age-months: 720   # 60 years - earliest survivor claiming age
+    disabled-minimum-age-months: 600   # 50 years - if disabled
+    remarriage-age-months: 720         # Can remarry at 60 without losing benefits
+    # Survivor reduction is different from regular early claiming
+    # Max reduction ~28.5% at age 60 (survivor receives ~71.5% of full benefit)
+    reduction-rate-numerator: 285
+    reduction-rate-denominator: 10000

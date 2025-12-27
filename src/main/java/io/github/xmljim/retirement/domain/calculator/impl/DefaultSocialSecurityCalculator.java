@@ -154,6 +154,63 @@ public class DefaultSocialSecurityCalculator implements SocialSecurityCalculator
         return rules;
     }
 
+    // ==================== Survivor Benefit Methods ====================
+
+    @Override
+    public int getSurvivorMinimumClaimingAge() {
+        return rules.getSurvivor().getMinimumClaimingAgeMonths();
+    }
+
+    @Override
+    public int getSurvivorDisabledMinimumClaimingAge() {
+        return rules.getSurvivor().getDisabledMinimumAgeMonths();
+    }
+
+    @Override
+    public BigDecimal calculateSurvivorReduction(int claimingAgeMonths, int fraMonths) {
+        if (claimingAgeMonths >= fraMonths) {
+            return BigDecimal.ZERO;
+        }
+
+        int minimumAge = getSurvivorMinimumClaimingAge();
+        // Use effective claiming age - can't claim before minimum age
+        int effectiveClaimingAge = Math.max(claimingAgeMonths, minimumAge);
+
+        // Survivor reduction is linear from age 60 to FRA
+        // Max reduction is ~28.5% at age 60 for FRA 67
+        BigDecimal maxReduction = rules.getSurvivor().getMaxReduction(INTERNAL_SCALE);
+
+        int monthsUntilFra = fraMonths - effectiveClaimingAge;
+        int totalMonthsRange = fraMonths - minimumAge;
+
+        if (totalMonthsRange <= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        // Prorate reduction linearly
+        return maxReduction
+            .multiply(BigDecimal.valueOf(monthsUntilFra), PRECISION)
+            .divide(BigDecimal.valueOf(totalMonthsRange), INTERNAL_SCALE, ROUNDING);
+    }
+
+    @Override
+    public BigDecimal calculateAdjustedSurvivorBenefit(
+            BigDecimal deceasedBenefit,
+            int claimingAgeMonths,
+            int fraMonths) {
+        if (deceasedBenefit == null || deceasedBenefit.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        if (claimingAgeMonths >= fraMonths) {
+            return deceasedBenefit;
+        }
+
+        BigDecimal reduction = calculateSurvivorReduction(claimingAgeMonths, fraMonths);
+        BigDecimal multiplier = BigDecimal.ONE.subtract(reduction);
+        return deceasedBenefit.multiply(multiplier, PRECISION).setScale(INTERNAL_SCALE, ROUNDING);
+    }
+
     /**
      * Creates default rules for non-Spring usage.
      */

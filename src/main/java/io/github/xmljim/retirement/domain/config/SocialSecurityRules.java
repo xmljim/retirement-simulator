@@ -64,6 +64,8 @@ public class SocialSecurityRules {
     private ClaimingLimits claiming = new ClaimingLimits();
     private EarlyReduction earlyReduction = new EarlyReduction();
     private DelayedCredits delayedCredits = new DelayedCredits();
+    private SpousalRules spousal = new SpousalRules();
+    private SurvivorRules survivor = new SurvivorRules();
 
     /**
      * Full Retirement Age entry for a range of birth years.
@@ -223,6 +225,150 @@ public class SocialSecurityRules {
     }
 
     /**
+     * Spousal benefit rules.
+     *
+     * <p>Per SSA rules:
+     * <ul>
+     *   <li>Spousal benefit is up to 50% of higher earner's FRA benefit</li>
+     *   <li>Must be married at least 1 year</li>
+     *   <li>Divorced spouse: married 10+ years, divorced 2+ years</li>
+     * </ul>
+     *
+     * @see <a href="https://www.ssa.gov/benefits/retirement/planner/applying7.html">SSA Spousal</a>
+     */
+    public static class SpousalRules {
+        private BigDecimal benefitPercentage = new BigDecimal("0.50");
+        private int minimumMarriageMonths = 12;
+        private int divorcedMinimumMarriageYears = 10;
+        private int divorcedMinimumDivorceYears = 2;
+
+        public BigDecimal getBenefitPercentage() {
+            return benefitPercentage;
+        }
+
+        public void setBenefitPercentage(BigDecimal benefitPercentage) {
+            this.benefitPercentage = benefitPercentage;
+        }
+
+        public int getMinimumMarriageMonths() {
+            return minimumMarriageMonths;
+        }
+
+        public void setMinimumMarriageMonths(int minimumMarriageMonths) {
+            this.minimumMarriageMonths = minimumMarriageMonths;
+        }
+
+        public int getDivorcedMinimumMarriageYears() {
+            return divorcedMinimumMarriageYears;
+        }
+
+        public void setDivorcedMinimumMarriageYears(int divorcedMinimumMarriageYears) {
+            this.divorcedMinimumMarriageYears = divorcedMinimumMarriageYears;
+        }
+
+        public int getDivorcedMinimumDivorceYears() {
+            return divorcedMinimumDivorceYears;
+        }
+
+        public void setDivorcedMinimumDivorceYears(int divorcedMinimumDivorceYears) {
+            this.divorcedMinimumDivorceYears = divorcedMinimumDivorceYears;
+        }
+
+        /**
+         * Returns the minimum marriage duration in months for divorced spouse benefits.
+         *
+         * @return the minimum months (divorcedMinimumMarriageYears * 12)
+         */
+        public int getDivorcedMinimumMarriageMonths() {
+            return divorcedMinimumMarriageYears * 12;
+        }
+    }
+
+    /**
+     * Survivor benefit rules.
+     *
+     * <p>Per SSA rules:
+     * <ul>
+     *   <li>Survivor receives higher of own or deceased's benefit</li>
+     *   <li>Can claim as early as age 60 (reduced)</li>
+     *   <li>Must be married at least 9 months</li>
+     *   <li>Can remarry after 60 without losing benefits</li>
+     * </ul>
+     *
+     * @see <a href="https://www.ssa.gov/benefits/survivors/">SSA Survivor Benefits</a>
+     */
+    public static class SurvivorRules {
+        private int minimumMarriageMonths = 9;
+        private int minimumClaimingAgeMonths = 720;   // 60 years
+        private int disabledMinimumAgeMonths = 600;   // 50 years
+        private int remarriageAgeMonths = 720;        // Can remarry at 60
+        // Survivor reduction: ~28.5% max at age 60 (71.5% of benefit)
+        // Different from regular early claiming formula
+        private int reductionRateNumerator = 285;
+        private int reductionRateDenominator = 10000;
+
+        public int getMinimumMarriageMonths() {
+            return minimumMarriageMonths;
+        }
+
+        public void setMinimumMarriageMonths(int minimumMarriageMonths) {
+            this.minimumMarriageMonths = minimumMarriageMonths;
+        }
+
+        public int getMinimumClaimingAgeMonths() {
+            return minimumClaimingAgeMonths;
+        }
+
+        public void setMinimumClaimingAgeMonths(int minimumClaimingAgeMonths) {
+            this.minimumClaimingAgeMonths = minimumClaimingAgeMonths;
+        }
+
+        public int getDisabledMinimumAgeMonths() {
+            return disabledMinimumAgeMonths;
+        }
+
+        public void setDisabledMinimumAgeMonths(int disabledMinimumAgeMonths) {
+            this.disabledMinimumAgeMonths = disabledMinimumAgeMonths;
+        }
+
+        public int getRemarriageAgeMonths() {
+            return remarriageAgeMonths;
+        }
+
+        public void setRemarriageAgeMonths(int remarriageAgeMonths) {
+            this.remarriageAgeMonths = remarriageAgeMonths;
+        }
+
+        public int getReductionRateNumerator() {
+            return reductionRateNumerator;
+        }
+
+        public void setReductionRateNumerator(int reductionRateNumerator) {
+            this.reductionRateNumerator = reductionRateNumerator;
+        }
+
+        public int getReductionRateDenominator() {
+            return reductionRateDenominator;
+        }
+
+        public void setReductionRateDenominator(int reductionRateDenominator) {
+            this.reductionRateDenominator = reductionRateDenominator;
+        }
+
+        /**
+         * Calculates the maximum survivor reduction as a BigDecimal.
+         *
+         * @param scale the scale for the result
+         * @return the max reduction (e.g., 0.285 for 28.5%)
+         */
+        public BigDecimal getMaxReduction(int scale) {
+            return BigDecimal.valueOf(reductionRateNumerator)
+                .divide(BigDecimal.valueOf(reductionRateDenominator), scale,
+                    java.math.RoundingMode.HALF_UP);
+        }
+    }
+
+    /**
      * Returns the FRA in months for a given birth year.
      *
      * @param birthYear the birth year
@@ -286,5 +432,21 @@ public class SocialSecurityRules {
 
     public void setDelayedCredits(DelayedCredits delayedCredits) {
         this.delayedCredits = delayedCredits;
+    }
+
+    public SpousalRules getSpousal() {
+        return spousal;
+    }
+
+    public void setSpousal(SpousalRules spousal) {
+        this.spousal = spousal;
+    }
+
+    public SurvivorRules getSurvivor() {
+        return survivor;
+    }
+
+    public void setSurvivor(SurvivorRules survivor) {
+        this.survivor = survivor;
     }
 }
