@@ -156,6 +156,32 @@ class ExceptionTest {
             ValidationException ex = new ValidationException("Message", "myField");
             assertEquals("myField", ex.getFieldName());
         }
+
+        @Test
+        @DisplayName("validate should return value when predicate passes")
+        void validateReturnsValue() {
+            Integer value = 10;
+            Integer result = ValidationException.validate("age", value, v -> v > 0, "Age must be positive");
+            assertEquals(value, result);
+        }
+
+        @Test
+        @DisplayName("validate should throw when predicate fails")
+        void validateThrowsOnFailure() {
+            ValidationException ex = assertThrows(ValidationException.class, () ->
+                ValidationException.validate("age", -5, v -> v > 0, "Age must be positive"));
+            assertEquals("Age must be positive", ex.getMessage());
+            assertEquals("age", ex.getFieldName());
+        }
+
+        @Test
+        @DisplayName("validate with default message should work")
+        void validateWithDefaultMessage() {
+            ValidationException ex = assertThrows(ValidationException.class, () ->
+                ValidationException.validate("amount", BigDecimal.ZERO, v -> v.compareTo(BigDecimal.ZERO) > 0));
+            assertEquals("Invalid value for amount", ex.getMessage());
+            assertEquals("amount", ex.getFieldName());
+        }
     }
 
     @Nested

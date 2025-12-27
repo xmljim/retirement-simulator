@@ -188,7 +188,7 @@ public final class Pension {
         }
 
         // Apply compound COLA: benefit * (1 + rate)^years
-        BigDecimal colaMultiplier = BigDecimal.ONE.add(colaRate)
+        BigDecimal colaMultiplier = BigDecimal.ONE.add(getColaRate().orElse(BigDecimal.ZERO))
             .pow(yearsElapsed);
 
         return monthlyBenefit.multiply(colaMultiplier)
@@ -422,27 +422,23 @@ public final class Pension {
         }
 
         private void validate() {
-            if (name == null || name.isBlank()) {
-                throw new MissingRequiredFieldException("name");
+            MissingRequiredFieldException.requireNonNull(name, "name");
+            ValidationException.validate("name", name, n -> !n.isBlank(), "Name cannot be blank");
+
+            MissingRequiredFieldException.requireNonNull(monthlyBenefit, "monthlyBenefit");
+            ValidationException.validate("monthlyBenefit", monthlyBenefit,
+                v -> v.compareTo(BigDecimal.ZERO) >= 0, "Monthly benefit cannot be negative");
+
+            MissingRequiredFieldException.requireNonNull(startDate, "startDate");
+            MissingRequiredFieldException.requireNonNull(paymentForm, "paymentForm");
+
+            if (paymentForm == PensionPaymentForm.PERIOD_CERTAIN) {
+                MissingRequiredFieldException.requireNonNull(periodCertainYears, "periodCertainYears");
             }
-            if (monthlyBenefit == null) {
-                throw new MissingRequiredFieldException("monthlyBenefit");
-            }
-            if (monthlyBenefit.compareTo(BigDecimal.ZERO) < 0) {
-                throw new ValidationException("Monthly benefit cannot be negative", "monthlyBenefit");
-            }
-            if (startDate == null) {
-                throw new MissingRequiredFieldException("startDate");
-            }
-            if (paymentForm == null) {
-                throw new MissingRequiredFieldException("paymentForm");
-            }
-            if (paymentForm == PensionPaymentForm.PERIOD_CERTAIN && periodCertainYears == null) {
-                throw new MissingRequiredFieldException("periodCertainYears",
-                    "Period certain years required when using PERIOD_CERTAIN payment form");
-            }
-            if (colaRate != null && colaRate.compareTo(BigDecimal.ZERO) < 0) {
-                throw new ValidationException("COLA rate cannot be negative", "colaRate");
+
+            if (colaRate != null) {
+                ValidationException.validate("colaRate", colaRate,
+                    v -> v.compareTo(BigDecimal.ZERO) >= 0, "COLA rate cannot be negative");
             }
         }
     }
