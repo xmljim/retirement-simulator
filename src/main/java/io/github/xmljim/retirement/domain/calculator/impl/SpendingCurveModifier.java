@@ -13,41 +13,44 @@ import io.github.xmljim.retirement.domain.enums.SpendingPhase;
  * Modifier that adjusts discretionary spending based on retirement phase.
  *
  * <p>Implements the Go-Go/Slow-Go/No-Go spending curve model documented
- * in retirement research. Discretionary spending typically decreases as
- * retirees age and become less active.
- *
- * <p>Default multipliers:
+ * in retirement research. Discretionary spending typically:
  * <ul>
- *   <li>Go-Go (65-74): 100% - full discretionary spending</li>
- *   <li>Slow-Go (75-84): 80% - reduced activity</li>
- *   <li>No-Go (85+): 50% - minimal discretionary</li>
+ *   <li>Decreases gradually through Go-Go years (active early retirement)</li>
+ *   <li>Levels off during Slow-Go years (reduced activity)</li>
+ *   <li>Remains low in No-Go years (minimal discretionary, but healthcare rises)</li>
  * </ul>
+ *
+ * <p>When interpolation is enabled (default), multipliers transition gradually
+ * rather than dropping as "cliffs" at phase boundaries.
  *
  * <p>Example usage:
  * <pre>{@code
- * // Using default settings
+ * // Gradual transitions (default)
  * ExpenseModifier curve = SpendingCurveModifier.withDefaults();
  *
- * // Custom age ranges and multipliers
- * ExpenseModifier custom = SpendingCurveModifier.builder()
- *     .phaseStartAge(SpendingPhase.SLOW_GO, 72)
- *     .phaseStartAge(SpendingPhase.NO_GO, 82)
- *     .multiplier(SpendingPhase.SLOW_GO, new BigDecimal("0.75"))
+ * // Cliff transitions (no interpolation)
+ * ExpenseModifier stepped = SpendingCurveModifier.builder()
+ *     .interpolate(false)
  *     .build();
  * }</pre>
  */
 public final class SpendingCurveModifier implements ExpenseModifier {
 
-    private static final int SCALE = 2;
+    private static final int SCALE = 4;
+    private static final int RESULT_SCALE = 2;
 
     private final Map<SpendingPhase, BigDecimal> multipliers;
+    private final int goGoStartAge;
     private final int slowGoStartAge;
     private final int noGoStartAge;
+    private final boolean interpolate;
 
     private SpendingCurveModifier(Builder builder) {
         this.multipliers = new EnumMap<>(builder.multipliers);
+        this.goGoStartAge = builder.goGoStartAge;
         this.slowGoStartAge = builder.slowGoStartAge;
         this.noGoStartAge = builder.noGoStartAge;
+        this.interpolate = builder.interpolate;
     }
 
     /**
@@ -70,9 +73,48 @@ public final class SpendingCurveModifier implements ExpenseModifier {
 
     @Override
     public BigDecimal modify(BigDecimal baseAmount, LocalDate date, int age) {
-        SpendingPhase phase = getPhaseForAge(age);
-        BigDecimal multiplier = multipliers.get(phase);
-        return baseAmount.multiply(multiplier).setScale(SCALE, RoundingMode.HALF_UP);
+        BigDecimal multiplier = calculateMultiplier(age);
+        return baseAmount.multiply(multiplier).setScale(RESULT_SCALE, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal calculateMultiplier(int age) {
+        if (!interpolate) {
+            return multipliers.get(getPhaseForAge(age));
+        }
+
+        // Interpolate within Go-Go phase (gradually decrease toward Slow-Go)
+        if (age < slowGoStartAge) {
+            return interpolateBetween(
+                    age, goGoStartAge, slowGoStartAge,
+                    multipliers.get(SpendingPhase.GO_GO),
+                    multipliers.get(SpendingPhase.SLOW_GO));
+        }
+
+        // Slow-Go phase: level off (no interpolation - stable spending)
+        if (age < noGoStartAge) {
+            return multipliers.get(SpendingPhase.SLOW_GO);
+        }
+
+        // No-Go phase: use No-Go multiplier
+        return multipliers.get(SpendingPhase.NO_GO);
+    }
+
+    private BigDecimal interpolateBetween(int age, int startAge, int endAge,
+                                          BigDecimal startValue, BigDecimal endValue) {
+        if (age <= startAge) {
+            return startValue;
+        }
+        if (age >= endAge) {
+            return endValue;
+        }
+
+        int yearsIntoPhase = age - startAge;
+        int phaseLength = endAge - startAge;
+        BigDecimal progress = BigDecimal.valueOf(yearsIntoPhase)
+                .divide(BigDecimal.valueOf(phaseLength), SCALE, RoundingMode.HALF_UP);
+
+        BigDecimal range = endValue.subtract(startValue);
+        return startValue.add(range.multiply(progress)).setScale(SCALE, RoundingMode.HALF_UP);
     }
 
     /**
@@ -124,14 +166,31 @@ public final class SpendingCurveModifier implements ExpenseModifier {
      */
     public static final class Builder {
         private final Map<SpendingPhase, BigDecimal> multipliers = new EnumMap<>(SpendingPhase.class);
+        private int goGoStartAge = SpendingPhase.GO_GO.getDefaultStartAge();
         private int slowGoStartAge = SpendingPhase.SLOW_GO.getDefaultStartAge();
         private int noGoStartAge = SpendingPhase.NO_GO.getDefaultStartAge();
+        private boolean interpolate = true;
 
         private Builder() {
             // Initialize with defaults
             for (SpendingPhase phase : SpendingPhase.values()) {
                 multipliers.put(phase, phase.getDefaultMultiplier());
             }
+        }
+
+        /**
+         * Enables or disables interpolation between phases.
+         *
+         * <p>When enabled (default), spending multipliers transition gradually
+         * during the Go-Go phase. When disabled, multipliers change abruptly
+         * at phase boundaries ("cliff" transitions).
+         *
+         * @param interpolate true for gradual transitions, false for step changes
+         * @return this builder
+         */
+        public Builder interpolate(boolean interpolate) {
+            this.interpolate = interpolate;
+            return this;
         }
 
         /**

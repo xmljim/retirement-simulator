@@ -46,26 +46,6 @@ public final class AgeBasedModifier implements ExpenseModifier {
     }
 
     /**
-     * Creates a default healthcare aging modifier.
-     *
-     * <p>Default brackets:
-     * <ul>
-     *   <li>Age 65: 1.0x</li>
-     *   <li>Age 75: 1.5x</li>
-     *   <li>Age 85: 2.0x</li>
-     * </ul>
-     *
-     * @return a new AgeBasedModifier for healthcare
-     */
-    public static AgeBasedModifier forHealthcare() {
-        return builder()
-                .addBracket(65, new BigDecimal("1.0"))
-                .addBracket(75, new BigDecimal("1.5"))
-                .addBracket(85, new BigDecimal("2.0"))
-                .build();
-    }
-
-    /**
      * Creates a new builder.
      *
      * @return a new builder

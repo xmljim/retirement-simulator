@@ -63,9 +63,28 @@ class ExpenseModifierTest {
     class SpendingCurveTests {
 
         @Test
-        @DisplayName("Go-Go phase returns full amount")
-        void goGoPhase() {
+        @DisplayName("Go-Go phase start returns full amount")
+        void goGoPhaseStart() {
             SpendingCurveModifier mod = SpendingCurveModifier.withDefaults();
+            BigDecimal result = mod.modify(BASE, LocalDate.now(), 65);
+            assertEquals(0, BASE.compareTo(result));
+        }
+
+        @Test
+        @DisplayName("Go-Go phase interpolates gradually toward Slow-Go")
+        void goGoPhaseInterpolates() {
+            SpendingCurveModifier mod = SpendingCurveModifier.withDefaults();
+            // Age 70 is halfway through Go-Go (65-75), so multiplier = 1.0 - (0.2 * 0.5) = 0.9
+            BigDecimal result = mod.modify(BASE, LocalDate.now(), 70);
+            assertEquals(0, new BigDecimal("900.00").compareTo(result));
+        }
+
+        @Test
+        @DisplayName("Cliff mode returns full Go-Go amount throughout phase")
+        void cliffModeGoGo() {
+            SpendingCurveModifier mod = SpendingCurveModifier.builder()
+                    .interpolate(false)
+                    .build();
             BigDecimal result = mod.modify(BASE, LocalDate.now(), 70);
             assertEquals(0, BASE.compareTo(result));
         }
@@ -103,9 +122,13 @@ class ExpenseModifierTest {
     class AgeBasedTests {
 
         @Test
-        @DisplayName("Healthcare defaults work correctly")
-        void healthcareDefaults() {
-            AgeBasedModifier mod = AgeBasedModifier.forHealthcare();
+        @DisplayName("Age brackets apply correctly")
+        void ageBracketsApply() {
+            AgeBasedModifier mod = AgeBasedModifier.builder()
+                    .addBracket(65, 1.0)
+                    .addBracket(75, 1.5)
+                    .addBracket(85, 2.0)
+                    .build();
             assertEquals(0, new BigDecimal("1000.00").compareTo(mod.modify(BASE, LocalDate.now(), 70)));
             assertEquals(0, new BigDecimal("1500.00").compareTo(mod.modify(BASE, LocalDate.now(), 80)));
             assertEquals(0, new BigDecimal("2000.00").compareTo(mod.modify(BASE, LocalDate.now(), 90)));
