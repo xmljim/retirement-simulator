@@ -1,0 +1,74 @@
+# RMD (Required Minimum Distribution) Rules Configuration
+# Source: IRS Publication 590-B, SECURE 2.0 Act
+#
+# RMD Start Ages (SECURE 2.0):
+# - Born 1950 or earlier: Age 72
+# - Born 1951-1959: Age 73
+# - Born 1960 or later: Age 75
+#
+# Formula: Prior year-end balance / Distribution factor = RMD
+
+rmd:
+  # RMD start age by birth year (SECURE 2.0 changes)
+  start-age-by-birth-year:
+    - birth-year-max: 1950
+      start-age: 72
+    - birth-year-min: 1951
+      birth-year-max: 1959
+      start-age: 73
+    - birth-year-min: 1960
+      start-age: 75
+
+  # IRS Uniform Lifetime Table (Table III)
+  # Used for most account owners
+  # Source: IRS Publication 590-B, Appendix B
+  uniform-lifetime-table:
+    - { age: 72, factor: 27.4 }
+    - { age: 73, factor: 26.5 }
+    - { age: 74, factor: 25.5 }
+    - { age: 75, factor: 24.6 }
+    - { age: 76, factor: 23.7 }
+    - { age: 77, factor: 22.9 }
+    - { age: 78, factor: 22.0 }
+    - { age: 79, factor: 21.1 }
+    - { age: 80, factor: 20.2 }
+    - { age: 81, factor: 19.4 }
+    - { age: 82, factor: 18.5 }
+    - { age: 83, factor: 17.7 }
+    - { age: 84, factor: 16.8 }
+    - { age: 85, factor: 16.0 }
+    - { age: 86, factor: 15.2 }
+    - { age: 87, factor: 14.4 }
+    - { age: 88, factor: 13.7 }
+    - { age: 89, factor: 12.9 }
+    - { age: 90, factor: 12.2 }
+    - { age: 91, factor: 11.5 }
+    - { age: 92, factor: 10.8 }
+    - { age: 93, factor: 10.1 }
+    - { age: 94, factor: 9.5 }
+    - { age: 95, factor: 8.9 }
+    - { age: 96, factor: 8.4 }
+    - { age: 97, factor: 7.8 }
+    - { age: 98, factor: 7.3 }
+    - { age: 99, factor: 6.8 }
+    - { age: 100, factor: 6.4 }
+    - { age: 101, factor: 6.0 }
+    - { age: 102, factor: 5.6 }
+    - { age: 103, factor: 5.2 }
+    - { age: 104, factor: 4.9 }
+    - { age: 105, factor: 4.6 }
+    - { age: 106, factor: 4.3 }
+    - { age: 107, factor: 4.1 }
+    - { age: 108, factor: 3.9 }
+    - { age: 109, factor: 3.7 }
+    - { age: 110, factor: 3.5 }
+    - { age: 111, factor: 3.4 }
+    - { age: 112, factor: 3.3 }
+    - { age: 113, factor: 3.1 }
+    - { age: 114, factor: 3.0 }
+    - { age: 115, factor: 2.9 }
+    - { age: 116, factor: 2.8 }
+    - { age: 117, factor: 2.7 }
+    - { age: 118, factor: 2.5 }
+    - { age: 119, factor: 2.3 }
+    - { age: 120, factor: 2.0 }

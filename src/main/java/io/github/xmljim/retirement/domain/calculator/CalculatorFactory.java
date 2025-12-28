@@ -11,6 +11,7 @@ import io.github.xmljim.retirement.domain.calculator.impl.DefaultMAGICalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultMedicareCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultPhaseOutCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultReturnCalculator;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultRmdCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultSocialSecurityCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultSpousalBenefitCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultWithdrawalCalculator;
@@ -18,6 +19,7 @@ import io.github.xmljim.retirement.domain.calculator.impl.DefaultYTDContribution
 import io.github.xmljim.retirement.domain.config.IraPhaseOutLimits;
 import io.github.xmljim.retirement.domain.config.IrsContributionLimits;
 import io.github.xmljim.retirement.domain.config.MedicareRules;
+import io.github.xmljim.retirement.domain.config.RmdRules;
 
 /**
  * Factory for obtaining calculator instances.
@@ -336,5 +338,41 @@ public final class CalculatorFactory {
      */
     public static MedicareCalculator medicareCalculator(MedicareRules rules) {
         return new DefaultMedicareCalculator(rules);
+    }
+
+    /**
+     * Returns a new RMD (Required Minimum Distribution) calculator.
+     *
+     * <p>The RMD calculator determines mandatory withdrawals from tax-deferred
+     * retirement accounts based on age and IRS life expectancy tables.
+     *
+     * <p>Usage:
+     * <pre>{@code
+     * RmdCalculator calculator = CalculatorFactory.rmdCalculator();
+     *
+     * RmdProjection projection = calculator.calculate(
+     *     new BigDecimal("500000"),  // prior year-end balance
+     *     75,                         // age
+     *     1950,                       // birth year
+     *     2025                        // tax year
+     * );
+     * }</pre>
+     *
+     * @return a new RmdCalculator instance
+     */
+    public static RmdCalculator rmdCalculator() {
+        return new DefaultRmdCalculator();
+    }
+
+    /**
+     * Returns a new RMD calculator with custom rules.
+     *
+     * <p>Use this when you have Spring-managed RmdRules configuration.
+     *
+     * @param rules the RMD rules configuration
+     * @return a new RmdCalculator instance with the provided rules
+     */
+    public static RmdCalculator rmdCalculator(RmdRules rules) {
+        return new DefaultRmdCalculator(rules);
     }
 }
