@@ -1,0 +1,42 @@
+# Survivor Expense Adjustment Configuration
+# Applied when transitioning from couple to single (survivor) status
+# Source: EBRI research, financial planning best practices
+
+survivor-expense:
+  # Default multiplier for categories not explicitly configured
+  # Research indicates survivors need ~70-80% of couple expenses
+  default-multiplier: 0.75
+
+  # Category-specific multipliers (keys match ExpenseCategory enum names)
+  # Multiplier of 1.0 = unchanged, 0.5 = halved, etc.
+  category-multipliers:
+    # Fixed costs - generally unchanged
+    housing: 1.00              # Mortgage/rent continues unchanged
+    debt-payments: 1.00        # Fixed debt payments unchanged
+
+    # Utilities - slight reduction
+    utilities: 0.85            # Modest usage decrease
+
+    # Variable costs - significant reduction
+    food: 0.60                 # Single person food costs
+    transportation: 0.70       # May reduce to single vehicle
+    travel: 0.60               # Single traveler costs less
+    entertainment: 0.65        # Reduced social activities
+    hobbies: 0.65              # Reduced activity
+    insurance: 0.75            # Non-health insurance
+
+    # Healthcare - one person's costs
+    healthcare-oop: 0.50       # Out-of-pocket medical
+    medicare-premiums: 0.50    # Single Medicare premiums
+    ltc-premiums: 0.50         # Single LTC policy
+    ltc-care: 0.50             # Single LTC care costs
+
+    # Contingency
+    home-repairs: 1.00         # Home maintenance unchanged
+    vehicle-replacement: 0.70  # May reduce to one vehicle
+    emergency-reserve: 0.75    # Reserve needs decrease
+
+    # Other categories
+    gifts: 0.75                # May maintain gift giving
+    taxes: 0.75                # Tax burden may decrease
+    other: 0.75                # General other expenses
