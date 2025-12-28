@@ -33,8 +33,8 @@ public final class RecurringExpense {
     private final BigDecimal amount;
     private final ExpenseFrequency frequency;
     private final LocalDate startDate;
-    private final LocalDate endDate;
-    private final BigDecimal inflationRate;
+    private final Optional<LocalDate> endDate;
+    private final Optional<BigDecimal> inflationRate;
     private final boolean useDefaultInflation;
 
     private RecurringExpense(Builder builder) {
@@ -43,8 +43,8 @@ public final class RecurringExpense {
         this.amount = builder.amount;
         this.frequency = builder.frequency;
         this.startDate = builder.startDate;
-        this.endDate = builder.endDate;
-        this.inflationRate = builder.inflationRate;
+        this.endDate = Optional.ofNullable(builder.endDate);
+        this.inflationRate = Optional.ofNullable(builder.inflationRate);
         this.useDefaultInflation = builder.useDefaultInflation;
     }
 
@@ -99,7 +99,7 @@ public final class RecurringExpense {
      * @return optional containing end date, or empty if ongoing
      */
     public Optional<LocalDate> getEndDate() {
-        return Optional.ofNullable(endDate);
+        return endDate;
     }
 
     /**
@@ -108,7 +108,7 @@ public final class RecurringExpense {
      * @return optional containing the rate, or empty if using default
      */
     public Optional<BigDecimal> getInflationRate() {
-        return Optional.ofNullable(inflationRate);
+        return inflationRate;
     }
 
     /**
@@ -209,7 +209,7 @@ public final class RecurringExpense {
         if (asOfDate.isBefore(startDate)) {
             return false;
         }
-        return endDate == null || !asOfDate.isAfter(endDate);
+        return endDate.map(end -> !asOfDate.isAfter(end)).orElse(true);
     }
 
     /**
@@ -218,7 +218,7 @@ public final class RecurringExpense {
      * @return true if no end date
      */
     public boolean isOngoing() {
-        return endDate == null;
+        return endDate.isEmpty();
     }
 
     /**
@@ -227,20 +227,19 @@ public final class RecurringExpense {
      * @return true if inflation adjusted
      */
     public boolean isInflationAdjusted() {
-        if (!useDefaultInflation && inflationRate != null) {
-            return inflationRate.compareTo(BigDecimal.ZERO) != 0;
+        if (!useDefaultInflation) {
+            return inflationRate
+                    .map(rate -> rate.compareTo(BigDecimal.ZERO) != 0)
+                    .orElse(false);
         }
         return category.isInflationAdjusted();
     }
 
     private BigDecimal getEffectiveInflationRate(BigDecimal defaultRate) {
-        if (!useDefaultInflation && inflationRate != null) {
-            return inflationRate;
+        if (!useDefaultInflation) {
+            return inflationRate.orElse(null);
         }
-        if (useDefaultInflation && defaultRate != null) {
-            return defaultRate;
-        }
-        return inflationRate;
+        return Optional.ofNullable(defaultRate).or(() -> inflationRate).orElse(null);
     }
 
     /**
@@ -268,8 +267,8 @@ public final class RecurringExpense {
             && amount.compareTo(that.amount) == 0
             && frequency == that.frequency
             && Objects.equals(startDate, that.startDate)
-            && Objects.equals(endDate, that.endDate)
-            && Objects.equals(inflationRate, that.inflationRate);
+            && endDate.equals(that.endDate)
+            && inflationRate.equals(that.inflationRate);
     }
 
     @Generated
@@ -282,7 +281,8 @@ public final class RecurringExpense {
     @Override
     public String toString() {
         return "RecurringExpense{name='" + name + "', category=" + category + ", amount=" + amount
-            + ", frequency=" + frequency + ", startDate=" + startDate + ", endDate=" + endDate + '}';
+            + ", frequency=" + frequency + ", startDate=" + startDate
+            + ", endDate=" + endDate.orElse(null) + '}';
     }
 
     /**
