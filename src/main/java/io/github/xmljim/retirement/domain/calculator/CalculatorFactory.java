@@ -15,6 +15,7 @@ import io.github.xmljim.retirement.domain.calculator.impl.DefaultReturnCalculato
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultRmdCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultSocialSecurityCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultSpousalBenefitCalculator;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultSurvivorExpenseCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultWithdrawalCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultYTDContributionTracker;
 import io.github.xmljim.retirement.domain.config.FederalTaxRules;
@@ -22,6 +23,7 @@ import io.github.xmljim.retirement.domain.config.IraPhaseOutLimits;
 import io.github.xmljim.retirement.domain.config.IrsContributionLimits;
 import io.github.xmljim.retirement.domain.config.MedicareRules;
 import io.github.xmljim.retirement.domain.config.RmdRules;
+import io.github.xmljim.retirement.domain.config.SurvivorExpenseRules;
 
 /**
  * Factory for obtaining calculator instances.
@@ -412,5 +414,24 @@ public final class CalculatorFactory {
      */
     public static FederalTaxCalculator federalTaxCalculator(FederalTaxRules rules) {
         return new DefaultFederalTaxCalculator(rules);
+    }
+
+    /**
+     * Returns a new survivor expense calculator with default rules.
+     *
+     * @return a new SurvivorExpenseCalculator instance
+     */
+    public static SurvivorExpenseCalculator survivorExpenseCalculator() {
+        return new DefaultSurvivorExpenseCalculator();
+    }
+
+    /**
+     * Returns a new survivor expense calculator with custom rules.
+     *
+     * @param rules the survivor expense rules
+     * @return a new SurvivorExpenseCalculator instance
+     */
+    public static SurvivorExpenseCalculator survivorExpenseCalculator(SurvivorExpenseRules rules) {
+        return new DefaultSurvivorExpenseCalculator(rules);
     }
 }
