@@ -140,7 +140,7 @@ See [Contributing](docs/CONTRIBUTING.md) for detailed guidelines.
 | M3a | Contribution Routing & Tracking | Complete |
 | M3b | Income-Based Phase-Outs | Complete |
 | M4 | Income Modeling | Complete |
-| M5 | Expense & Budget Modeling | Planned |
+| M5 | Expense & Budget Modeling | Complete |
 | M6 | Distribution Strategies | Planned |
 | M7 | Simulation Engine | Planned |
 | M8 | Scenario Analysis | Planned |

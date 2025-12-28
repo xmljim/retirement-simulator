@@ -1045,14 +1045,86 @@ The following classes are deprecated and maintained for backwards compatibility:
 
 **Total Points**: 34
 
-### Milestone 5: Expense & Budget Modeling
+### Milestone 5: Expense & Budget Modeling ✅
 **Goal**: Category-based expense tracking with differentiated inflation
+**Status**: Complete (December 2025)
+**Issues**: #34-#40, #170-#177 (15 issues, ~55 story points)
 
-- Expense categories (essential, healthcare, housing, discretionary, debt)
-- Category-specific inflation rates
-- Expense changes over time (mortgage payoff, spending phases)
-- One-time expense support
-- Budget vs income gap analysis
+#### Core Expense Modeling (#34-#40)
+
+**Expense Categories (#34)**:
+- `ExpenseCategory` enum with 19 categories across 6 groups
+- `ExpenseCategoryGroup`: ESSENTIAL, HEALTHCARE, DISCRETIONARY, CONTINGENCY, DEBT, OTHER
+- Category-specific inflation types: GENERAL, HEALTHCARE, HOUSING, LTC, NONE
+- `InflationRates` Spring configuration with externalized rates
+
+**Recurring Expenses (#35)**:
+- `RecurringExpense` value object with builder pattern
+- `ExpenseFrequency`: MONTHLY, QUARTERLY, SEMI_ANNUAL, ANNUAL
+- Inflation-adjusted `getMonthlyAmount(date, inflationRate)`
+- Date range filtering with `isActive(date)`
+
+**One-Time Expenses (#36)**:
+- `OneTimeExpense` for single-occurrence expenses
+- Target date tracking with `getAmountForMonth(date)`
+- Inflation adjustment from base date to target
+
+**Expense Lifecycle (#37)**:
+- `ExpenseModifier` functional interface with `andThen()` chaining
+- `PayoffModifier` - drops expense to zero after payoff (mortgages)
+- `SpendingCurveModifier` - Go-Go/Slow-Go/No-Go phases with interpolation
+- `AgeBasedModifier` - age-bracket scaling (healthcare costs)
+
+**Budget Model (#38)**:
+- `Budget` class aggregating recurring and one-time expenses
+- `ExpenseBreakdown` record with category group totals
+- Couple budget support (primary + secondary owner)
+- Integration with `InflationRates` configuration
+
+**Gap Analysis (#39)**:
+- `GapAnalyzer` comparing income vs expenses
+- `GapAnalysis` record with surplus/deficit tracking
+- Tax-aware gross-up: `grossWithdrawalNeeded(marginalTaxRate)`
+- Year projection with 12 monthly analyses
+
+#### Research-Driven Extensions (#170-#177)
+
+**Medicare Calculator (#171)**:
+- Part B and Part D premium calculations
+- IRMAA brackets (6 tiers) for income-based surcharges
+- Single vs MFJ threshold support
+- Future year extrapolation with chained CPI
+
+**LTC Insurance (#172)**:
+- `LtcInsurance` with benefit pool and daily benefit
+- Premium periods and elimination days
+- Benefit exhaustion tracking
+- Deterministic vs probabilistic trigger modes
+
+**Contingency Reserves (#173)**:
+- `ContingencyReserve` for home repairs, vehicle replacement
+- `ScheduledExpense` for predictable replacement cycles
+- `RandomExpenseEvent` for Monte Carlo simulation
+- Target balance with "fully funded" detection
+
+**Expense Allocation Strategy (#174)**:
+- Priority-based allocation with shortfall tracking
+- Overflow/redirect when reserves filled
+- Integration with Budget and GapAnalyzer
+
+**RMD Calculator (#175)**:
+- Uniform Lifetime Table calculations
+- SECURE 2.0 age thresholds (73→75)
+- Prior year balance tracking
+
+**Survivor Expenses (#176)**:
+- Category-specific adjustment factors post-death
+- Housing 70%, Food 60%, Healthcare 100%, etc.
+
+**Federal Tax Calculator (#177)**:
+- 7-bracket system with filing status support
+- Chained CPI indexing for inflation
+- Standard deduction calculations
 
 ### Milestone 6: Distribution Strategies
 **Goal**: Implement the four core withdrawal strategies
