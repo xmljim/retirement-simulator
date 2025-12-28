@@ -191,6 +191,65 @@ class BudgetTest {
             assertEquals(0, new BigDecimal("200").compareTo(
                     breakdown.getGroupTotal(ExpenseCategoryGroup.HEALTHCARE)));
         }
+
+        @Test
+        @DisplayName("All category groups are tracked")
+        void allCategoryGroupsTracked() {
+            ExpenseBreakdown breakdown = ExpenseBreakdown.builder(TEST_DATE)
+                    .addExpense(ExpenseCategory.HOUSING, new BigDecimal("1000"))
+                    .addExpense(ExpenseCategory.MEDICARE_PREMIUMS, new BigDecimal("200"))
+                    .addExpense(ExpenseCategory.TRAVEL, new BigDecimal("300"))
+                    .addExpense(ExpenseCategory.HOME_REPAIRS, new BigDecimal("400"))
+                    .addExpense(ExpenseCategory.DEBT_PAYMENTS, new BigDecimal("500"))
+                    .addExpense(ExpenseCategory.TAXES, new BigDecimal("600"))
+                    .build();
+
+            assertEquals(0, new BigDecimal("1000").compareTo(breakdown.essential()));
+            assertEquals(0, new BigDecimal("200").compareTo(breakdown.healthcare()));
+            assertEquals(0, new BigDecimal("300").compareTo(breakdown.discretionary()));
+            assertEquals(0, new BigDecimal("400").compareTo(breakdown.contingency()));
+            assertEquals(0, new BigDecimal("500").compareTo(breakdown.debt()));
+            assertEquals(0, new BigDecimal("600").compareTo(breakdown.other()));
+        }
+
+        @Test
+        @DisplayName("Null category or amount is handled gracefully")
+        void nullHandling() {
+            ExpenseBreakdown breakdown = ExpenseBreakdown.builder(TEST_DATE)
+                    .addExpense(null, new BigDecimal("100"))
+                    .addExpense(ExpenseCategory.HOUSING, null)
+                    .addOneTimeExpense(null)
+                    .addExpense(ExpenseCategory.FOOD, new BigDecimal("200"))
+                    .build();
+
+            assertEquals(0, new BigDecimal("200").compareTo(breakdown.essential()));
+            assertEquals(0, BigDecimal.ZERO.compareTo(breakdown.oneTime()));
+        }
+
+        @Test
+        @DisplayName("getCategoryAmount returns correct value or zero")
+        void getCategoryAmountWorks() {
+            ExpenseBreakdown breakdown = ExpenseBreakdown.builder(TEST_DATE)
+                    .addExpense(ExpenseCategory.HOUSING, new BigDecimal("1500"))
+                    .build();
+
+            assertEquals(0, new BigDecimal("1500").compareTo(
+                    breakdown.getCategoryAmount(ExpenseCategory.HOUSING)));
+            assertEquals(0, BigDecimal.ZERO.compareTo(
+                    breakdown.getCategoryAmount(ExpenseCategory.FOOD)));
+        }
+
+        @Test
+        @DisplayName("recurringTotal excludes one-time expenses")
+        void recurringTotalExcludesOneTime() {
+            ExpenseBreakdown breakdown = ExpenseBreakdown.builder(TEST_DATE)
+                    .addExpense(ExpenseCategory.HOUSING, new BigDecimal("1000"))
+                    .addOneTimeExpense(ExpenseCategory.VEHICLE_REPLACEMENT, new BigDecimal("5000"))
+                    .build();
+
+            assertEquals(0, new BigDecimal("6000").compareTo(breakdown.total()));
+            assertEquals(0, new BigDecimal("1000").compareTo(breakdown.recurringTotal()));
+        }
     }
 
     @Nested
