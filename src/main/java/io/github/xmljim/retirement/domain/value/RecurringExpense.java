@@ -161,21 +161,19 @@ public final class RecurringExpense {
         }
 
         BigDecimal baseMonthly = getBaseMonthlyAmount();
-        BigDecimal effectiveRate = getEffectiveInflationRate(defaultRate);
 
-        if (effectiveRate == null || effectiveRate.compareTo(BigDecimal.ZERO) == 0) {
-            return baseMonthly;
-        }
-
-        long monthsElapsed = ChronoUnit.MONTHS.between(startDate, asOfDate);
-        int yearsElapsed = (int) (monthsElapsed / MONTHS_PER_YEAR);
-
-        if (yearsElapsed <= 0) {
-            return baseMonthly;
-        }
-
-        BigDecimal multiplier = BigDecimal.ONE.add(effectiveRate).pow(yearsElapsed, MATH_CONTEXT);
-        return baseMonthly.multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
+        return getEffectiveInflationRate(defaultRate)
+                .filter(rate -> rate.compareTo(BigDecimal.ZERO) != 0)
+                .map(rate -> {
+                    long monthsElapsed = ChronoUnit.MONTHS.between(startDate, asOfDate);
+                    int yearsElapsed = (int) (monthsElapsed / MONTHS_PER_YEAR);
+                    if (yearsElapsed <= 0) {
+                        return baseMonthly;
+                    }
+                    BigDecimal multiplier = BigDecimal.ONE.add(rate).pow(yearsElapsed, MATH_CONTEXT);
+                    return baseMonthly.multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
+                })
+                .orElse(baseMonthly);
     }
 
     /**
@@ -235,11 +233,11 @@ public final class RecurringExpense {
         return category.isInflationAdjusted();
     }
 
-    private BigDecimal getEffectiveInflationRate(BigDecimal defaultRate) {
+    private Optional<BigDecimal> getEffectiveInflationRate(BigDecimal defaultRate) {
         if (!useDefaultInflation) {
-            return inflationRate.orElse(null);
+            return inflationRate;
         }
-        return Optional.ofNullable(defaultRate).or(() -> inflationRate).orElse(null);
+        return Optional.ofNullable(defaultRate).or(() -> inflationRate);
     }
 
     /**
