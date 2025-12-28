@@ -323,41 +323,20 @@ public class PriorityBasedAllocationStrategy implements ExpenseAllocationStrateg
         }
 
         private static List<ExpenseCategory> getDefaultPriorityOrder() {
-            List<ExpenseCategory> order = new ArrayList<>();
+            // Priority order: Essential → Healthcare → Debt → Contingency → Discretionary → Other
+            List<ExpenseCategoryGroup> groupPriority = List.of(
+                    ExpenseCategoryGroup.ESSENTIAL,
+                    ExpenseCategoryGroup.HEALTHCARE,
+                    ExpenseCategoryGroup.DEBT,
+                    ExpenseCategoryGroup.CONTINGENCY,
+                    ExpenseCategoryGroup.DISCRETIONARY,
+                    ExpenseCategoryGroup.OTHER
+            );
 
-            // Add categories by group in priority order
-            for (ExpenseCategory category : ExpenseCategory.values()) {
-                if (category.getGroup() == ExpenseCategoryGroup.ESSENTIAL) {
-                    order.add(category);
-                }
-            }
-            for (ExpenseCategory category : ExpenseCategory.values()) {
-                if (category.getGroup() == ExpenseCategoryGroup.HEALTHCARE) {
-                    order.add(category);
-                }
-            }
-            for (ExpenseCategory category : ExpenseCategory.values()) {
-                if (category.getGroup() == ExpenseCategoryGroup.DEBT) {
-                    order.add(category);
-                }
-            }
-            for (ExpenseCategory category : ExpenseCategory.values()) {
-                if (category.getGroup() == ExpenseCategoryGroup.CONTINGENCY) {
-                    order.add(category);
-                }
-            }
-            for (ExpenseCategory category : ExpenseCategory.values()) {
-                if (category.getGroup() == ExpenseCategoryGroup.DISCRETIONARY) {
-                    order.add(category);
-                }
-            }
-            for (ExpenseCategory category : ExpenseCategory.values()) {
-                if (category.getGroup() == ExpenseCategoryGroup.OTHER) {
-                    order.add(category);
-                }
-            }
-
-            return order;
+            return groupPriority.stream()
+                    .flatMap(group -> java.util.Arrays.stream(ExpenseCategory.values())
+                            .filter(category -> category.getGroup() == group))
+                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         }
     }
 }
