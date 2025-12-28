@@ -1,0 +1,125 @@
+# Medicare Premium Configuration
+# CMS (Centers for Medicare and Medicaid Services) announced values
+#
+# Sources:
+# - CMS 2025 Part B Fact Sheet
+# - Medicare.gov costs overview
+#
+# IRMAA (Income-Related Monthly Adjustment Amount):
+# - Based on MAGI from 2 years prior (e.g., 2025 premiums use 2023 MAGI)
+# - Applies to both Part B and Part D
+# - Higher-income beneficiaries pay more
+
+medicare:
+  years:
+    - year: 2025
+      # Base Part B premium (standard, no IRMAA)
+      part-b-base: 185.00
+      # Part A hospital deductible per benefit period
+      part-a-deductible: 1676
+      # Part B annual deductible
+      part-b-deductible: 257
+      # Part A premium for those not premium-free (30+ quarters of work)
+      part-a-premium-full: 518
+      # Part A premium for those with 30-39 quarters of work
+      part-a-premium-reduced: 285
+
+      # IRMAA brackets for 2025 (based on 2023 MAGI)
+      # Part B premium = base + IRMAA surcharge
+      # Part D IRMAA is an additional surcharge on top of plan premium
+      irmaa-brackets:
+        # Bracket 0: No IRMAA (standard premium)
+        - single-min: 0
+          single-max: 106000
+          joint-min: 0
+          joint-max: 212000
+          part-b-premium: 185.00
+          part-d-irmaa: 0
+
+        # Bracket 1: First IRMAA tier
+        - single-min: 106001
+          single-max: 133000
+          joint-min: 212001
+          joint-max: 266000
+          part-b-premium: 259.00
+          part-d-irmaa: 13.70
+
+        # Bracket 2: Second IRMAA tier
+        - single-min: 133001
+          single-max: 167000
+          joint-min: 266001
+          joint-max: 334000
+          part-b-premium: 370.00
+          part-d-irmaa: 35.30
+
+        # Bracket 3: Third IRMAA tier
+        - single-min: 167001
+          single-max: 200000
+          joint-min: 334001
+          joint-max: 400000
+          part-b-premium: 480.90
+          part-d-irmaa: 57.00
+
+        # Bracket 4: Fourth IRMAA tier
+        - single-min: 200001
+          single-max: 500000
+          joint-min: 400001
+          joint-max: 750000
+          part-b-premium: 591.90
+          part-d-irmaa: 78.60
+
+        # Bracket 5: Highest IRMAA tier
+        - single-min: 500001
+          # No max - open ended
+          joint-min: 750001
+          # No max - open ended
+          part-b-premium: 628.90
+          part-d-irmaa: 85.80
+
+    - year: 2024
+      part-b-base: 174.70
+      part-a-deductible: 1632
+      part-b-deductible: 240
+      part-a-premium-full: 505
+      part-a-premium-reduced: 278
+
+      irmaa-brackets:
+        - single-min: 0
+          single-max: 103000
+          joint-min: 0
+          joint-max: 206000
+          part-b-premium: 174.70
+          part-d-irmaa: 0
+
+        - single-min: 103001
+          single-max: 129000
+          joint-min: 206001
+          joint-max: 258000
+          part-b-premium: 244.60
+          part-d-irmaa: 12.90
+
+        - single-min: 129001
+          single-max: 161000
+          joint-min: 258001
+          joint-max: 322000
+          part-b-premium: 349.40
+          part-d-irmaa: 33.30
+
+        - single-min: 161001
+          single-max: 193000
+          joint-min: 322001
+          joint-max: 386000
+          part-b-premium: 454.20
+          part-d-irmaa: 53.80
+
+        - single-min: 193001
+          single-max: 500000
+          joint-min: 386001
+          joint-max: 750000
+          part-b-premium: 559.00
+          part-d-irmaa: 74.20
+
+        - single-min: 500001
+          joint-min: 750001
+          part-b-premium: 594.00
+          part-d-irmaa: 81.00
