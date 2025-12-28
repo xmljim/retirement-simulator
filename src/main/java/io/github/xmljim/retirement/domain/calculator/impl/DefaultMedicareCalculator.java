@@ -3,6 +3,7 @@ package io.github.xmljim.retirement.domain.calculator.impl;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.IntStream;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -40,7 +41,6 @@ public class DefaultMedicareCalculator implements MedicareCalculator {
 
     private static final int PREMIUM_FREE_QUARTERS = 40;
     private static final int REDUCED_PREMIUM_QUARTERS = 30;
-    private static final BigDecimal DEFAULT_PART_B_BASE = new BigDecimal("185.00");
     private static final BigDecimal DEFAULT_PART_A_FULL = new BigDecimal("518");
     private static final BigDecimal DEFAULT_PART_A_REDUCED = new BigDecimal("285");
 
@@ -144,18 +144,10 @@ public class DefaultMedicareCalculator implements MedicareCalculator {
             return IrmaaBracket.BRACKET_0;
         }
 
-        int bracketIndex = 0;
-        for (int i = 0; i < brackets.size(); i++) {
-            if (isInBracket(magi, filingStatus, brackets.get(i))) {
-                bracketIndex = i;
-                break;
-            }
-            // If not in this bracket and there are more brackets, continue
-            // If we reach the end, use the last bracket (highest tier)
-            if (i == brackets.size() - 1) {
-                bracketIndex = i;
-            }
-        }
+        int bracketIndex = IntStream.range(0, brackets.size())
+            .filter(i -> isInBracket(magi, filingStatus, brackets.get(i)))
+            .findFirst()
+            .orElse(brackets.size() - 1);  // Default to highest bracket if MAGI exceeds all
 
         return IrmaaBracket.fromLevel(Math.min(bracketIndex, 5));
     }
@@ -201,7 +193,7 @@ public class DefaultMedicareCalculator implements MedicareCalculator {
 
         // If MAGI exceeds all brackets, return the highest bracket
         if (!brackets.isEmpty()) {
-            return Optional.of(brackets.get(brackets.size() - 1));
+            return Optional.of(brackets.getLast());
         }
 
         return Optional.empty();
