@@ -8,6 +8,7 @@ import io.github.xmljim.retirement.domain.calculator.impl.DefaultEarningsTestCal
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultIncomeCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultInflationCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultMAGICalculator;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultMedicareCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultPhaseOutCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultReturnCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultSocialSecurityCalculator;
@@ -16,6 +17,7 @@ import io.github.xmljim.retirement.domain.calculator.impl.DefaultWithdrawalCalcu
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultYTDContributionTracker;
 import io.github.xmljim.retirement.domain.config.IraPhaseOutLimits;
 import io.github.xmljim.retirement.domain.config.IrsContributionLimits;
+import io.github.xmljim.retirement.domain.config.MedicareRules;
 
 /**
  * Factory for obtaining calculator instances.
@@ -291,5 +293,48 @@ public final class CalculatorFactory {
      */
     public static BenefitTaxationCalculator benefitTaxationCalculator() {
         return new DefaultBenefitTaxationCalculator();
+    }
+
+    /**
+     * Returns a new Medicare premium calculator.
+     *
+     * <p>The Medicare calculator determines Part B premiums and IRMAA
+     * surcharges based on MAGI and filing status.
+     *
+     * <p>Usage:
+     * <pre>{@code
+     * MedicareCalculator calculator = CalculatorFactory.medicareCalculator();
+     *
+     * MedicarePremiums premiums = calculator.calculatePremiums(
+     *     new BigDecimal("150000"),  // MAGI (from 2 years prior)
+     *     FilingStatus.SINGLE,       // filing status
+     *     2025                       // Medicare year
+     * );
+     * }</pre>
+     *
+     * @return a new MedicareCalculator instance
+     */
+    public static MedicareCalculator medicareCalculator() {
+        return new DefaultMedicareCalculator();
+    }
+
+    /**
+     * Returns a new Medicare premium calculator with custom rules.
+     *
+     * <p>Use this when you have Spring-managed MedicareRules configuration.
+     *
+     * <p>Usage:
+     * <pre>{@code
+     * @Autowired
+     * private MedicareRules medicareRules;
+     *
+     * MedicareCalculator calculator = CalculatorFactory.medicareCalculator(medicareRules);
+     * }</pre>
+     *
+     * @param rules the Medicare rules configuration
+     * @return a new MedicareCalculator instance with the provided rules
+     */
+    public static MedicareCalculator medicareCalculator(MedicareRules rules) {
+        return new DefaultMedicareCalculator(rules);
     }
 }
