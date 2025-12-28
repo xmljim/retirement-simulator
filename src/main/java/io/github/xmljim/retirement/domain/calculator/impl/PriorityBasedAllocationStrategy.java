@@ -63,78 +63,127 @@ public class PriorityBasedAllocationStrategy implements ExpenseAllocationStrateg
             Map<ExpenseCategory, BigDecimal> expenses,
             Map<ExpenseCategory, Boolean> reserveTargetMet) {
 
-        AllocationResult.Builder result = AllocationResult.builder();
-        BigDecimal remainingFunds = availableFunds;
+        AllocationContext context = new AllocationContext(availableFunds);
 
-        // Allocate in priority order
-        for (ExpenseCategory category : priorityOrder) {
-            BigDecimal requested = expenses.getOrDefault(category, BigDecimal.ZERO);
-            if (requested.compareTo(BigDecimal.ZERO) == 0) {
-                continue;
-            }
+        // Allocate prioritized categories
+        priorityOrder.stream()
+                .filter(category -> hasRequestedAmount(expenses, category))
+                .forEach(category -> allocateCategory(
+                        context, category, expenses.get(category), reserveTargetMet));
 
-            // Check if reserve target is met (for contingency categories)
-            if (Boolean.TRUE.equals(reserveTargetMet.get(category))) {
-                handleOverflow(result, category, requested);
-                continue;
-            }
-
-            // Allocate what we can
-            if (remainingFunds.compareTo(requested) >= 0) {
-                // Fully fund this category
-                result.allocateFully(category, requested);
-                remainingFunds = remainingFunds.subtract(requested);
-            } else {
-                // Partial or no funding
-                result.allocate(category, remainingFunds, requested);
-                result.warning(String.format(
-                        "Shortfall in %s: needed %s, allocated %s",
-                        category.getDisplayName(),
-                        requested.toPlainString(),
-                        remainingFunds.toPlainString()));
-                remainingFunds = BigDecimal.ZERO;
-            }
-        }
-
-        // Handle any categories not in priority order
-        for (Map.Entry<ExpenseCategory, BigDecimal> entry : expenses.entrySet()) {
-            ExpenseCategory category = entry.getKey();
-            BigDecimal requested = entry.getValue();
-
-            if (!priorityOrder.contains(category) && requested.compareTo(BigDecimal.ZERO) > 0) {
-                if (remainingFunds.compareTo(requested) >= 0) {
-                    result.allocateFully(category, requested);
-                    remainingFunds = remainingFunds.subtract(requested);
-                } else {
-                    result.allocate(category, remainingFunds, requested);
-                    result.warning(String.format(
-                            "Shortfall in %s (uncategorized): needed %s, allocated %s",
-                            category.getDisplayName(),
-                            requested.toPlainString(),
-                            remainingFunds.toPlainString()));
-                    remainingFunds = BigDecimal.ZERO;
-                }
-            }
-        }
+        // Allocate unprioritized categories
+        expenses.entrySet().stream()
+                .filter(entry -> isUnprioritizedWithAmount(entry.getKey(), entry.getValue()))
+                .forEach(entry -> allocateUnprioritizedCategory(
+                        context, entry.getKey(), entry.getValue()));
 
         // Set surplus if any funds remain
-        if (remainingFunds.compareTo(BigDecimal.ZERO) > 0) {
-            result.surplus(remainingFunds);
+        if (context.hasRemainingFunds()) {
+            context.result.surplus(context.remainingFunds);
         }
 
-        return result.build();
+        return context.result.build();
     }
 
-    private void handleOverflow(AllocationResult.Builder result,
-                                ExpenseCategory category,
-                                BigDecimal amount) {
-        // When reserve target is met, record zero allocation with no shortfall
+    private boolean hasRequestedAmount(Map<ExpenseCategory, BigDecimal> expenses, ExpenseCategory category) {
+        BigDecimal requested = expenses.getOrDefault(category, BigDecimal.ZERO);
+        return requested.compareTo(BigDecimal.ZERO) > 0;
+    }
+
+    private boolean isUnprioritizedWithAmount(ExpenseCategory category, BigDecimal amount) {
+        return !priorityOrder.contains(category) && amount.compareTo(BigDecimal.ZERO) > 0;
+    }
+
+    private void allocateCategory(
+            AllocationContext context,
+            ExpenseCategory category,
+            BigDecimal requested,
+            Map<ExpenseCategory, Boolean> reserveTargetMet) {
+
+        if (Boolean.TRUE.equals(reserveTargetMet.get(category))) {
+            handleReserveOverflow(context.result, category, requested);
+            return;
+        }
+
+        allocateFunds(context, category, requested, false);
+    }
+
+    private void allocateUnprioritizedCategory(
+            AllocationContext context,
+            ExpenseCategory category,
+            BigDecimal requested) {
+
+        allocateFunds(context, category, requested, true);
+    }
+
+    private void allocateFunds(
+            AllocationContext context,
+            ExpenseCategory category,
+            BigDecimal requested,
+            boolean isUncategorized) {
+
+        if (context.canFullyFund(requested)) {
+            context.result.allocateFully(category, requested);
+            context.deduct(requested);
+        } else {
+            recordShortfall(context, category, requested, isUncategorized);
+        }
+    }
+
+    private void recordShortfall(
+            AllocationContext context,
+            ExpenseCategory category,
+            BigDecimal requested,
+            boolean isUncategorized) {
+
+        context.result.allocate(category, context.remainingFunds, requested);
+
+        String suffix = isUncategorized ? " (uncategorized)" : "";
+        context.result.warning(String.format(
+                "Shortfall in %s%s: needed %s, allocated %s",
+                category.getDisplayName(),
+                suffix,
+                requested.toPlainString(),
+                context.remainingFunds.toPlainString()));
+
+        context.remainingFunds = BigDecimal.ZERO;
+    }
+
+    private void handleReserveOverflow(
+            AllocationResult.Builder result,
+            ExpenseCategory category,
+            BigDecimal amount) {
+
         result.allocateFully(category, BigDecimal.ZERO);
         result.warning(String.format(
                 "%s reserve target met - %s overflow handled via %s",
                 category.getDisplayName(),
                 amount.toPlainString(),
                 overflowBehavior.getDisplayName()));
+    }
+
+    /**
+     * Mutable context for tracking allocation state during processing.
+     */
+    private static class AllocationContext {
+        final AllocationResult.Builder result = AllocationResult.builder();
+        BigDecimal remainingFunds;
+
+        AllocationContext(BigDecimal availableFunds) {
+            this.remainingFunds = availableFunds;
+        }
+
+        boolean canFullyFund(BigDecimal requested) {
+            return remainingFunds.compareTo(requested) >= 0;
+        }
+
+        boolean hasRemainingFunds() {
+            return remainingFunds.compareTo(BigDecimal.ZERO) > 0;
+        }
+
+        void deduct(BigDecimal amount) {
+            remainingFunds = remainingFunds.subtract(amount);
+        }
     }
 
     @Override
