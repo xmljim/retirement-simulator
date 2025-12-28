@@ -17,11 +17,22 @@ import org.junit.jupiter.api.Test;
 import io.github.xmljim.retirement.domain.enums.ExpenseCategory;
 import io.github.xmljim.retirement.domain.enums.ExpenseCategoryGroup;
 import io.github.xmljim.retirement.domain.enums.ExpenseFrequency;
+import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
+import io.github.xmljim.retirement.domain.model.PersonProfile;
 
 @DisplayName("Budget Tests")
 class BudgetTest {
 
     private static final LocalDate TEST_DATE = LocalDate.of(2025, 6, 15);
+
+    private PersonProfile createTestProfile(String name) {
+        return PersonProfile.builder()
+                .name(name)
+                .dateOfBirth(LocalDate.of(1960, 1, 1))
+                .retirementDate(LocalDate.of(2025, 1, 1))
+                .lifeExpectancy(90)
+                .build();
+    }
 
     @Nested
     @DisplayName("Builder Tests")
@@ -30,32 +41,36 @@ class BudgetTest {
         @Test
         @DisplayName("Creates budget with required fields")
         void createsWithRequiredFields() {
+            PersonProfile owner = createTestProfile("John");
             Budget budget = Budget.builder()
-                    .ownerId("person-1")
+                    .owner(owner)
                     .build();
 
-            assertEquals("person-1", budget.getOwnerId());
+            assertEquals(owner, budget.getOwner());
             assertFalse(budget.isCoupleBudget());
             assertTrue(budget.getRecurringExpenses().isEmpty());
         }
 
         @Test
-        @DisplayName("Throws when ownerId is missing")
+        @DisplayName("Throws when owner is missing")
         void throwsWhenOwnerMissing() {
-            assertThrows(NullPointerException.class, () ->
+            assertThrows(MissingRequiredFieldException.class, () ->
                     Budget.builder().build());
         }
 
         @Test
         @DisplayName("Creates couple budget with secondary owner")
         void createsCouplesBudget() {
+            PersonProfile owner = createTestProfile("John");
+            PersonProfile spouse = createTestProfile("Jane");
+
             Budget budget = Budget.builder()
-                    .ownerId("person-1")
-                    .secondaryOwnerId("person-2")
+                    .owner(owner)
+                    .secondaryOwner(spouse)
                     .build();
 
             assertTrue(budget.isCoupleBudget());
-            assertEquals("person-2", budget.getSecondaryOwnerId().orElse(null));
+            assertEquals(spouse, budget.getSecondaryOwner().orElse(null));
         }
     }
 
@@ -67,8 +82,9 @@ class BudgetTest {
 
         @BeforeEach
         void setUp() {
+            PersonProfile owner = createTestProfile("Test Owner");
             budget = Budget.builder()
-                    .ownerId("test-owner")
+                    .owner(owner)
                     .baseYear(2025)
                     .addRecurringExpense(RecurringExpense.builder()
                             .name("Mortgage")
@@ -124,8 +140,9 @@ class BudgetTest {
         @Test
         @DisplayName("Creates breakdown with correct group totals")
         void createsBreakdownWithGroupTotals() {
+            PersonProfile owner = createTestProfile("Test");
             Budget budget = Budget.builder()
-                    .ownerId("test")
+                    .owner(owner)
                     .addRecurringExpense(RecurringExpense.builder()
                             .name("Housing")
                             .category(ExpenseCategory.HOUSING)
@@ -183,8 +200,9 @@ class BudgetTest {
         @Test
         @DisplayName("Includes one-time expenses in breakdown")
         void includesOneTimeInBreakdown() {
+            PersonProfile owner = createTestProfile("Test");
             Budget budget = Budget.builder()
-                    .ownerId("test")
+                    .owner(owner)
                     .addOneTimeExpense(OneTimeExpense.builder()
                             .name("New Car")
                             .category(ExpenseCategory.VEHICLE_REPLACEMENT)
@@ -207,8 +225,9 @@ class BudgetTest {
         @Test
         @DisplayName("Projects annual expenses")
         void projectsAnnualExpenses() {
+            PersonProfile owner = createTestProfile("Test");
             Budget budget = Budget.builder()
-                    .ownerId("test")
+                    .owner(owner)
                     .addRecurringExpense(RecurringExpense.builder()
                             .name("Rent")
                             .category(ExpenseCategory.HOUSING)

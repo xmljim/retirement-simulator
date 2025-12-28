@@ -12,6 +12,8 @@ import java.util.stream.Collectors;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.github.xmljim.retirement.domain.config.InflationRates;
 import io.github.xmljim.retirement.domain.enums.ExpenseCategory;
+import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
+import io.github.xmljim.retirement.domain.model.PersonProfile;
 
 /**
  * Aggregates all expenses for a person or household.
@@ -26,16 +28,16 @@ public final class Budget {
 
     private static final int MONTHS_PER_YEAR = 12;
 
-    private final String ownerId;
-    private final Optional<String> secondaryOwnerId;
+    private final PersonProfile owner;
+    private final Optional<PersonProfile> secondaryOwner;
     private final List<RecurringExpense> recurringExpenses;
     private final List<OneTimeExpense> oneTimeExpenses;
     private final InflationRates inflationRates;
     private final int baseYear;
 
     private Budget(Builder builder) {
-        this.ownerId = builder.ownerId;
-        this.secondaryOwnerId = Optional.ofNullable(builder.secondaryOwnerId);
+        this.owner = builder.owner;
+        this.secondaryOwner = Optional.ofNullable(builder.secondaryOwner);
         this.recurringExpenses = new ArrayList<>(builder.recurringExpenses);
         this.oneTimeExpenses = new ArrayList<>(builder.oneTimeExpenses);
         this.inflationRates = builder.inflationRates != null
@@ -43,38 +45,76 @@ public final class Budget {
         this.baseYear = builder.baseYear;
     }
 
-    public String getOwnerId() {
-        return ownerId;
+    /**
+     * Returns the primary owner of this budget.
+     *
+     * @return the owner profile
+     */
+    public PersonProfile getOwner() {
+        return owner;
     }
 
-    public Optional<String> getSecondaryOwnerId() {
-        return secondaryOwnerId;
+    /**
+     * Returns the secondary owner for couple budgets.
+     *
+     * @return optional containing the secondary owner, or empty if single
+     */
+    public Optional<PersonProfile> getSecondaryOwner() {
+        return secondaryOwner;
     }
 
+    /**
+     * Returns whether this is a couple budget.
+     *
+     * @return true if there is a secondary owner
+     */
     public boolean isCoupleBudget() {
-        return secondaryOwnerId.isPresent();
+        return secondaryOwner.isPresent();
     }
 
+    /**
+     * Returns all recurring expenses.
+     *
+     * @return unmodifiable list of recurring expenses
+     */
     public List<RecurringExpense> getRecurringExpenses() {
         return Collections.unmodifiableList(recurringExpenses);
     }
 
+    /**
+     * Returns all one-time expenses.
+     *
+     * @return unmodifiable list of one-time expenses
+     */
     public List<OneTimeExpense> getOneTimeExpenses() {
         return Collections.unmodifiableList(oneTimeExpenses);
     }
 
+    /**
+     * Returns the inflation rates configuration.
+     *
+     * @return the inflation rates
+     */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP",
             justification = "InflationRates is a Spring configuration bean, intentionally shared")
     public InflationRates getInflationRates() {
         return inflationRates;
     }
 
+    /**
+     * Returns the base year for calculations.
+     *
+     * @return the base year
+     */
     public int getBaseYear() {
         return baseYear;
     }
 
     /**
      * Returns recurring expenses filtered by category.
+     *
+     * @param category the category to filter by
+     * @return list of matching expenses
      */
     public List<RecurringExpense> getExpensesByCategory(ExpenseCategory category) {
         return recurringExpenses.stream()
@@ -84,6 +124,9 @@ public final class Budget {
 
     /**
      * Returns active recurring expenses for a given date.
+     *
+     * @param asOfDate the date to check
+     * @return list of active expenses
      */
     public List<RecurringExpense> getActiveExpenses(LocalDate asOfDate) {
         return recurringExpenses.stream()
@@ -93,6 +136,9 @@ public final class Budget {
 
     /**
      * Calculates total monthly expenses for a given date.
+     *
+     * @param asOfDate the date to calculate for
+     * @return total monthly expenses
      */
     public BigDecimal getTotalMonthlyExpenses(LocalDate asOfDate) {
         BigDecimal recurring = recurringExpenses.stream()
@@ -111,6 +157,9 @@ public final class Budget {
 
     /**
      * Returns a detailed expense breakdown by category group.
+     *
+     * @param asOfDate the date to calculate for
+     * @return expense breakdown
      */
     public ExpenseBreakdown getMonthlyBreakdown(LocalDate asOfDate) {
         ExpenseBreakdown.Builder builder = ExpenseBreakdown.builder(asOfDate);
@@ -134,6 +183,9 @@ public final class Budget {
 
     /**
      * Projects total annual expenses for a given year.
+     *
+     * @param year the year to project
+     * @return total annual expenses
      */
     public BigDecimal getAnnualExpenses(int year) {
         BigDecimal total = BigDecimal.ZERO;
@@ -146,6 +198,8 @@ public final class Budget {
 
     /**
      * Creates a new builder.
+     *
+     * @return a new builder
      */
     public static Builder builder() {
         return new Builder();
@@ -160,44 +214,44 @@ public final class Budget {
             return false;
         }
         Budget budget = (Budget) o;
-        return baseYear == budget.baseYear && Objects.equals(ownerId, budget.ownerId);
+        return baseYear == budget.baseYear && Objects.equals(owner.getId(), budget.owner.getId());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(ownerId, baseYear);
+        return Objects.hash(owner.getId(), baseYear);
     }
 
     /**
      * Builder for Budget.
      */
     public static final class Builder {
-        private String ownerId;
-        private String secondaryOwnerId;
+        private PersonProfile owner;
+        private PersonProfile secondaryOwner;
         private final List<RecurringExpense> recurringExpenses = new ArrayList<>();
         private final List<OneTimeExpense> oneTimeExpenses = new ArrayList<>();
         private InflationRates inflationRates;
         private int baseYear = LocalDate.now().getYear();
 
         /**
-         * Sets the primary owner ID.
+         * Sets the primary owner.
          *
-         * @param ownerId the owner ID
+         * @param owner the owner profile
          * @return this builder
          */
-        public Builder ownerId(String ownerId) {
-            this.ownerId = ownerId;
+        public Builder owner(PersonProfile owner) {
+            this.owner = owner;
             return this;
         }
 
         /**
-         * Sets the secondary owner ID for couple budgets.
+         * Sets the secondary owner for couple budgets.
          *
-         * @param secondaryOwnerId the secondary owner ID
+         * @param secondaryOwner the secondary owner profile
          * @return this builder
          */
-        public Builder secondaryOwnerId(String secondaryOwnerId) {
-            this.secondaryOwnerId = secondaryOwnerId;
+        public Builder secondaryOwner(PersonProfile secondaryOwner) {
+            this.secondaryOwner = secondaryOwner;
             return this;
         }
 
@@ -257,7 +311,7 @@ public final class Budget {
          * @return a new Budget
          */
         public Budget build() {
-            Objects.requireNonNull(ownerId, "ownerId is required");
+            MissingRequiredFieldException.requireNonNull(owner, "owner");
             return new Budget(this);
         }
     }
