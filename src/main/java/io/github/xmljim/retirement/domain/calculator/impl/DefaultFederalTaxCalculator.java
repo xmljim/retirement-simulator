@@ -2,8 +2,9 @@ package io.github.xmljim.retirement.domain.calculator.impl;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.IntStream;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -157,23 +158,23 @@ public class DefaultFederalTaxCalculator implements FederalTaxCalculator {
     @Override
     public List<TaxBracket> getBrackets(FilingStatus filingStatus, int year) {
         List<BracketConfig> configBrackets = rules.getBrackets(filingStatus);
-        List<TaxBracket> brackets = new ArrayList<>();
-        BigDecimal previousUpper = BigDecimal.ZERO;
+        AtomicReference<BigDecimal> previousUpper = new AtomicReference<>(BigDecimal.ZERO);
 
-        for (BracketConfig config : configBrackets) {
-            BigDecimal lowerBound = previousUpper;
-            BigDecimal upperBound = config.getUpperBound()
-                .map(upper -> projectValueWithChainedCpi(upper, rules.getBaseYear(), year))
-                .orElse(null);
+        return IntStream.range(0, configBrackets.size())
+            .mapToObj(i -> {
+                BracketConfig config = configBrackets.get(i);
+                BigDecimal lowerBound = previousUpper.get();
+                BigDecimal upperBound = config.getUpperBound()
+                    .map(upper -> projectValueWithChainedCpi(upper, rules.getBaseYear(), year))
+                    .orElse(null);
 
-            brackets.add(TaxBracket.of(config.getRate(), lowerBound, upperBound));
+                if (upperBound != null) {
+                    previousUpper.set(upperBound);
+                }
 
-            if (upperBound != null) {
-                previousUpper = upperBound;
-            }
-        }
-
-        return brackets;
+                return TaxBracket.of(config.getRate(), lowerBound, upperBound);
+            })
+            .toList();
     }
 
     @Override
@@ -199,18 +200,11 @@ public class DefaultFederalTaxCalculator implements FederalTaxCalculator {
 
         List<TaxBracket> brackets = getBrackets(filingStatus, year);
 
-        for (TaxBracket bracket : brackets) {
-            if (bracket.containsIncome(taxableIncome)) {
-                return bracket.rate();
-            }
-        }
-
-        // If income exceeds all brackets, return top bracket rate
-        if (!brackets.isEmpty()) {
-            return brackets.getLast().rate();
-        }
-
-        return BigDecimal.ZERO;
+        return brackets.stream()
+            .filter(bracket -> bracket.containsIncome(taxableIncome))
+            .findFirst()
+            .map(TaxBracket::rate)
+            .orElseGet(() -> brackets.isEmpty() ? BigDecimal.ZERO : brackets.getLast().rate());
     }
 
     @Override
@@ -239,16 +233,10 @@ public class DefaultFederalTaxCalculator implements FederalTaxCalculator {
             BigDecimal taxableIncome,
             List<TaxBracket> brackets) {
 
-        List<BracketTax> breakdown = new ArrayList<>();
-
-        for (TaxBracket bracket : brackets) {
-            BigDecimal incomeInBracket = bracket.getIncomeInBracket(taxableIncome);
-            if (incomeInBracket.compareTo(BigDecimal.ZERO) > 0) {
-                breakdown.add(BracketTax.of(bracket.rate(), incomeInBracket));
-            }
-        }
-
-        return breakdown;
+        return brackets.stream()
+            .map(bracket -> BracketTax.of(bracket.rate(), bracket.getIncomeInBracket(taxableIncome)))
+            .filter(bracketTax -> bracketTax.incomeInBracket().compareTo(BigDecimal.ZERO) > 0)
+            .toList();
     }
 
     private BigDecimal calculateEffectiveRate(BigDecimal tax, BigDecimal grossIncome) {
