@@ -5,6 +5,7 @@ import io.github.xmljim.retirement.domain.calculator.impl.DefaultContributionCal
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultContributionLimitChecker;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultContributionRouter;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultEarningsTestCalculator;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultFederalTaxCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultIncomeCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultInflationCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultMAGICalculator;
@@ -16,6 +17,7 @@ import io.github.xmljim.retirement.domain.calculator.impl.DefaultSocialSecurityC
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultSpousalBenefitCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultWithdrawalCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.DefaultYTDContributionTracker;
+import io.github.xmljim.retirement.domain.config.FederalTaxRules;
 import io.github.xmljim.retirement.domain.config.IraPhaseOutLimits;
 import io.github.xmljim.retirement.domain.config.IrsContributionLimits;
 import io.github.xmljim.retirement.domain.config.MedicareRules;
@@ -374,5 +376,41 @@ public final class CalculatorFactory {
      */
     public static RmdCalculator rmdCalculator(RmdRules rules) {
         return new DefaultRmdCalculator(rules);
+    }
+
+    /**
+     * Returns a new federal income tax calculator.
+     *
+     * <p>The federal tax calculator computes income tax using progressive
+     * brackets and supports chained CPI indexing for future years.
+     *
+     * <p>Usage:
+     * <pre>{@code
+     * FederalTaxCalculator calculator = CalculatorFactory.federalTaxCalculator();
+     *
+     * TaxCalculationResult result = calculator.calculateTax(
+     *     new BigDecimal("75000"),  // gross income
+     *     FilingStatus.SINGLE,      // filing status
+     *     67,                        // age
+     *     2025                       // tax year
+     * );
+     * }</pre>
+     *
+     * @return a new FederalTaxCalculator instance
+     */
+    public static FederalTaxCalculator federalTaxCalculator() {
+        return new DefaultFederalTaxCalculator();
+    }
+
+    /**
+     * Returns a new federal tax calculator with custom rules.
+     *
+     * <p>Use this when you have Spring-managed FederalTaxRules configuration.
+     *
+     * @param rules the federal tax rules configuration
+     * @return a new FederalTaxCalculator instance with the provided rules
+     */
+    public static FederalTaxCalculator federalTaxCalculator(FederalTaxRules rules) {
+        return new DefaultFederalTaxCalculator(rules);
     }
 }

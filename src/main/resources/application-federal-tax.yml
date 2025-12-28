@@ -1,0 +1,113 @@
+# Federal Income Tax Configuration
+# Source: IRS Rev. Proc. 2023-34 (2024 inflation adjustments)
+#
+# Tax brackets and standard deductions are indexed annually using chained CPI-U
+# Chained CPI grows ~0.25% slower than traditional CPI
+
+federal-tax:
+  # Chained CPI rate for bracket/deduction indexing
+  # Historical average approximately 2.5%
+  chained-cpi-rate: 0.025
+
+  # Base year for configured values
+  base-year: 2024
+
+  # Standard deductions by filing status (2024)
+  standard-deductions:
+    SINGLE: 14600
+    MARRIED_FILING_JOINTLY: 29200
+    MARRIED_FILING_SEPARATELY: 14600
+    HEAD_OF_HOUSEHOLD: 21900
+    QUALIFYING_SURVIVING_SPOUSE: 29200
+
+  # Additional deduction for age 65+ (per qualifying person)
+  age-65-additional:
+    SINGLE: 1950
+    HEAD_OF_HOUSEHOLD: 1950
+    MARRIED_FILING_JOINTLY: 1550
+    MARRIED_FILING_SEPARATELY: 1550
+    QUALIFYING_SURVIVING_SPOUSE: 1550
+
+  # Tax brackets by filing status (2024)
+  # Upper bounds define the maximum income taxed at each rate
+  # Top bracket has no upper bound (null)
+  brackets:
+    SINGLE:
+      - rate: 0.10
+        upper-bound: 11600
+      - rate: 0.12
+        upper-bound: 47150
+      - rate: 0.22
+        upper-bound: 100525
+      - rate: 0.24
+        upper-bound: 191950
+      - rate: 0.32
+        upper-bound: 243725
+      - rate: 0.35
+        upper-bound: 609350
+      - rate: 0.37
+        upper-bound:
+
+    MARRIED_FILING_JOINTLY:
+      - rate: 0.10
+        upper-bound: 23200
+      - rate: 0.12
+        upper-bound: 94300
+      - rate: 0.22
+        upper-bound: 201050
+      - rate: 0.24
+        upper-bound: 383900
+      - rate: 0.32
+        upper-bound: 487450
+      - rate: 0.35
+        upper-bound: 731200
+      - rate: 0.37
+        upper-bound:
+
+    MARRIED_FILING_SEPARATELY:
+      - rate: 0.10
+        upper-bound: 11600
+      - rate: 0.12
+        upper-bound: 47150
+      - rate: 0.22
+        upper-bound: 100525
+      - rate: 0.24
+        upper-bound: 191950
+      - rate: 0.32
+        upper-bound: 243725
+      - rate: 0.35
+        upper-bound: 365600
+      - rate: 0.37
+        upper-bound:
+
+    HEAD_OF_HOUSEHOLD:
+      - rate: 0.10
+        upper-bound: 16550
+      - rate: 0.12
+        upper-bound: 63100
+      - rate: 0.22
+        upper-bound: 100500
+      - rate: 0.24
+        upper-bound: 191950
+      - rate: 0.32
+        upper-bound: 243700
+      - rate: 0.35
+        upper-bound: 609350
+      - rate: 0.37
+        upper-bound:
+
+    QUALIFYING_SURVIVING_SPOUSE:
+      - rate: 0.10
+        upper-bound: 23200
+      - rate: 0.12
+        upper-bound: 94300
+      - rate: 0.22
+        upper-bound: 201050
+      - rate: 0.24
+        upper-bound: 383900
+      - rate: 0.32
+        upper-bound: 487450
+      - rate: 0.35
+        upper-bound: 731200
+      - rate: 0.37
+        upper-bound:
