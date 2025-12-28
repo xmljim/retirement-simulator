@@ -122,7 +122,7 @@ public final class SpendingCurveModifier implements ExpenseModifier {
     /**
      * Builder for SpendingCurveModifier.
      */
-    public static class Builder {
+    public static final class Builder {
         private final Map<SpendingPhase, BigDecimal> multipliers = new EnumMap<>(SpendingPhase.class);
         private int slowGoStartAge = SpendingPhase.SLOW_GO.getDefaultStartAge();
         private int noGoStartAge = SpendingPhase.NO_GO.getDefaultStartAge();
