@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.EnumMap;
 import java.util.Map;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.github.xmljim.retirement.domain.enums.ExpenseCategory;
 import io.github.xmljim.retirement.domain.enums.ExpenseCategoryGroup;
 
@@ -33,6 +34,8 @@ import io.github.xmljim.retirement.domain.enums.ExpenseCategoryGroup;
  * @param total sum of all expense categories
  * @param byCategory map of individual category totals
  */
+@SuppressFBWarnings(value = "EI_EXPOSE_REP",
+        justification = "Record makes defensive copy in compact constructor; map is immutable")
 public record ExpenseBreakdown(
         LocalDate asOfDate,
         BigDecimal essential,

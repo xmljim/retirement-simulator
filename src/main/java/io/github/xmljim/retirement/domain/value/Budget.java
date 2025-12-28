@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.github.xmljim.retirement.domain.config.InflationRates;
 import io.github.xmljim.retirement.domain.enums.ExpenseCategory;
 
@@ -62,6 +63,8 @@ public final class Budget {
         return Collections.unmodifiableList(oneTimeExpenses);
     }
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP",
+            justification = "InflationRates is a Spring configuration bean, intentionally shared")
     public InflationRates getInflationRates() {
         return inflationRates;
     }
@@ -230,6 +233,8 @@ public final class Budget {
          * @param rates the inflation rates
          * @return this builder
          */
+        @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
+                justification = "InflationRates is a Spring configuration bean, intentionally shared")
         public Builder inflationRates(InflationRates rates) {
             this.inflationRates = rates;
             return this;
