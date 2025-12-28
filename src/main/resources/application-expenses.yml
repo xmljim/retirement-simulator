@@ -1,0 +1,35 @@
+# Expense and Inflation Configuration
+# Milestone 5: Expense & Budget Modeling
+#
+# Sources:
+# - BLS CPI data (general inflation ~2.5%)
+# - CMS projections (healthcare ~5.5%)
+# - Genworth Cost of Care Survey (LTC ~7%)
+# - Property tax historical trends (~3%)
+
+expenses:
+  # Inflation rates by type
+  # These rates are applied to expenses based on their category's InflationType
+  inflation-rates:
+    # General CPI - applied to most expenses
+    # Historical 30-year average: ~2.5%
+    general-cpi: 0.025
+
+    # Healthcare inflation - applied to medical expenses
+    # Historical average: 5-6% (CMS projects 5.1% through 2031)
+    healthcare: 0.055
+
+    # Housing inflation - applied to property-related expenses
+    # Property taxes and maintenance often outpace CPI
+    housing: 0.030
+
+    # Long-term care inflation - applied to LTC costs
+    # Nursing homes and assisted living have increased 7-10% annually
+    ltc: 0.070
+
+    # Category-specific overrides (optional)
+    # Use to customize rates for individual categories
+    # Example: TRAVEL: 0.03 to set travel inflation to 3%
+    # category-overrides:
+    #   TRAVEL: 0.03
+    #   ENTERTAINMENT: 0.02

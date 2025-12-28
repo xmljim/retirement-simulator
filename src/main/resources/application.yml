@@ -2,6 +2,7 @@ spring:
   config:
     import:
       - application-social-security.yml
+      - application-expenses.yml
 
 # IRS Contribution Limits Configuration
 # SECURE 2.0 Act limits for 401(k), 403(b), and 457(b) plans
