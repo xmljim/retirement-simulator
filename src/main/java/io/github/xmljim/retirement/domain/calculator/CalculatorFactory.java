@@ -434,4 +434,16 @@ public final class CalculatorFactory {
     public static SurvivorExpenseCalculator survivorExpenseCalculator(SurvivorExpenseRules rules) {
         return new DefaultSurvivorExpenseCalculator(rules);
     }
+
+    /**
+     * Returns a new expense allocation strategy with default settings.
+     *
+     * <p>The default strategy uses priority-based allocation:
+     * Essential → Healthcare → Debt → Contingency → Discretionary → Other
+     *
+     * @return a new ExpenseAllocationStrategy instance
+     */
+    public static ExpenseAllocationStrategy expenseAllocationStrategy() {
+        return new io.github.xmljim.retirement.domain.calculator.impl.PriorityBasedAllocationStrategy();
+    }
 }
