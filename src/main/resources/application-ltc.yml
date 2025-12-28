@@ -1,5 +1,5 @@
 # Long-Term Care Insurance Configuration
-# Sources: AALTCI, Genworth Cost of Care Survey 2024, HHS/ASPE
+# Sources: AALTCI 2023 Price Index, Genworth Cost of Care Survey 2024, HHS/ASPE
 
 ltc:
   # Default policy parameters
@@ -32,3 +32,57 @@ ltc:
     - min-age: 90
       max-age: 120
       annual-probability: 0.35
+
+  # Annual premium estimates by age and gender
+  # Source: AALTCI 2023 LTC Insurance Price Index
+  # Based on: 3-year benefit, $150/day, 90-day elimination, 3% inflation
+  # Note: Females pay more due to longer life expectancy and higher claim rates
+  premium-estimates:
+    - min-age: 50
+      max-age: 54
+      male-low: 800
+      male-high: 1800
+      female-low: 1300
+      female-high: 3100
+      couple-low: 1800
+      couple-high: 4300
+    - min-age: 55
+      max-age: 59
+      male-low: 900
+      male-high: 2100
+      female-low: 1500
+      female-high: 3600
+      couple-low: 2080
+      couple-high: 5025
+    - min-age: 60
+      max-age: 64
+      male-low: 1200
+      male-high: 2800
+      female-low: 2000
+      female-high: 4450
+      couple-low: 2800
+      couple-high: 6400
+    - min-age: 65
+      max-age: 69
+      male-low: 1700
+      male-high: 4000
+      female-low: 2800
+      female-high: 5265
+      couple-low: 3900
+      couple-high: 8200
+    - min-age: 70
+      max-age: 74
+      male-low: 2500
+      male-high: 5800
+      female-low: 4100
+      female-high: 7600
+      couple-low: 5700
+      couple-high: 11800
+    - min-age: 75
+      max-age: 79
+      male-low: 4000
+      male-high: 9000
+      female-low: 6500
+      female-high: 11500
+      couple-low: 9000
+      couple-high: 18000
