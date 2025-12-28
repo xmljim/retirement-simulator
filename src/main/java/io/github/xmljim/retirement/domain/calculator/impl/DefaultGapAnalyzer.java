@@ -106,13 +106,13 @@ public class DefaultGapAnalyzer implements GapAnalyzer {
 
         LocalDate firstDate = monthlyAnalyses.get(0).asOfDate();
 
-        BigDecimal totalIncome = BigDecimal.ZERO;
-        BigDecimal totalExpenses = BigDecimal.ZERO;
+        BigDecimal totalIncome = monthlyAnalyses.stream()
+                .map(GapAnalysis::totalIncome)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        for (GapAnalysis analysis : monthlyAnalyses) {
-            totalIncome = totalIncome.add(analysis.totalIncome());
-            totalExpenses = totalExpenses.add(analysis.totalExpenses());
-        }
+        BigDecimal totalExpenses = monthlyAnalyses.stream()
+                .map(GapAnalysis::totalExpenses)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return GapAnalysis.of(firstDate, totalIncome, totalExpenses);
     }

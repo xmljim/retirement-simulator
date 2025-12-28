@@ -3,6 +3,7 @@ package io.github.xmljim.retirement.domain.calculator;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.function.Function;
 
 import io.github.xmljim.retirement.domain.value.ExpenseBreakdown;
 import io.github.xmljim.retirement.domain.value.GapAnalysis;
@@ -68,8 +69,8 @@ public interface GapAnalyzer {
      * @return list of 12 monthly gap analyses
      */
     List<GapAnalysis> projectYear(
-            java.util.function.Function<LocalDate, IncomeBreakdown> incomeProvider,
-            java.util.function.Function<LocalDate, ExpenseBreakdown> expenseProvider,
+            Function<LocalDate, IncomeBreakdown> incomeProvider,
+            Function<LocalDate, ExpenseBreakdown> expenseProvider,
             LocalDate startDate);
 
     /**

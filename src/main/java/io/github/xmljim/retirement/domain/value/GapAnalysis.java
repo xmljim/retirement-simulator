@@ -3,7 +3,8 @@ package io.github.xmljim.retirement.domain.value;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.Objects;
+
+import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
 
 /**
  * Result of income vs expense gap analysis.
@@ -43,7 +44,7 @@ public record GapAnalysis(
      * Compact constructor ensuring non-null values.
      */
     public GapAnalysis {
-        Objects.requireNonNull(asOfDate, "asOfDate is required");
+        MissingRequiredFieldException.requireNonNull(asOfDate, "asOfDate");
         totalIncome = totalIncome != null ? totalIncome : BigDecimal.ZERO;
         totalExpenses = totalExpenses != null ? totalExpenses : BigDecimal.ZERO;
         gap = gap != null ? gap : BigDecimal.ZERO;
