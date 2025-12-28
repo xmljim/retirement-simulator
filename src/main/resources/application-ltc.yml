@@ -1,0 +1,34 @@
+# Long-Term Care Insurance Configuration
+# Sources: AALTCI, Genworth Cost of Care Survey 2024, HHS/ASPE
+
+ltc:
+  # Default policy parameters
+  default-daily-benefit: 200
+  default-benefit-period-years: 3
+  default-elimination-days: 90
+  default-inflation-rate: 0.03
+
+  # Age-based annual probability of needing LTC
+  # Source: HHS/ASPE National Clearinghouse for Long-Term Care Information
+  probabilities:
+    - min-age: 40
+      max-age: 64
+      annual-probability: 0.01
+    - min-age: 65
+      max-age: 69
+      annual-probability: 0.02
+    - min-age: 70
+      max-age: 74
+      annual-probability: 0.04
+    - min-age: 75
+      max-age: 79
+      annual-probability: 0.08
+    - min-age: 80
+      max-age: 84
+      annual-probability: 0.15
+    - min-age: 85
+      max-age: 89
+      annual-probability: 0.25
+    - min-age: 90
+      max-age: 120
+      annual-probability: 0.35
