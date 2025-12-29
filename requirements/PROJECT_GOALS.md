@@ -1198,16 +1198,92 @@ The following classes are deprecated and maintained for backwards compatibility:
 - Structured data for UI consumption
 - Granularity options (monthly, annual, phase, milestone)
 
-### Milestone 10: API Layer
+### Milestone 10: Persistence Layer
+**Goal**: Database persistence with type-safe SQL
+
+**Technology Stack**:
+- PostgreSQL (primary database)
+- jOOQ (type-safe SQL DSL)
+- Flyway (schema migrations)
+- HikariCP (connection pooling)
+- Testcontainers + Podman (integration testing)
+
+**Storage Strategy**:
+- Normalized tables for domain entities (queryable, referential integrity)
+- TEXT columns with Jackson serialization for config blobs and simulation results
+- No PostgreSQL-specific features (JSONB) for portability
+
+**Entities**:
+- User, PersonProfile (with spouse linkage)
+- Account (with asset allocation)
+- Income sources: SocialSecurityBenefit, Pension, Annuity, WorkingIncome, OtherIncome
+- Expenses: RecurringExpense, OneTimeExpense
+- Scenario (config as TEXT/JSON)
+- SimulationResult (results as TEXT/JSON, 2-5MB typical)
+
+**Issues** (~21 points):
+1. Setup PostgreSQL + Flyway + jOOQ build pipeline (5)
+2. Create database schema migrations (5)
+3. Implement repository interfaces for domain entities (3)
+4. Implement jOOQ repository implementations (5)
+5. Add comprehensive persistence tests (3)
+
+### Milestone 11: Security Layer
+**Goal**: Comprehensive authentication, authorization, and data protection
+
+**Technology Stack**:
+- Spring Security
+- JWT (access tokens) + HttpOnly cookies (refresh tokens)
+- BCrypt (password hashing)
+- AES-256-GCM (field encryption)
+- PKCS12 Keystore (centralized secrets)
+
+**Authentication**:
+- Two-layer auth: API Key (client) + JWT (user)
+- Access token: 15-minute expiry
+- Refresh token: 7-day expiry, HttpOnly cookie
+- Password policy: 12+ chars, complexity requirements
+- Account lockout: 5 failed attempts → 15 min lockout
+
+**Security Features**:
+- Password reset flow with pluggable email service
+- Audit logging for all sensitive operations
+- Session management (view/revoke active sessions)
+- Rate limiting (configurable per-endpoint)
+- CORS policy and security headers
+
+**Data Protection**:
+- Field-level encryption for PII (SSN, account numbers)
+- All secrets in PKCS12 keystore (AES key, JWT key, DB credentials)
+- Only keystore path and password in environment variables
+
+**Issues** (~43 points):
+1. Implement KeyStoreService for centralized secrets management (5)
+2. Setup Spring Security with JWT + API Key filter chain (5)
+3. Implement user registration with password policy (3)
+4. Implement login with access token + refresh token (5)
+5. Implement password reset flow with email service (5)
+6. Implement API client registration and validation (3)
+7. Implement EncryptionService for field-level encryption (3)
+8. Add role-based and resource-based authorization (3)
+9. Implement configurable rate limiting (3)
+10. Implement account lockout (brute force protection) (2)
+11. Implement audit logging service (3)
+12. Add session management endpoints (2)
+13. Configure CORS and security headers (2)
+14. Create admin seed script (2)
+15. Add security integration tests (3)
+
+### Milestone 12: API Layer
 **Goal**: RESTful API for programmatic access
 
 - Spring Boot application setup
 - REST endpoints for all operations
 - Request/response DTOs
 - API documentation (OpenAPI/Swagger)
-- Authentication/authorization (if needed)
+- Integration with M11 security layer
 
-### Milestone 11: UI (React)
+### Milestone 13: UI (React)
 **Goal**: Interactive web interface
 
 - React application setup

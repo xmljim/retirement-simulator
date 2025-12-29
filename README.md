@@ -145,8 +145,10 @@ See [Contributing](docs/CONTRIBUTING.md) for detailed guidelines.
 | M7 | Simulation Engine | Planned |
 | M8 | Scenario Analysis | Planned |
 | M9 | Output & Reporting | Planned |
-| M10 | API Layer | Planned |
-| M11 | UI (React) | Planned |
+| M10 | Persistence Layer | Planned |
+| M11 | Security Layer | Planned |
+| M12 | API Layer | Planned |
+| M13 | UI (React) | Planned |
 
 See [Project Goals](requirements/PROJECT_GOALS.md) for detailed milestone breakdowns.
 
