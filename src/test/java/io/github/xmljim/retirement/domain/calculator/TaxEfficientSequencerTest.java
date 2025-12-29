@@ -73,7 +73,7 @@ class TaxEfficientSequencerTest {
             List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
 
             assertEquals(3, ordered.size());
-            assertEquals(AccountType.TAXABLE_BROKERAGE, ordered.get(0).getAccountType());
+            assertEquals(AccountType.TAXABLE_BROKERAGE, ordered.getFirst().getAccountType());
         }
 
         @Test
@@ -88,8 +88,8 @@ class TaxEfficientSequencerTest {
             List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
 
             assertEquals(2, ordered.size());
-            assertEquals(AccountType.TRADITIONAL_IRA, ordered.get(0).getAccountType());
-            assertEquals(AccountType.ROTH_IRA, ordered.get(1).getAccountType());
+            assertEquals(AccountType.TRADITIONAL_IRA, ordered.getFirst().getAccountType());
+            assertEquals(AccountType.ROTH_IRA, ordered.getLast().getAccountType());
         }
 
         @Test
@@ -106,7 +106,7 @@ class TaxEfficientSequencerTest {
             List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
 
             assertEquals(4, ordered.size());
-            assertEquals(AccountType.HSA, ordered.get(3).getAccountType());
+            assertEquals(AccountType.HSA, ordered.getLast().getAccountType());
         }
 
         @Test
@@ -124,10 +124,10 @@ class TaxEfficientSequencerTest {
 
             assertEquals(4, ordered.size());
             // TAXABLE → PRE_TAX → ROTH → HSA
-            assertEquals(AccountType.TaxTreatment.TAXABLE, ordered.get(0).getAccountType().getTaxTreatment());
+            assertEquals(AccountType.TaxTreatment.TAXABLE, ordered.getFirst().getAccountType().getTaxTreatment());
             assertEquals(AccountType.TaxTreatment.PRE_TAX, ordered.get(1).getAccountType().getTaxTreatment());
             assertEquals(AccountType.TaxTreatment.ROTH, ordered.get(2).getAccountType().getTaxTreatment());
-            assertEquals(AccountType.TaxTreatment.HSA, ordered.get(3).getAccountType().getTaxTreatment());
+            assertEquals(AccountType.TaxTreatment.HSA, ordered.getLast().getAccountType().getTaxTreatment());
         }
     }
 
@@ -171,7 +171,7 @@ class TaxEfficientSequencerTest {
             List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
 
             assertEquals(1, ordered.size());
-            assertEquals("401k", ordered.get(0).getName());
+            assertEquals("401k", ordered.getFirst().getName());
         }
 
         @Test
@@ -197,7 +197,7 @@ class TaxEfficientSequencerTest {
             List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
 
             assertEquals(1, ordered.size());
-            assertEquals("Only Account", ordered.get(0).getName());
+            assertEquals("Only Account", ordered.getFirst().getName());
         }
 
         @Test

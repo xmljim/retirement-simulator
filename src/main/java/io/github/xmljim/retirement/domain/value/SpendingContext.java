@@ -334,26 +334,26 @@ public record SpendingContext(
          * Builds the SpendingContext instance.
          *
          * <p>If age or birthYear are not explicitly set, they will be derived
-         * from the portfolio owner's date of birth.
+         * from the portfolio owner's date of birth. Portfolio and its owner
+         * are required fields, so they will always be available for derivation.
          *
          * @return a new SpendingContext
+         * @throws MissingRequiredFieldException if portfolio is not set
          */
-        @SuppressFBWarnings(value = "NP_NULL_PARAM_DEREF",
-                justification = "Portfolio null validation is handled by compact constructor")
         public SpendingContext build() {
+            // Validate portfolio early - owner and dateOfBirth are guaranteed by Portfolio/PersonProfile
+            MissingRequiredFieldException.requireNonNull(portfolio, "portfolio");
+
             // Derive age and birthYear from portfolio owner if not set
             int resolvedAge = age;
             int resolvedBirthYear = birthYear;
 
-            if (portfolio != null && portfolio.getOwner() != null
-                    && portfolio.getOwner().getDateOfBirth() != null) {
-                LocalDate ownerDob = portfolio.getOwner().getDateOfBirth();
-                if (resolvedBirthYear == 0) {
-                    resolvedBirthYear = ownerDob.getYear();
-                }
-                if (resolvedAge == 0 && date != null) {
-                    resolvedAge = portfolio.getOwner().getAge(date);
-                }
+            LocalDate ownerDob = portfolio.getOwner().getDateOfBirth();
+            if (resolvedBirthYear == 0) {
+                resolvedBirthYear = ownerDob.getYear();
+            }
+            if (resolvedAge == 0 && date != null) {
+                resolvedAge = portfolio.getOwner().getAge(date);
             }
 
             return new SpendingContext(
