@@ -1127,19 +1127,51 @@ The following classes are deprecated and maintained for backwards compatibility:
 - Standard deduction calculations
 
 ### Milestone 6: Distribution Strategies
-**Goal**: Implement the four core withdrawal strategies
+**Goal**: Implement retirement withdrawal strategies and account sequencing
 
-**Strategies**:
-- **6a**: Static withdrawal (fixed rate with inflation adjustment)
-- **6b**: Bucket strategy (time-segmented withdrawals)
-- **6c**: Spending curve (phase-based withdrawal targets)
-- **6d**: Guardrails (dynamic withdrawal adjustments)
+**Status**: Research Complete, Implementation Planned
 
-**Framework**:
-- Strategy interface/abstraction (Strategy pattern)
-- Withdrawal sequencing across account types
-- Tax-efficient withdrawal ordering
-- RMD integration
+**Design Documents**:
+- [M6 Design](docs/design/M6_DISTRIBUTION_STRATEGIES.md)
+- [Guardrails Research](docs/research/GUARDRAILS_RESEARCH.md)
+- [Bucket Strategy Research](docs/research/BUCKET_STRATEGY_RESEARCH.md)
+- [Tax Sequencing Research](docs/research/TAX_SEQUENCING_RESEARCH.md)
+
+**Sub-Milestones**:
+
+#### M6a: Strategy Framework (14 points)
+- `WithdrawalStrategy` interface (Strategy pattern)
+- `WithdrawalContext` record with state tracking (prior spending, portfolio returns)
+- `WithdrawalPlan` result record with account-level details
+- `AccountSequencer` interface for withdrawal ordering
+- `TaxEfficientSequencer` (Taxable → Traditional → Roth)
+- `RmdFirstSequencer` (RMD accounts first, then tax-efficient)
+- `WithdrawalOrchestrator` to coordinate strategy + sequencing
+
+#### M6b: Static & Income-Gap Strategies (8 points)
+- `StaticWithdrawalStrategy` (4% rule with inflation adjustment)
+- `IncomeGapStrategy` (GapAnalyzer-driven, tax gross-up)
+
+#### M6c: Bucket Strategy (15 points)
+- `Bucket` and `BucketType` models (SHORT_TERM, MEDIUM_TERM, LONG_TERM)
+- `BucketConfiguration` with refill parameters
+- `RefillTrigger` enum (THRESHOLD, CALENDAR, MARKET, HYBRID)
+- `BucketWithdrawalStrategy` implementation
+- `BucketRefillCalculator` with hybrid refill logic
+
+#### M6d: Guardrails Strategy (15 points)
+- `GuardrailsConfiguration` with comprehensive parameters
+- Preset factories: `guytonKlinger()`, `vanguardDynamic()`, `kitcesRatcheting()`
+- Guyton-Klinger 4-rule logic (Portfolio Mgmt, Withdrawal, Cap Preservation, Prosperity)
+- Kitces ratchet-only logic (50% growth trigger, 3-year minimum)
+- State tracking for prior spending and ratchet timing
+
+#### M6e: RMD Integration (8 points)
+- `RmdAwareOrchestrator` implementation
+- RMD-first withdrawal sequencing
+- End-to-end integration tests
+
+**Total**: ~60 story points across 22 issues
 
 ### Milestone 7: Simulation Engine
 **Goal**: Generate complete monthly transaction sequences
