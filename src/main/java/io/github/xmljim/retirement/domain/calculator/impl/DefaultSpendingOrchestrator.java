@@ -75,60 +75,82 @@ public class DefaultSpendingOrchestrator implements SpendingOrchestrator {
         // 2. Sequence accounts
         List<InvestmentAccount> orderedAccounts = sequencer.sequence(portfolio, context);
 
-        // 3. Execute withdrawals from accounts in sequence
-        List<AccountWithdrawal> withdrawals = new ArrayList<>();
-        BigDecimal remaining = targetWithdrawal;
-        BigDecimal totalWithdrawn = BigDecimal.ZERO;
-
-        for (InvestmentAccount account : orderedAccounts) {
-            if (remaining.compareTo(BigDecimal.ZERO) <= 0) {
-                break;
-            }
-
-            BigDecimal accountBalance = account.getBalance();
-            if (accountBalance.compareTo(BigDecimal.ZERO) <= 0) {
-                continue;
-            }
-
-            // Withdraw the lesser of remaining need or account balance
-            BigDecimal withdrawalAmount = remaining.min(accountBalance);
-            BigDecimal newBalance = accountBalance.subtract(withdrawalAmount);
-
-            AccountWithdrawal withdrawal = AccountWithdrawal.builder()
-                    .accountId(account.getId())
-                    .accountName(account.getName())
-                    .accountType(account.getAccountType())
-                    .amount(withdrawalAmount)
-                    .priorBalance(accountBalance)
-                    .newBalance(newBalance)
-                    .build();
-
-            withdrawals.add(withdrawal);
-            totalWithdrawn = totalWithdrawn.add(withdrawalAmount);
-            remaining = remaining.subtract(withdrawalAmount);
-        }
+        // 3. Execute withdrawals from accounts in sequence using Stream reduce
+        WithdrawalState finalState = orderedAccounts.stream()
+                .filter(account -> account.getBalance().compareTo(BigDecimal.ZERO) > 0)
+                .reduce(
+                        new WithdrawalState(new ArrayList<>(), targetWithdrawal, BigDecimal.ZERO),
+                        (state, account) -> state.processAccount(account),
+                        (a, b) -> b // Combiner not used in sequential stream
+                );
 
         // 4. Build and return the spending plan
-        boolean meetsTarget = remaining.compareTo(BigDecimal.ZERO) <= 0;
-        BigDecimal shortfall = meetsTarget ? BigDecimal.ZERO : remaining;
+        boolean meetsTarget = finalState.remaining().compareTo(BigDecimal.ZERO) <= 0;
+        BigDecimal shortfall = meetsTarget ? BigDecimal.ZERO : finalState.remaining();
 
         return SpendingPlan.builder()
                 .targetWithdrawal(targetWithdrawal)
-                .adjustedWithdrawal(totalWithdrawn)
-                .accountWithdrawals(withdrawals)
+                .adjustedWithdrawal(finalState.totalWithdrawn())
+                .accountWithdrawals(finalState.withdrawals())
                 .meetsTarget(meetsTarget)
                 .shortfall(shortfall)
                 .strategyUsed(strategy.getName())
                 .addMetadata("sequencer", sequencer.getName())
-                .addMetadata("accountsUsed", withdrawals.size())
+                .addMetadata("accountsUsed", finalState.withdrawals().size())
                 .build();
     }
 
     @Override
     public AccountSequencer selectDefaultSequencer(SpendingContext context) {
-        if (context.isSubjectToRmd()) {
+        if (rmdCalculator.isRmdRequired(context.age(), context.birthYear())) {
             return new RmdFirstSequencer(rmdCalculator);
         }
         return new TaxEfficientSequencer();
+    }
+
+    /**
+     * Internal state holder for accumulating withdrawals in the stream reduction.
+     *
+     * @param withdrawals the list of withdrawals accumulated so far
+     * @param remaining the remaining amount to withdraw
+     * @param totalWithdrawn the total amount withdrawn so far
+     */
+    private record WithdrawalState(
+            List<AccountWithdrawal> withdrawals,
+            BigDecimal remaining,
+            BigDecimal totalWithdrawn
+    ) {
+        /**
+         * Processes an account and returns updated state.
+         *
+         * @param account the account to potentially withdraw from
+         * @return updated state after processing the account
+         */
+        WithdrawalState processAccount(InvestmentAccount account) {
+            // If we've already withdrawn enough, return unchanged state
+            if (remaining.compareTo(BigDecimal.ZERO) <= 0) {
+                return this;
+            }
+
+            BigDecimal accountBalance = account.getBalance();
+            BigDecimal withdrawalAmount = remaining.min(accountBalance);
+            BigDecimal newBalance = accountBalance.subtract(withdrawalAmount);
+
+            AccountWithdrawal withdrawal = AccountWithdrawal.builder()
+                    .account(account)
+                    .amount(withdrawalAmount)
+                    .priorBalance(accountBalance)
+                    .newBalance(newBalance)
+                    .build();
+
+            List<AccountWithdrawal> updatedWithdrawals = new ArrayList<>(withdrawals);
+            updatedWithdrawals.add(withdrawal);
+
+            return new WithdrawalState(
+                    updatedWithdrawals,
+                    remaining.subtract(withdrawalAmount),
+                    totalWithdrawn.add(withdrawalAmount)
+            );
+        }
     }
 }

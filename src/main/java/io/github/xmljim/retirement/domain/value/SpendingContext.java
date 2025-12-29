@@ -105,38 +105,6 @@ public record SpendingContext(
     }
 
     /**
-     * Returns whether the person is subject to RMDs based on age and birth year.
-     *
-     * <p>Per SECURE 2.0:
-     * <ul>
-     *   <li>Born 1950 or earlier: Age 72</li>
-     *   <li>Born 1951-1959: Age 73</li>
-     *   <li>Born 1960 or later: Age 75</li>
-     * </ul>
-     *
-     * @return true if RMDs are required
-     */
-    public boolean isSubjectToRmd() {
-        int rmdAge = getRmdStartAge();
-        return age >= rmdAge;
-    }
-
-    /**
-     * Returns the RMD start age based on birth year.
-     *
-     * @return the age when RMDs begin
-     */
-    public int getRmdStartAge() {
-        if (birthYear <= 1950) {
-            return 72;
-        } else if (birthYear <= 1959) {
-            return 73;
-        } else {
-            return 75;
-        }
-    }
-
-    /**
      * Returns the current withdrawal rate based on portfolio balance.
      *
      * <p>Formula: priorYearSpending / currentPortfolioBalance
@@ -365,16 +333,36 @@ public record SpendingContext(
         /**
          * Builds the SpendingContext instance.
          *
+         * <p>If age or birthYear are not explicitly set, they will be derived
+         * from the portfolio owner's date of birth.
+         *
          * @return a new SpendingContext
          */
+        @SuppressFBWarnings(value = "NP_NULL_PARAM_DEREF",
+                justification = "Portfolio null validation is handled by compact constructor")
         public SpendingContext build() {
+            // Derive age and birthYear from portfolio owner if not set
+            int resolvedAge = age;
+            int resolvedBirthYear = birthYear;
+
+            if (portfolio != null && portfolio.getOwner() != null
+                    && portfolio.getOwner().getDateOfBirth() != null) {
+                LocalDate ownerDob = portfolio.getOwner().getDateOfBirth();
+                if (resolvedBirthYear == 0) {
+                    resolvedBirthYear = ownerDob.getYear();
+                }
+                if (resolvedAge == 0 && date != null) {
+                    resolvedAge = portfolio.getOwner().getAge(date);
+                }
+            }
+
             return new SpendingContext(
                     portfolio,
                     totalExpenses,
                     otherIncome,
                     date,
-                    age,
-                    birthYear,
+                    resolvedAge,
+                    resolvedBirthYear,
                     yearsInRetirement,
                     initialPortfolioBalance,
                     priorYearSpending,

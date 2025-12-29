@@ -127,9 +127,7 @@ public class RmdFirstSequencer implements AccountSequencer {
      */
     private Portfolio createPortfolioSubset(Portfolio original, List<InvestmentAccount> accounts) {
         Portfolio.Builder builder = Portfolio.builder().owner(original.getOwner());
-        for (InvestmentAccount account : accounts) {
-            builder.addAccount(account);
-        }
+        accounts.forEach(builder::addAccount);
         return builder.build();
     }
 }

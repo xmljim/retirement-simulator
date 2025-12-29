@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 import io.github.xmljim.retirement.domain.enums.AccountType;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
+import io.github.xmljim.retirement.domain.model.InvestmentAccount;
 
 /**
  * Represents a withdrawal from a single investment account.
@@ -15,19 +16,15 @@ import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldExceptio
  * <p>Tax treatment is included to support tax-efficient withdrawal sequencing
  * and tax liability calculations.
  *
- * @param accountId the unique identifier of the account
- * @param accountName the display name of the account
- * @param accountType the type of account (401K, IRA, ROTH_IRA, etc.)
+ * @param account the investment account the withdrawal is from
  * @param amount the withdrawal amount
  * @param priorBalance the account balance before withdrawal
  * @param newBalance the account balance after withdrawal
- * @param taxTreatment the tax treatment of this withdrawal
+ * @param taxTreatment the tax treatment of this withdrawal (defaults from account type)
  * @see io.github.xmljim.retirement.domain.value.SpendingPlan
  */
 public record AccountWithdrawal(
-        String accountId,
-        String accountName,
-        AccountType accountType,
+        InvestmentAccount account,
         BigDecimal amount,
         BigDecimal priorBalance,
         BigDecimal newBalance,
@@ -38,12 +35,38 @@ public record AccountWithdrawal(
      * Compact constructor with validation.
      */
     public AccountWithdrawal {
-        MissingRequiredFieldException.requireNonNull(accountId, "accountId");
-        MissingRequiredFieldException.requireNonNull(accountType, "accountType");
+        MissingRequiredFieldException.requireNonNull(account, "account");
         amount = amount != null ? amount : BigDecimal.ZERO;
         priorBalance = priorBalance != null ? priorBalance : BigDecimal.ZERO;
         newBalance = newBalance != null ? newBalance : BigDecimal.ZERO;
-        taxTreatment = taxTreatment != null ? taxTreatment : accountType.getTaxTreatment();
+        taxTreatment = taxTreatment != null ? taxTreatment : account.getAccountType().getTaxTreatment();
+    }
+
+    /**
+     * Returns the account ID.
+     *
+     * @return the account's unique identifier
+     */
+    public String accountId() {
+        return account.getId();
+    }
+
+    /**
+     * Returns the account name.
+     *
+     * @return the account's display name
+     */
+    public String accountName() {
+        return account.getName();
+    }
+
+    /**
+     * Returns the account type.
+     *
+     * @return the type of account
+     */
+    public AccountType accountType() {
+        return account.getAccountType();
     }
 
     /**
@@ -93,44 +116,20 @@ public record AccountWithdrawal(
      * Builder for creating AccountWithdrawal instances.
      */
     public static class Builder {
-        private String accountId;
-        private String accountName;
-        private AccountType accountType;
+        private InvestmentAccount account;
         private BigDecimal amount = BigDecimal.ZERO;
         private BigDecimal priorBalance = BigDecimal.ZERO;
         private BigDecimal newBalance = BigDecimal.ZERO;
         private AccountType.TaxTreatment taxTreatment;
 
         /**
-         * Sets the account ID.
+         * Sets the investment account.
          *
-         * @param accountId the account ID
+         * @param account the investment account
          * @return this builder
          */
-        public Builder accountId(String accountId) {
-            this.accountId = accountId;
-            return this;
-        }
-
-        /**
-         * Sets the account name.
-         *
-         * @param accountName the account name
-         * @return this builder
-         */
-        public Builder accountName(String accountName) {
-            this.accountName = accountName;
-            return this;
-        }
-
-        /**
-         * Sets the account type.
-         *
-         * @param accountType the account type
-         * @return this builder
-         */
-        public Builder accountType(AccountType accountType) {
-            this.accountType = accountType;
+        public Builder account(InvestmentAccount account) {
+            this.account = account;
             return this;
         }
 
@@ -185,9 +184,7 @@ public record AccountWithdrawal(
          */
         public AccountWithdrawal build() {
             return new AccountWithdrawal(
-                    accountId,
-                    accountName,
-                    accountType,
+                    account,
                     amount,
                     priorBalance,
                     newBalance,

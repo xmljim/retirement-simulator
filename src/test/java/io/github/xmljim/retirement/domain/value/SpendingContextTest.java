@@ -1,9 +1,7 @@
 package io.github.xmljim.retirement.domain.value;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -201,73 +199,6 @@ class SpendingContextTest {
 
             // Gap should be zero, not negative
             assertEquals(0, BigDecimal.ZERO.compareTo(context.incomeGap()));
-        }
-    }
-
-    @Nested
-    @DisplayName("RMD Tests")
-    class RmdTests {
-
-        @Test
-        @DisplayName("Should calculate RMD start age for born 1950 or earlier")
-        void rmdAge72ForPre1950() {
-            SpendingContext context = SpendingContext.builder()
-                    .portfolio(portfolio)
-                    .date(LocalDate.now())
-                    .birthYear(1950)
-                    .build();
-
-            assertEquals(72, context.getRmdStartAge());
-        }
-
-        @Test
-        @DisplayName("Should calculate RMD start age for born 1951-1959")
-        void rmdAge73For1951To1959() {
-            SpendingContext context = SpendingContext.builder()
-                    .portfolio(portfolio)
-                    .date(LocalDate.now())
-                    .birthYear(1955)
-                    .build();
-
-            assertEquals(73, context.getRmdStartAge());
-        }
-
-        @Test
-        @DisplayName("Should calculate RMD start age for born 1960 or later")
-        void rmdAge75For1960Plus() {
-            SpendingContext context = SpendingContext.builder()
-                    .portfolio(portfolio)
-                    .date(LocalDate.now())
-                    .birthYear(1965)
-                    .build();
-
-            assertEquals(75, context.getRmdStartAge());
-        }
-
-        @Test
-        @DisplayName("Should detect when subject to RMD")
-        void detectsSubjectToRmd() {
-            SpendingContext context = SpendingContext.builder()
-                    .portfolio(portfolio)
-                    .date(LocalDate.now())
-                    .age(75)
-                    .birthYear(1950)
-                    .build();
-
-            assertTrue(context.isSubjectToRmd());
-        }
-
-        @Test
-        @DisplayName("Should detect when not subject to RMD")
-        void detectsNotSubjectToRmd() {
-            SpendingContext context = SpendingContext.builder()
-                    .portfolio(portfolio)
-                    .date(LocalDate.now())
-                    .age(65)
-                    .birthYear(1960)
-                    .build();
-
-            assertFalse(context.isSubjectToRmd());
         }
     }
 

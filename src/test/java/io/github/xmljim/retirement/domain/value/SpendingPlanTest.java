@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import io.github.xmljim.retirement.domain.enums.AccountType;
+import io.github.xmljim.retirement.domain.model.InvestmentAccount;
 
 @DisplayName("SpendingPlan Tests")
 class SpendingPlanTest {
@@ -218,10 +219,19 @@ class SpendingPlanTest {
 
     // Helper methods
 
+    private InvestmentAccount createAccount(AccountType type) {
+        return InvestmentAccount.builder()
+                .name("Test " + type.name())
+                .accountType(type)
+                .balance(new BigDecimal("100000.00"))
+                .allocation(AssetAllocation.of(60, 35, 5))
+                .preRetirementReturnRate(0.07)
+                .build();
+    }
+
     private AccountWithdrawal createWithdrawal(AccountType type, BigDecimal amount) {
         return AccountWithdrawal.builder()
-                .accountId("test-" + type.name().toLowerCase())
-                .accountType(type)
+                .account(createAccount(type))
                 .amount(amount)
                 .build();
     }
@@ -232,8 +242,7 @@ class SpendingPlanTest {
             BigDecimal priorBalance,
             BigDecimal newBalance) {
         return AccountWithdrawal.builder()
-                .accountId("test-" + type.name().toLowerCase())
-                .accountType(type)
+                .account(createAccount(type))
                 .amount(amount)
                 .priorBalance(priorBalance)
                 .newBalance(newBalance)

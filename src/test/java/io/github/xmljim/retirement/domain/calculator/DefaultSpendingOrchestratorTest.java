@@ -77,7 +77,23 @@ class DefaultSpendingOrchestratorTest {
                 .build();
     }
 
-    private SpendingContext createContext(Portfolio portfolio, int age, int birthYear) {
+    /**
+     * Creates a context for the given portfolio.
+     * Age and birthYear are derived from the portfolio owner's date of birth.
+     */
+    private SpendingContext createContext(Portfolio portfolio) {
+        return SpendingContext.builder()
+                .portfolio(portfolio)
+                .totalExpenses(new BigDecimal("5000"))
+                .otherIncome(new BigDecimal("2000"))
+                .date(LocalDate.now())
+                .build();
+    }
+
+    /**
+     * Creates a context with explicit age and birthYear for RMD testing.
+     */
+    private SpendingContext createContextWithAge(Portfolio portfolio, int age, int birthYear) {
         return SpendingContext.builder()
                 .portfolio(portfolio)
                 .totalExpenses(new BigDecimal("5000"))
@@ -120,7 +136,7 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should execute withdrawal from single account")
         void executesWithdrawalFromSingleAccount() {
-            SpendingContext context = createContext(portfolio, 65, 1960);
+            SpendingContext context = createContext(portfolio);
             SpendingStrategy strategy = createFixedStrategy(new BigDecimal("10000"));
             AccountSequencer sequencer = new TaxEfficientSequencer();
 
@@ -136,7 +152,7 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should execute withdrawal across multiple accounts")
         void executesWithdrawalAcrossMultipleAccounts() {
-            SpendingContext context = createContext(portfolio, 65, 1960);
+            SpendingContext context = createContext(portfolio);
             // Withdraw more than brokerage has ($50k), requiring multiple accounts
             SpendingStrategy strategy = createFixedStrategy(new BigDecimal("75000"));
             AccountSequencer sequencer = new TaxEfficientSequencer();
@@ -151,7 +167,7 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should return no withdrawal when target is zero")
         void noWithdrawalWhenTargetZero() {
-            SpendingContext context = createContext(portfolio, 65, 1960);
+            SpendingContext context = createContext(portfolio);
             SpendingStrategy strategy = createFixedStrategy(BigDecimal.ZERO);
             AccountSequencer sequencer = new TaxEfficientSequencer();
 
@@ -171,7 +187,7 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should track shortfall when portfolio insufficient")
         void tracksShortfall() {
-            SpendingContext context = createContext(portfolio, 65, 1960);
+            SpendingContext context = createContext(portfolio);
             // Request more than total portfolio ($350k)
             SpendingStrategy strategy = createFixedStrategy(new BigDecimal("500000"));
             AccountSequencer sequencer = new TaxEfficientSequencer();
@@ -192,7 +208,7 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should select TaxEfficientSequencer when not subject to RMD")
         void selectsTaxEfficientWhenNotRmd() {
-            SpendingContext context = createContext(portfolio, 65, 1960); // Age 65, RMD at 75
+            SpendingContext context = createContext(portfolio); // Age 65, RMD at 75
 
             AccountSequencer sequencer = orchestrator.selectDefaultSequencer(context);
 
@@ -202,7 +218,7 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should select RmdFirstSequencer when subject to RMD")
         void selectsRmdFirstWhenRmd() {
-            SpendingContext context = createContext(portfolio, 76, 1950); // Age 76, born 1950 → RMD at 72
+            SpendingContext context = createContextWithAge(portfolio, 76, 1950); // Age 76, born 1950 → RMD at 72
 
             AccountSequencer sequencer = orchestrator.selectDefaultSequencer(context);
 
@@ -212,7 +228,7 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should use overloaded method with default sequencer")
         void usesDefaultSequencerOverload() {
-            SpendingContext context = createContext(portfolio, 65, 1960);
+            SpendingContext context = createContext(portfolio);
             SpendingStrategy strategy = createFixedStrategy(new BigDecimal("10000"));
 
             // Use overloaded method without explicit sequencer
@@ -230,7 +246,7 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should throw for null portfolio")
         void throwsForNullPortfolio() {
-            SpendingContext context = createContext(portfolio, 65, 1960);
+            SpendingContext context = createContext(portfolio);
             SpendingStrategy strategy = createFixedStrategy(new BigDecimal("10000"));
             AccountSequencer sequencer = new TaxEfficientSequencer();
 
@@ -241,7 +257,7 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should throw for null strategy")
         void throwsForNullStrategy() {
-            SpendingContext context = createContext(portfolio, 65, 1960);
+            SpendingContext context = createContext(portfolio);
             AccountSequencer sequencer = new TaxEfficientSequencer();
 
             assertThrows(MissingRequiredFieldException.class, () ->
@@ -251,7 +267,7 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should throw for null sequencer")
         void throwsForNullSequencer() {
-            SpendingContext context = createContext(portfolio, 65, 1960);
+            SpendingContext context = createContext(portfolio);
             SpendingStrategy strategy = createFixedStrategy(new BigDecimal("10000"));
 
             assertThrows(MissingRequiredFieldException.class, () ->
@@ -283,7 +299,7 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should include sequencer name in metadata")
         void includesSequencerInMetadata() {
-            SpendingContext context = createContext(portfolio, 65, 1960);
+            SpendingContext context = createContext(portfolio);
             SpendingStrategy strategy = createFixedStrategy(new BigDecimal("10000"));
             AccountSequencer sequencer = new TaxEfficientSequencer();
 
@@ -295,7 +311,7 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should include accounts used count in metadata")
         void includesAccountsUsedInMetadata() {
-            SpendingContext context = createContext(portfolio, 65, 1960);
+            SpendingContext context = createContext(portfolio);
             SpendingStrategy strategy = createFixedStrategy(new BigDecimal("10000"));
             AccountSequencer sequencer = new TaxEfficientSequencer();
 
