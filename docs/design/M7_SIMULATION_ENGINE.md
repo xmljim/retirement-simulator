@@ -231,8 +231,20 @@ YearMonth getSocialSecurityStartMonth(PersonProfile person) {
 }
 ```
 
-**Open Questions:**
-- [ ] Part-time work in early retirement (contributions + withdrawals simultaneously)?
+**Decision:** Part-time work in retirement = "other income", not contributions.
+
+- Once retired, contributions stop (no more 401k/IRA contributions)
+- Part-time/consulting income modeled as `OtherIncome` (M4)
+- This income reduces the gap, potentially reducing withdrawals needed
+- Simplifies phase logic: ACCUMULATION = contributing, DISTRIBUTION = not contributing
+
+```
+Retired + part-time work:
+  - Phase = DISTRIBUTION
+  - OtherIncome += part-time earnings
+  - Gap = Expenses - (SS + Pension + OtherIncome)
+  - Withdrawal = Gap (if positive)
+```
 
 ---
 
