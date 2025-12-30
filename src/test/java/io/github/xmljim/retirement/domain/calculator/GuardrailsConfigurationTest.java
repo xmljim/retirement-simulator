@@ -185,7 +185,6 @@ class GuardrailsConfigurationTest {
         void createsWithBuilder() {
             GuardrailsConfiguration config = GuardrailsConfiguration.builder()
                     .initialWithdrawalRate(new BigDecimal("0.045"))
-                    .inflationRate(new BigDecimal("0.03"))
                     .upperThresholdMultiplier(new BigDecimal("0.75"))
                     .increaseAdjustment(new BigDecimal("0.05"))
                     .lowerThresholdMultiplier(new BigDecimal("1.25"))
@@ -195,7 +194,6 @@ class GuardrailsConfigurationTest {
                     .build();
 
             assertEquals(0, new BigDecimal("0.045").compareTo(config.initialWithdrawalRate()));
-            assertEquals(0, new BigDecimal("0.03").compareTo(config.inflationRate()));
             assertEquals(0, new BigDecimal("0.75").compareTo(config.upperThresholdMultiplier()));
             assertEquals(2, config.minimumYearsBetweenRatchets());
         }
@@ -206,7 +204,6 @@ class GuardrailsConfigurationTest {
             GuardrailsConfiguration config = GuardrailsConfiguration.builder().build();
 
             assertEquals(0, new BigDecimal("0.04").compareTo(config.initialWithdrawalRate()));
-            assertEquals(0, new BigDecimal("0.025").compareTo(config.inflationRate()));
             assertTrue(config.allowSpendingCuts());
             assertEquals(1, config.minimumYearsBetweenRatchets());
         }

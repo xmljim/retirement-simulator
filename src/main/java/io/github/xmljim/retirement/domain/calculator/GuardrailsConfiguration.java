@@ -14,6 +14,10 @@ import java.math.BigDecimal;
  *   <li><b>Kitces Ratcheting:</b> One-way ratchet that only increases spending</li>
  * </ul>
  *
+ * <p><b>Note:</b> Inflation rate is not part of this configuration. It is an economic
+ * parameter controlled by the simulation engine, allowing for historical backtests,
+ * Monte Carlo scenarios, and stress testing with variable inflation.
+ *
  * <h2>Usage</h2>
  * <pre>{@code
  * // Use a preset
@@ -30,7 +34,6 @@ import java.math.BigDecimal;
  */
 public record GuardrailsConfiguration(
         BigDecimal initialWithdrawalRate,
-        BigDecimal inflationRate,
         BigDecimal upperThresholdMultiplier,
         BigDecimal increaseAdjustment,
         BigDecimal lowerThresholdMultiplier,
@@ -42,8 +45,6 @@ public record GuardrailsConfiguration(
         int minimumYearsBetweenRatchets,
         int yearsBeforeCapPreservationEnds
 ) {
-
-    private static final BigDecimal DEFAULT_INFLATION = new BigDecimal("0.025");
 
     /**
      * Creates a Guyton-Klinger configuration.
@@ -61,7 +62,6 @@ public record GuardrailsConfiguration(
     public static GuardrailsConfiguration guytonKlinger() {
         return new GuardrailsConfiguration(
                 new BigDecimal("0.052"),
-                DEFAULT_INFLATION,
                 new BigDecimal("0.80"),
                 new BigDecimal("0.10"),
                 new BigDecimal("1.20"),
@@ -89,7 +89,6 @@ public record GuardrailsConfiguration(
     public static GuardrailsConfiguration vanguardDynamic() {
         return new GuardrailsConfiguration(
                 new BigDecimal("0.04"),
-                DEFAULT_INFLATION,
                 null,
                 new BigDecimal("0.05"),
                 null,
@@ -119,7 +118,6 @@ public record GuardrailsConfiguration(
     public static GuardrailsConfiguration kitcesRatcheting() {
         return new GuardrailsConfiguration(
                 new BigDecimal("0.04"),
-                DEFAULT_INFLATION,
                 new BigDecimal("0.667"),
                 new BigDecimal("0.10"),
                 null,
@@ -175,7 +173,6 @@ public record GuardrailsConfiguration(
      */
     public static class Builder {
         private BigDecimal initialWithdrawalRate = new BigDecimal("0.04");
-        private BigDecimal inflationRate = DEFAULT_INFLATION;
         private BigDecimal upperThresholdMultiplier;
         private BigDecimal increaseAdjustment = new BigDecimal("0.10");
         private BigDecimal lowerThresholdMultiplier;
@@ -190,12 +187,6 @@ public record GuardrailsConfiguration(
         /** Sets the initial withdrawal rate (e.g., 0.04 for 4%). */
         public Builder initialWithdrawalRate(BigDecimal rate) {
             this.initialWithdrawalRate = rate;
-            return this;
-        }
-
-        /** Sets the inflation rate (e.g., 0.025 for 2.5%). */
-        public Builder inflationRate(BigDecimal rate) {
-            this.inflationRate = rate;
             return this;
         }
 
@@ -263,7 +254,6 @@ public record GuardrailsConfiguration(
         public GuardrailsConfiguration build() {
             return new GuardrailsConfiguration(
                     initialWithdrawalRate,
-                    inflationRate,
                     upperThresholdMultiplier,
                     increaseAdjustment,
                     lowerThresholdMultiplier,
