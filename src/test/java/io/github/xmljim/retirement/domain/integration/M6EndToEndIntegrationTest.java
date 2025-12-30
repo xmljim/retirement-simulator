@@ -1,4 +1,4 @@
-package io.github.xmljim.retirement.domain.calculator.impl;
+package io.github.xmljim.retirement.domain.integration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -19,6 +19,14 @@ import io.github.xmljim.retirement.domain.calculator.RmdCalculator;
 import io.github.xmljim.retirement.domain.calculator.SpendingOrchestrator;
 import io.github.xmljim.retirement.domain.calculator.SpendingStrategy;
 import io.github.xmljim.retirement.domain.calculator.StubSimulationView;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultRmdCalculator;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultSpendingOrchestrator;
+import io.github.xmljim.retirement.domain.calculator.impl.GuardrailsSpendingStrategy;
+import io.github.xmljim.retirement.domain.calculator.impl.IncomeGapStrategy;
+import io.github.xmljim.retirement.domain.calculator.impl.RmdAwareOrchestrator;
+import io.github.xmljim.retirement.domain.calculator.impl.RmdRulesTestLoader;
+import io.github.xmljim.retirement.domain.calculator.impl.StaticSpendingStrategy;
+import io.github.xmljim.retirement.domain.calculator.impl.TaxEfficientSequencer;
 import io.github.xmljim.retirement.domain.config.GuardrailsConfiguration;
 import io.github.xmljim.retirement.domain.config.RmdRules;
 import io.github.xmljim.retirement.domain.enums.AccountType;

@@ -1,4 +1,4 @@
-package io.github.xmljim.retirement.domain.calculator.impl;
+package io.github.xmljim.retirement.domain.integration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -13,6 +13,10 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import io.github.xmljim.retirement.domain.calculator.StubSimulationView;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultRmdCalculator;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultSpendingOrchestrator;
+import io.github.xmljim.retirement.domain.calculator.impl.IncomeGapStrategy;
+import io.github.xmljim.retirement.domain.calculator.impl.StaticSpendingStrategy;
 import io.github.xmljim.retirement.domain.enums.AccountType;
 import io.github.xmljim.retirement.domain.value.SpendingContext;
 import io.github.xmljim.retirement.domain.value.SpendingPlan;
