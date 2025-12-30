@@ -1,8 +1,8 @@
 # M6: Distribution Strategies Design
 
-**Status:** Research Complete → Architecture Revised
+**Status:** Research Complete → Architecture Revised → M6c Deferred
 **Date:** December 29, 2025
-**Last Revised:** December 29, 2025
+**Last Revised:** December 30, 2025
 **Milestone:** 6
 
 ---
@@ -14,6 +14,8 @@
 | 2025-12-29 | Added Simulation Integration Architecture | Design discussion revealed need for clean separation between simulation state and strategy calculations |
 | 2025-12-29 | Introduced `SimulationView` interface | Strategies need read-only access to both current balances and historical data |
 | 2025-12-29 | Refactored `SpendingContext` | Removed embedded historical fields; now uses `SimulationView` |
+| 2025-12-30 | Deferred M6c Bucket Strategy | Bucket strategy is an allocation model, not a spending strategy; complexity not justified for marginal benefit |
+| 2025-12-30 | Removed Portfolio parameter from Orchestrator | Account info accessed via `SimulationView.getAccountSnapshots()` |
 
 ---
 
@@ -332,12 +334,12 @@ The `RmdFirstSequencer` prioritizes RMD-subject accounts so RMDs are naturally s
 │   (HOW MUCH)     │  │ (WHICH ACCOUNTS) │  │  (MANDATORY)    │
 └──────────────────┘  └──────────────────┘  └─────────────────┘
           │
-    ┌─────┴─────┬─────────┬───────────┐
-    ▼           ▼         ▼           ▼
-┌───────┐  ┌────────┐  ┌───────┐  ┌──────────┐
-│Static │  │ Bucket │  │Income │  │Guardrails│
-│  4%   │  │Strategy│  │  Gap  │  │ Dynamic  │
-└───────┘  └────────┘  └───────┘  └──────────┘
+    ┌─────┴─────┬───────────┐
+    ▼           ▼           ▼
+┌───────┐  ┌───────┐  ┌──────────┐
+│Static │  │Income │  │Guardrails│
+│  4%   │  │  Gap  │  │ Dynamic  │
+└───────┘  └───────┘  └──────────┘
 ```
 
 ---
@@ -581,9 +583,20 @@ public class IncomeGapStrategy implements WithdrawalStrategy {
 
 ---
 
-### M6c: Bucket Strategy (~15 points)
+### M6c: Bucket Strategy (~15 points) ⏸️ DEFERRED
 
-**Goal:** Time-segmented withdrawal approach.
+**Status:** DEFERRED
+
+**Rationale:** The bucket strategy is fundamentally an **asset allocation model**, not a spending/withdrawal strategy. While it provides psychological comfort and sequence-of-returns protection, research indicates actual returns are similar to systematic withdrawal strategies. The complexity of implementing bucket tracking, refill logic, and cascade transfers across our account-based architecture doesn't justify the marginal benefit.
+
+**What we have instead:**
+- `StaticSpendingStrategy` - 4% rule with inflation adjustment
+- `IncomeGapStrategy` - Withdraw only what's needed
+- `TaxEfficientSequencer` / `RmdFirstSequencer` - Optimal account ordering
+
+**Future consideration:** If there's demand for bucket visualization or allocation tracking as a separate feature (outside of distribution strategies), this can be revisited.
+
+**Original Goal:** Time-segmented withdrawal approach.
 
 **Research:** Standard 3-bucket model with hybrid refill strategy.
 
@@ -751,20 +764,21 @@ public class RmdAwareOrchestrator implements WithdrawalOrchestrator {
 | Portfolio down 25% | Guardrails | Decrease to floor |
 | Year 1 retirement | Static 4% | Initial balance × 4% ÷ 12 |
 | Year 5 retirement | Static 4% | Inflation-adjusted |
-| Short-term bucket low | Bucket | Trigger refill from medium |
+| Income covers expenses | Income Gap | Zero withdrawal |
+| Withdrawal exceeds balance | Any | Cap at available, flag shortfall |
 
 ---
 
 ## Summary (Revised per Research)
 
-| Sub-Milestone | Points | Focus |
-|---------------|--------|-------|
-| M6a | 14 | Framework, Sequencing, Context |
-| M6b | 8 | Static & Income-Gap (simpler) |
-| M6c | 15 | Bucket Strategy + Refill Logic |
-| M6d | 15 | Guardrails (3 presets) |
-| M6e | 8 | RMD Integration |
-| **Total** | **60** | |
+| Sub-Milestone | Points | Focus | Status |
+|---------------|--------|-------|--------|
+| M6a | 14 | Framework, Sequencing, Context | ✅ Complete |
+| M6b | 8 | Static & Income-Gap (simpler) | ✅ Complete |
+| M6c | 15 | Bucket Strategy + Refill Logic | ⏸️ Deferred |
+| M6d | 15 | Guardrails (3 presets) | 🔄 In Progress |
+| M6e | 8 | RMD Integration | Pending |
+| **Active Total** | **45** | (excluding deferred M6c) |
 
 **Research Issues (completed):**
 - #220: Guardrails Research (3 pts)
@@ -797,31 +811,29 @@ This allows M6 to be fully developed and tested independently, with M7 providing
 
 ## Implementation Order
 
-### Revised Order (per Architecture Update)
+### Current Order (Updated December 30, 2025)
 
-1. **Architecture Refactoring** (blocking)
-   - Create `SimulationView` interface
-   - Create `AccountSnapshot` record
-   - Create `StubSimulationView` for testing
-   - Refactor `SpendingContext` to use `SimulationView`
-   - Update existing M6a tests
+1. **M6a: Architecture & Framework** ✅ COMPLETE
+   - Created `SimulationView` interface
+   - Created `AccountSnapshot` record
+   - Created `StubSimulationView` for testing
+   - Refactored `SpendingContext` to use `SimulationView`
+   - Removed Portfolio parameter from Orchestrator (#260)
 
-2. **M6b: Static & Income-Gap Strategies**
-   - Validate refactored framework with simple strategies
-   - Static strategy uses `simulation.getInitialPortfolioBalance()`
-   - Income-Gap strategy uses current period inputs only
+2. **M6b: Static & Income-Gap Strategies** ✅ COMPLETE
+   - `StaticSpendingStrategy` - 4% rule with inflation adjustment
+   - `IncomeGapStrategy` - Withdraw gap with optional tax gross-up
+   - Integration tests with orchestrator
 
-3. **M6c/M6d parallel** - Independent strategies
-   - Bucket Strategy (M6c)
-   - Guardrails (M6d) - validates `SimulationView` historical queries
+3. **M6c: Bucket Strategy** ⏸️ DEFERRED
+   - Determined to be an allocation model, not a spending strategy
+   - See issues #232-236 for details
 
-4. **M6e: Integration** - End-to-end flows with RMD coordination
+4. **M6d: Guardrails Strategy** 🔄 IN PROGRESS
+   - Guyton-Klinger, Vanguard Dynamic, Kitces Ratcheting presets
+   - Validates `SimulationView` historical queries
 
-### Original Order (for reference)
-1. ~~M6a first~~ - Framework ✅ (needs refactoring)
-2. M6b second - Simple strategies validate framework
-3. M6c/M6d parallel - Independent strategies
-4. M6e last - Integration requires all strategies
+5. **M6e: Integration** - End-to-end flows with RMD coordination
 
 ---
 
