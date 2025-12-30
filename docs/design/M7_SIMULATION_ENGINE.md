@@ -497,9 +497,12 @@ public record ExpenseLevers(
 ) {}
 ```
 
-**Open Questions:**
-- [ ] How do Monte Carlo runs override baseline?
-- [ ] Should levers be immutable or adjustable mid-simulation?
+**Decisions:**
+- **Monte Carlo baseline override** → Deferred to research #268
+- **Levers are immutable** - set at simulation start, not adjustable mid-run
+  - For inflation: choose "fixed rate" OR "historical data" as an immutable option
+  - Historical/Monte Carlo modes can use time-varying data, but the *choice* is immutable
+  - Aligns with "point-in-time projection" principle
 
 ---
 
