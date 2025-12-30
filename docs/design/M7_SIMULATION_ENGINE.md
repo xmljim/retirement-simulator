@@ -25,7 +25,7 @@ The Simulation Engine is the orchestration core that ties together all previous 
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          SIMULATION CONFIGURATION                            │
+│                          SIMULATION CONFIGURATION                           │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                       │
 │  │   Economic   │  │    Market    │  │   Expense    │                       │
 │  │    Levers    │  │    Levers    │  │    Levers    │                       │
@@ -34,36 +34,36 @@ The Simulation Engine is the orchestration core that ties together all previous 
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           SIMULATION ENGINE                                  │
+│                           SIMULATION ENGINE                                 │
 │                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
 │  │                      implements SimulationView                       │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                     │
-│  │   People    │    │  Accounts   │    │   Events    │                     │
-│  │   (M1/M4)   │    │   (M2/M3)   │    │  (triggers) │                     │
-│  └─────────────┘    └─────────────┘    └─────────────┘                     │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                      │
+│  │   People    │    │  Accounts   │    │   Events    │                      │
+│  │   (M1/M4)   │    │   (M2/M3)   │    │  (triggers) │                      │
+│  └─────────────┘    └─────────────┘    └─────────────┘                      │
 │                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
 │  │                      MONTHLY SIMULATION LOOP                         │   │
 │  │                                                                      │   │
 │  │  1. Apply market returns to accounts                                 │   │
-│  │  2. Process income (salary, SS, pension, annuity)                   │   │
+│  │  2. Process income (salary, SS, pension, annuity)                    │   │
 │  │  3. Calculate expenses (budget + inflation)                          │   │
 │  │  4. Determine phase (accumulation vs distribution)                   │   │
 │  │  5. Execute contributions OR withdrawals                             │   │
 │  │  6. Process events (triggers)                                        │   │
 │  │  7. Record to time series                                            │   │
 │  │  8. Advance to next month                                            │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                     TimeSeries<MonthlySnapshot>                              │
+│                     TimeSeries<MonthlySnapshot>                             │
 │                                                                             │
-│  Month 1 → Month 2 → Month 3 → ... → Month N                               │
+│  Month 1 → Month 2 → Month 3 → ... → Month N                                │
 │  (Full transaction history with account balances)                           │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -119,18 +119,48 @@ public record MonthlySnapshot(
 ) {}
 ```
 
+**Decision:** Monthly granularity is correct. Annual snapshots hide important nuance:
+- Random events (contingency expenses) in one month ripple to future months
+- Market volatility is masked by annual averaging
+- Sequence-of-returns risk only visible at monthly level
+
 **Open Questions:**
-- [ ] Is this too granular? Should some fields be computed on-demand?
 - [ ] How do we handle per-account transactions vs aggregated view?
 
 ---
 
-### 2. Loop Structure
+### 2. TimeSeries with Annual Aggregation
 
-**Question:** Monthly or annual granularity?
+**Decision:** Monthly simulation with annual aggregation *methods* in TimeSeries.
 
-**Recommendation:** Monthly simulation with annual aggregation points
+```java
+public class TimeSeries<T extends MonthlySnapshot> {
+    private final List<T> snapshots;
 
+    // Monthly access
+    public T getSnapshot(YearMonth month) { ... }
+    public List<T> getRange(YearMonth start, YearMonth end) { ... }
+
+    // Annual aggregation (computed from monthly data)
+    public AnnualSummary getAnnualSummary(int year) { ... }
+    public List<AnnualSummary> getAllAnnualSummaries() { ... }
+}
+
+public record AnnualSummary(
+    int year,
+    BigDecimal startingBalance,
+    BigDecimal endingBalance,
+    BigDecimal totalContributions,
+    BigDecimal totalWithdrawals,
+    BigDecimal totalIncome,
+    BigDecimal totalExpenses,
+    BigDecimal annualReturn,
+    BigDecimal annualReturnPercent,
+    List<String> significantEvents
+) {}
+```
+
+**Loop Structure:**
 ```
 For each month from start to end:
     1. Apply monthly return (annual / 12 or monthly draw)
@@ -140,8 +170,7 @@ For each month from start to end:
     5. Record MonthlySnapshot
 
     If (month == December):
-        - Calculate annual summary
-        - Trigger annual events (RMD, rebalancing)
+        - Trigger annual events (RMD calculation, rebalancing)
         - Reset YTD accumulators
 ```
 
