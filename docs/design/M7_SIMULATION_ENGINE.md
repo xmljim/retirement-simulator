@@ -181,16 +181,40 @@ public record AnnualSummary(
 **Loop Structure:**
 ```
 For each month from start to end:
-    1. Apply monthly return (annual / 12 or monthly draw)
-    2. Process monthly income
-    3. Process monthly expenses
-    4. Execute monthly contributions/withdrawals
-    5. Record MonthlySnapshot
+    1. Process income (salary, SS, pension, annuity)
+    2. Calculate expenses (budget + inflation)
+    3. Determine phase (accumulation vs distribution)
+    4. Execute contributions OR withdrawals
+    5. Apply monthly returns to post-transaction balances
+    6. Process events (triggers)
+    7. Record MonthlySnapshot
 
     If (month == December):
         - Trigger annual events (RMD calculation, rebalancing)
         - Reset YTD accumulators
 ```
+
+**Monthly Return Calculation:**
+
+Returns applied AFTER transactions, using monthly compounding:
+
+```java
+// Monthly return from annual rate
+BigDecimal monthlyMultiplier = BigDecimal.valueOf(
+    Math.pow(1 + annualReturn.doubleValue(), 1.0 / 12)
+);
+
+// Example: $1M, withdraw $10K, 8% annual return
+// 1. Start: $1,000,000
+// 2. Withdraw: $1,000,000 - $10,000 = $990,000
+// 3. Apply return: $990,000 × (1.08^(1/12)) = $990,000 × 1.00643 ≈ $996,369
+```
+
+**Why this order?**
+- Transactions first, then returns = conservative modeling
+- Withdrawal reduces balance before gains applied
+- Contribution increases balance before gains applied
+- More realistic: money withdrawn doesn't earn that month's return
 
 **Decision:** All contributions modeled as monthly.
 
