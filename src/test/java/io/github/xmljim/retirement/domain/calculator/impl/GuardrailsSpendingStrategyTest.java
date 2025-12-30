@@ -32,7 +32,7 @@ class GuardrailsSpendingStrategyTest {
         @DisplayName("First year uses initial withdrawal rate")
         void firstYearUsesInitialRate() {
             GuardrailsSpendingStrategy strategy = new GuardrailsSpendingStrategy(
-                    GuardrailsConfiguration.guytonKlinger());
+                GuardrailsConfiguration.guytonKlinger());
             SpendingContext context = createContext(MILLION, BigDecimal.ZERO, new BigDecimal("0.08"));
 
             SpendingPlan plan = strategy.calculateWithdrawal(context);
@@ -50,7 +50,7 @@ class GuardrailsSpendingStrategyTest {
         @DisplayName("Normal year applies inflation")
         void normalYearAppliesInflation() {
             GuardrailsSpendingStrategy strategy = new GuardrailsSpendingStrategy(
-                    GuardrailsConfiguration.guytonKlinger());
+                GuardrailsConfiguration.guytonKlinger());
             SpendingContext context = createContext(MILLION, new BigDecimal("52000"), new BigDecimal("0.08"));
 
             SpendingPlan plan = strategy.calculateWithdrawal(context);
@@ -63,7 +63,7 @@ class GuardrailsSpendingStrategyTest {
         @DisplayName("Down year with high rate skips inflation")
         void downYearHighRateSkipsInflation() {
             GuardrailsSpendingStrategy strategy = new GuardrailsSpendingStrategy(
-                    GuardrailsConfiguration.guytonKlinger());
+                GuardrailsConfiguration.guytonKlinger());
             // Prior spending $65k on $1M = 6.5% rate > 5.2% initial
             SpendingContext context = createContext(MILLION, new BigDecimal("65000"), new BigDecimal("-0.10"));
 
@@ -77,7 +77,7 @@ class GuardrailsSpendingStrategyTest {
         @DisplayName("Prosperity rule triggers increase")
         void prosperityRuleTriggersIncrease() {
             GuardrailsSpendingStrategy strategy = new GuardrailsSpendingStrategy(
-                    GuardrailsConfiguration.guytonKlinger());
+                GuardrailsConfiguration.guytonKlinger());
             // $40k spending on $1M = 4% rate < 4.16% (80% of 5.2%)
             SpendingContext context = createContext(MILLION, new BigDecimal("40000"), new BigDecimal("0.30"));
 
@@ -90,7 +90,7 @@ class GuardrailsSpendingStrategyTest {
         @DisplayName("Capital preservation rule triggers decrease")
         void capitalPreservationTriggersDecrease() {
             GuardrailsSpendingStrategy strategy = new GuardrailsSpendingStrategy(
-                    GuardrailsConfiguration.guytonKlinger());
+                GuardrailsConfiguration.guytonKlinger());
             // $70k spending on $1M = 7% rate > 6.24% (120% of 5.2%)
             SpendingContext context = createContext(MILLION, new BigDecimal("70000"), new BigDecimal("-0.20"));
 
@@ -108,10 +108,10 @@ class GuardrailsSpendingStrategyTest {
         @DisplayName("No ratchet when portfolio below trigger")
         void noRatchetBelowTrigger() {
             GuardrailsSpendingStrategy strategy = new GuardrailsSpendingStrategy(
-                    GuardrailsConfiguration.kitcesRatcheting());
+                GuardrailsConfiguration.kitcesRatcheting());
             // Current $1.4M vs initial $1M - not at 150% yet
             SpendingContext context = createContextWithInitial(
-                    new BigDecimal("1400000"), MILLION, new BigDecimal("40000"), new BigDecimal("0.10"));
+                new BigDecimal("1400000"), MILLION, new BigDecimal("40000"), new BigDecimal("0.10"));
 
             SpendingPlan plan = strategy.calculateWithdrawal(context);
 
@@ -122,11 +122,11 @@ class GuardrailsSpendingStrategyTest {
         @DisplayName("Ratchet triggers when rate drops below threshold")
         void ratchetTriggersAtThreshold() {
             GuardrailsSpendingStrategy strategy = new GuardrailsSpendingStrategy(
-                    GuardrailsConfiguration.kitcesRatcheting());
+                GuardrailsConfiguration.kitcesRatcheting());
             // Current $2M vs initial $1M
             // Rate = $40k / $2M = 2% < 66.7% of 4% = 2.67%
             SpendingContext context = createContextWithInitial(
-                    new BigDecimal("2000000"), MILLION, new BigDecimal("40000"), new BigDecimal("0.20"));
+                new BigDecimal("2000000"), MILLION, new BigDecimal("40000"), new BigDecimal("0.20"));
 
             SpendingPlan plan = strategy.calculateWithdrawal(context);
 
@@ -137,24 +137,24 @@ class GuardrailsSpendingStrategyTest {
         @DisplayName("No ratchet when too soon since last")
         void noRatchetWhenTooSoon() {
             GuardrailsSpendingStrategy strategy = new GuardrailsSpendingStrategy(
-                    GuardrailsConfiguration.kitcesRatcheting());
+                GuardrailsConfiguration.kitcesRatcheting());
 
             StubSimulationView sim = StubSimulationView.builder()
-                    .addAccount(StubSimulationView.createTestAccount(
-                            "401k", AccountType.TRADITIONAL_401K, new BigDecimal("1500000")))
-                    .initialPortfolioBalance(MILLION)
-                    .priorYearSpending(new BigDecimal("40000"))
-                    .priorYearReturn(new BigDecimal("0.15"))
-                    .lastRatchetMonth(YearMonth.of(2024, 1)) // Too recent
-                    .build();
+                .addAccount(StubSimulationView.createTestAccount(
+                    "401k", AccountType.TRADITIONAL_401K, new BigDecimal("1500000")))
+                .initialPortfolioBalance(MILLION)
+                .priorYearSpending(new BigDecimal("40000"))
+                .priorYearReturn(new BigDecimal("0.15"))
+                .lastRatchetMonth(YearMonth.of(2024, 1)) // Too recent
+                .build();
 
             SpendingContext context = SpendingContext.builder()
-                    .simulation(sim)
-                    .date(LocalDate.of(2025, 6, 1))
-                    .retirementStartDate(LocalDate.of(2020, 1, 1))
-                    .totalExpenses(new BigDecimal("5000"))
-                    .otherIncome(BigDecimal.ZERO)
-                    .build();
+                .simulation(sim)
+                .date(LocalDate.of(2025, 6, 1))
+                .retirementStartDate(LocalDate.of(2020, 1, 1))
+                .totalExpenses(new BigDecimal("5000"))
+                .otherIncome(BigDecimal.ZERO)
+                .build();
 
             SpendingPlan plan = strategy.calculateWithdrawal(context);
 
@@ -170,9 +170,86 @@ class GuardrailsSpendingStrategyTest {
         @DisplayName("Vanguard strategy is dynamic")
         void vanguardIsDynamic() {
             GuardrailsSpendingStrategy strategy = new GuardrailsSpendingStrategy(
-                    GuardrailsConfiguration.vanguardDynamic());
+                GuardrailsConfiguration.vanguardDynamic());
             assertTrue(strategy.isDynamic());
             assertTrue(strategy.requiresPriorYearState());
+        }
+    }
+
+    @Nested
+    @DisplayName("Constraint Tests")
+    class ConstraintTests {
+
+        @Test
+        @DisplayName("Absolute floor is applied")
+        void absoluteFloorApplied() {
+            GuardrailsConfiguration config = GuardrailsConfiguration.builder()
+                    .absoluteFloor(new BigDecimal("50000"))
+                    .build();
+            GuardrailsSpendingStrategy strategy = new GuardrailsSpendingStrategy(config);
+            // Very low spending that would be below floor
+            SpendingContext context = createContext(MILLION, new BigDecimal("30000"), new BigDecimal("0.05"));
+
+            SpendingPlan plan = strategy.calculateWithdrawal(context);
+
+            assertEquals("floor applied", plan.metadata().get("constraint"));
+        }
+
+        @Test
+        @DisplayName("Absolute ceiling is applied")
+        void absoluteCeilingApplied() {
+            GuardrailsConfiguration config = GuardrailsConfiguration.builder()
+                    .absoluteCeiling(new BigDecimal("40000"))
+                    .build();
+            GuardrailsSpendingStrategy strategy = new GuardrailsSpendingStrategy(config);
+            SpendingContext context = createContext(MILLION, new BigDecimal("50000"), new BigDecimal("0.05"));
+
+            SpendingPlan plan = strategy.calculateWithdrawal(context);
+
+            assertEquals("ceiling applied", plan.metadata().get("constraint"));
+        }
+
+        @Test
+        @DisplayName("Down year with OK rate still applies inflation")
+        void downYearWithOkRateAppliesInflation() {
+            GuardrailsSpendingStrategy strategy = new GuardrailsSpendingStrategy(
+                    GuardrailsConfiguration.guytonKlinger());
+            // Prior spending $40k on $1M = 4% rate < 5.2% initial - rate is OK
+            SpendingContext context = createContext(MILLION, new BigDecimal("40000"), new BigDecimal("-0.10"));
+
+            SpendingPlan plan = strategy.calculateWithdrawal(context);
+
+            assertNotNull(plan);
+            assertTrue(plan.meetsTarget());
+        }
+
+        @Test
+        @DisplayName("Cap preservation inactive after 15 years")
+        void capPreservationInactiveAfter15Years() {
+            GuardrailsSpendingStrategy strategy = new GuardrailsSpendingStrategy(
+                    GuardrailsConfiguration.guytonKlinger());
+
+            StubSimulationView sim = StubSimulationView.builder()
+                    .addAccount(StubSimulationView.createTestAccount(
+                            "401k", AccountType.TRADITIONAL_401K, MILLION))
+                    .initialPortfolioBalance(MILLION)
+                    .priorYearSpending(new BigDecimal("70000"))
+                    .priorYearReturn(new BigDecimal("-0.10"))
+                    .build();
+
+            // 16 years into retirement - past the 15 year cap preservation window
+            SpendingContext context = SpendingContext.builder()
+                    .simulation(sim)
+                    .date(LocalDate.of(2036, 6, 1))
+                    .retirementStartDate(LocalDate.of(2020, 1, 1))
+                    .totalExpenses(new BigDecimal("10000"))
+                    .otherIncome(BigDecimal.ZERO)
+                    .build();
+
+            SpendingPlan plan = strategy.calculateWithdrawal(context);
+
+            // Should NOT trigger decrease because we're past 15 years
+            assertNull(plan.metadata().get("adjustment"));
         }
     }
 
@@ -181,11 +258,27 @@ class GuardrailsSpendingStrategyTest {
     class InterfaceTests {
 
         @Test
+        @DisplayName("Null config defaults to Guyton-Klinger")
+        void nullConfigDefaultsToGuytonKlinger() {
+            GuardrailsSpendingStrategy strategy = new GuardrailsSpendingStrategy(null);
+            assertNotNull(strategy.getConfiguration());
+        }
+
+        @Test
         @DisplayName("Strategy returns correct name")
         void correctName() {
             GuardrailsSpendingStrategy strategy = new GuardrailsSpendingStrategy(
                     GuardrailsConfiguration.guytonKlinger());
             assertEquals("Guardrails", strategy.getName());
+        }
+
+        @Test
+        @DisplayName("Strategy returns description")
+        void hasDescription() {
+            GuardrailsSpendingStrategy strategy = new GuardrailsSpendingStrategy(
+                    GuardrailsConfiguration.guytonKlinger());
+            assertNotNull(strategy.getDescription());
+            assertTrue(strategy.getDescription().contains("guardrails"));
         }
 
         @Test
@@ -203,6 +296,35 @@ class GuardrailsSpendingStrategyTest {
                     GuardrailsConfiguration.guytonKlinger());
             assertTrue(strategy.requiresPriorYearState());
         }
+
+        @Test
+        @DisplayName("Custom inflation rate via context")
+        void customInflationRate() {
+            GuardrailsSpendingStrategy strategy = new GuardrailsSpendingStrategy(
+                    GuardrailsConfiguration.guytonKlinger());
+
+            StubSimulationView sim = StubSimulationView.builder()
+                    .addAccount(StubSimulationView.createTestAccount(
+                            "401k", AccountType.TRADITIONAL_401K, MILLION))
+                    .initialPortfolioBalance(MILLION)
+                    .priorYearSpending(new BigDecimal("52000"))
+                    .priorYearReturn(new BigDecimal("0.08"))
+                    .build();
+
+            SpendingContext context = SpendingContext.builder()
+                    .simulation(sim)
+                    .date(LocalDate.of(2025, 6, 1))
+                    .retirementStartDate(LocalDate.of(2020, 1, 1))
+                    .totalExpenses(new BigDecimal("10000"))
+                    .otherIncome(BigDecimal.ZERO)
+                    .addStrategyParam("inflationRate", new BigDecimal("0.05"))
+                    .build();
+
+            SpendingPlan plan = strategy.calculateWithdrawal(context);
+
+            assertNotNull(plan);
+            assertTrue(plan.meetsTarget());
+        }
     }
 
     // Helper methods
@@ -212,21 +334,21 @@ class GuardrailsSpendingStrategyTest {
     }
 
     private SpendingContext createContextWithInitial(BigDecimal balance, BigDecimal initial,
-            BigDecimal priorSpending, BigDecimal priorReturn) {
+                                                     BigDecimal priorSpending, BigDecimal priorReturn) {
         StubSimulationView sim = StubSimulationView.builder()
-                .addAccount(StubSimulationView.createTestAccount(
-                        "401k", AccountType.TRADITIONAL_401K, balance))
-                .initialPortfolioBalance(initial)
-                .priorYearSpending(priorSpending)
-                .priorYearReturn(priorReturn)
-                .build();
+            .addAccount(StubSimulationView.createTestAccount(
+                "401k", AccountType.TRADITIONAL_401K, balance))
+            .initialPortfolioBalance(initial)
+            .priorYearSpending(priorSpending)
+            .priorYearReturn(priorReturn)
+            .build();
 
         return SpendingContext.builder()
-                .simulation(sim)
-                .date(LocalDate.of(2025, 6, 1))
-                .retirementStartDate(LocalDate.of(2020, 1, 1))
-                .totalExpenses(new BigDecimal("10000"))
-                .otherIncome(BigDecimal.ZERO)
-                .build();
+            .simulation(sim)
+            .date(LocalDate.of(2025, 6, 1))
+            .retirementStartDate(LocalDate.of(2020, 1, 1))
+            .totalExpenses(new BigDecimal("10000"))
+            .otherIncome(BigDecimal.ZERO)
+            .build();
     }
 }
