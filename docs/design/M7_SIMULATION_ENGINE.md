@@ -202,9 +202,37 @@ SimulationPhase determinePhase(PersonProfile person, YearMonth month) {
 }
 ```
 
+**Decision:** Phase is determined *per person*, not per household.
+
+**Staggered Retirement Scenario:**
+```
+Year 1-3:  Spouse1 = ACCUMULATION, Spouse2 = ACCUMULATION
+Year 4-5:  Spouse1 = DISTRIBUTION,  Spouse2 = ACCUMULATION  ← staggered
+Year 6+:   Spouse1 = DISTRIBUTION,  Spouse2 = DISTRIBUTION  ← both retired
+```
+
+During staggered phase:
+- **Contributions** come from working spouse's income → their accounts
+- **Distributions** come from retired spouse's accounts (or joint if needed)
+- Account selection respects ownership (whose 401k, whose IRA)
+
+When both retired, all accounts available for distribution strategy.
+
+**Social Security Claiming:**
+- Each spouse has their own `ssClainingAge` (e.g., 62, 67, 70)
+- SS benefit starts **first month after reaching claiming age**
+- Example: Spouse1 born March 1960, claims at 67 → SS starts April 2027
+
+```java
+YearMonth getSocialSecurityStartMonth(PersonProfile person) {
+    LocalDate claimingBirthday = person.getBirthDate()
+        .plusYears(person.getSsClaimingAge());
+    return YearMonth.from(claimingBirthday).plusMonths(1);
+}
+```
+
 **Open Questions:**
-- [ ] Couple with different retirement dates - how to handle?
-- [ ] Part-time work in early retirement (contributions + withdrawals)?
+- [ ] Part-time work in early retirement (contributions + withdrawals simultaneously)?
 
 ---
 
