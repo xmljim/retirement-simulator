@@ -174,8 +174,14 @@ For each month from start to end:
         - Reset YTD accumulators
 ```
 
+**Decision:** All contributions modeled as monthly.
+
+- Real-world pay frequencies vary (bi-weekly, semi-monthly, monthly)
+- Simulation assumes monthly for simplicity
+- Annual contribution = monthly × 12
+- Employer match calculated on monthly contribution
+
 **Open Questions:**
-- [ ] Some contributions are per-paycheck (bi-weekly). Aggregate to monthly?
 - [ ] RMDs are annual but can be taken monthly. How to model?
 
 ---
