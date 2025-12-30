@@ -683,11 +683,33 @@ public record SimulationViewSnapshot(
 **Monte Carlo Mode:** → See Research Issue #268
 - Requires separate research on:
   - Number of runs (convergence)
-  - Virtual threading for parallelism
+  - Structured Concurrency for parallelism (Java 25)
   - Seed handling for reproducibility
   - Aggregation model (`MonteCarloResult`)
   - Return distributions
 - Returns `MonteCarloResult` containing multiple `TimeSeries` + statistics
+
+```java
+// Structured Concurrency for Monte Carlo (Java 25)
+try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
+    var simulations = IntStream.range(0, numRuns)
+        .mapToObj(i -> scope.fork(() -> runSimulation(config, seeds[i])))
+        .toList();
+
+    scope.join();           // Wait for all
+    scope.throwIfFailed();  // Propagate errors
+
+    return simulations.stream()
+        .map(StructuredTaskScope.Subtask::get)
+        .collect(MonteCarloResult.collector());
+}
+```
+
+Benefits of Structured Concurrency:
+- Automatic cleanup if one simulation fails (`ShutdownOnFailure`)
+- Clear parent-child task relationship
+- No orphaned threads
+- Better error propagation
 
 **Historical Mode:**
 - Replay actual market sequences (e.g., 1966 start, 2000 start, 2008 start)
