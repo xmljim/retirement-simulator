@@ -12,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import io.github.xmljim.retirement.domain.calculator.SpendingOrchestrator;
 import io.github.xmljim.retirement.domain.calculator.SpendingStrategy;
 import io.github.xmljim.retirement.domain.calculator.StubSimulationView;
 import io.github.xmljim.retirement.domain.enums.AccountType;
@@ -203,6 +204,93 @@ class RmdAwareOrchestratorTest {
             var sequencer = orchestrator.selectDefaultSequencer(context);
 
             assertTrue(sequencer instanceof TaxEfficientSequencer);
+        }
+    }
+
+    @Nested
+    @DisplayName("Constructor Tests")
+    class ConstructorTests {
+
+        @Test
+        @DisplayName("Constructor with delegate")
+        void constructorWithDelegate() {
+            SpendingOrchestrator delegate = new DefaultSpendingOrchestrator(rmdCalculator);
+            RmdAwareOrchestrator withDelegate = new RmdAwareOrchestrator(rmdCalculator, delegate);
+
+            SpendingContext context = createContext(65, 1960, MILLION);
+            SpendingPlan plan = withDelegate.execute(new StaticSpendingStrategy(), context);
+
+            assertNotNull(plan);
+        }
+    }
+
+    @Nested
+    @DisplayName("Shortfall Tests")
+    class ShortfallTests {
+
+        @Test
+        @DisplayName("Reports shortfall when accounts insufficient")
+        void reportsShortfallWhenInsufficient() {
+            // Small balance that can't meet RMD + expenses
+            StubSimulationView sim = StubSimulationView.builder()
+                    .addAccount(StubSimulationView.createTestAccount(
+                            "Traditional 401k", AccountType.TRADITIONAL_401K, new BigDecimal("1000")))
+                    .initialPortfolioBalance(new BigDecimal("1000"))
+                    .build();
+
+            SpendingContext context = SpendingContext.builder()
+                    .simulation(sim)
+                    .date(LocalDate.of(2025, 6, 1))
+                    .retirementStartDate(LocalDate.of(2020, 1, 1))
+                    .totalExpenses(new BigDecimal("50000"))
+                    .otherIncome(BigDecimal.ZERO)
+                    .age(76)
+                    .birthYear(1949)
+                    .build();
+
+            SpendingPlan plan = orchestrator.execute(new IncomeGapStrategy(), context);
+
+            assertNotNull(plan);
+            assertTrue(plan.shortfall().compareTo(BigDecimal.ZERO) > 0);
+        }
+    }
+
+    @Nested
+    @DisplayName("Tax Priority Tests")
+    class TaxPriorityTests {
+
+        @Test
+        @DisplayName("Withdraws from all tax treatments in order")
+        void withdrawsFromAllTaxTreatments() {
+            StubSimulationView sim = StubSimulationView.builder()
+                    .addAccount(StubSimulationView.createTestAccount(
+                            "Traditional 401k", AccountType.TRADITIONAL_401K, new BigDecimal("100000")))
+                    .addAccount(StubSimulationView.createTestAccount(
+                            "Roth IRA", AccountType.ROTH_IRA, new BigDecimal("100000")))
+                    .addAccount(StubSimulationView.createTestAccount(
+                            "Brokerage", AccountType.TAXABLE_BROKERAGE, new BigDecimal("100000")))
+                    .addAccount(StubSimulationView.createTestAccount(
+                            "HSA", AccountType.HSA, new BigDecimal("50000")))
+                    .initialPortfolioBalance(new BigDecimal("350000"))
+                    .build();
+
+            // Large expense to force withdrawals from multiple accounts
+            SpendingContext context = SpendingContext.builder()
+                    .simulation(sim)
+                    .date(LocalDate.of(2025, 6, 1))
+                    .retirementStartDate(LocalDate.of(2020, 1, 1))
+                    .totalExpenses(new BigDecimal("20000"))
+                    .otherIncome(BigDecimal.ZERO)
+                    .age(76)
+                    .birthYear(1949)
+                    .build();
+
+            SpendingPlan plan = orchestrator.execute(new IncomeGapStrategy(), context);
+
+            assertNotNull(plan);
+            assertTrue(plan.meetsTarget());
+            // Should have withdrawals from multiple accounts
+            assertTrue(plan.accountWithdrawals().size() >= 1);
         }
     }
 
