@@ -203,17 +203,34 @@ public record AnnualSummary(
 **Loop Structure:**
 ```
 For each month from start to end:
-    1. Process income (salary, SS, pension, annuity)
-    2. Calculate expenses (budget + inflation)
-    3. Determine phase (accumulation vs distribution)
-    4. Execute contributions OR withdrawals
-    5. Apply monthly returns to post-transaction balances
-    6. Process events (triggers)
-    7. Record MonthlySnapshot
+    1. Determine phase (accumulation vs distribution)
+       - Informs all subsequent steps
+       - Per-person: check retirement date, death status
 
-    If (month == December):
-        - Trigger annual events (RMD calculation, rebalancing)
-        - Reset YTD accumulators
+    2. Process income (salary, SS, pension, annuity)
+       - Based on current phase and person status
+       - SS/pension only if started and person alive
+
+    3. Process events (triggers)
+       - Check deterministic events (is trigger date == this month?)
+       - Check probabilistic events (roll dice)
+       - Execute triggered events → set flags, modify state
+       - Affects THIS month's expenses, NEXT month's income
+
+    4. Calculate expenses (budget + inflation)
+       - Sees event flags (survivorMode, contingency expenses)
+       - Applies modifiers (spending phase, survivor adjustments)
+
+    5. Execute contributions OR withdrawals
+       - Accumulation: route contributions to accounts
+       - Distribution: execute spending strategy via orchestrator
+
+    6. Apply monthly returns to post-transaction balances
+       - balance × (1 + annualRate)^(1/12)
+       - Withdrawn money doesn't earn this month's return
+
+    7. Record MonthlySnapshot
+       - Capture all account flows, income, expenses, events
 ```
 
 **Monthly Return Calculation:**
