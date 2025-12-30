@@ -18,6 +18,20 @@ The Simulation Engine is the orchestration core that ties together all previous 
 1. **Architecture First** - Define integration points before implementation
 2. **Clear Ownership** - Engine owns mutable state; calculators are pure functions
 3. **Separation of Concerns** - Levers (config) vs Engine (execution) vs Output (time series)
+4. **Point-in-Time Projection** - Simulation projects forward from current state; users update inputs when life changes occur (job change, inheritance, etc.) rather than modeling every life event
+
+## Simulation Model
+
+The simulator is a **projection tool**, not a life modeler:
+
+- Users input current portfolio balances, salary, expenses, etc.
+- Simulation projects forward using configured assumptions
+- When life changes (new job, salary change, windfall), user updates profile and re-runs
+- This keeps the engine simple while giving users accurate projections
+
+**In-scope events:** Death (actuarial), SS start, RMD start, expense lifecycle (mortgage payoff, spending phases), contingency expenses
+
+**Out-of-scope events:** Job changes, salary negotiations, career pivots - user updates profile instead
 
 ---
 
