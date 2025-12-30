@@ -36,9 +36,10 @@ The Simulation Engine is the orchestration core that ties together all previous 
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           SIMULATION ENGINE                                 │
 │                                                                             │
-│  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │                      implements SimulationView                       │   │
-│  └──────────────────────────────────────────────────────────────────────┘   │
+│  ┌────────────────────────┐    ┌────────────────────────────────────────┐   │
+│  │   SimulationState      │───▶│  SimulationView (immutable snapshot)   │   │
+│  │   (mutable, internal)  │    │  (passed to strategies)                │   │
+│  └────────────────────────┘    └────────────────────────────────────────┘   │
 │                                                                             │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                      │
 │  │   People    │    │  Accounts   │    │   Events    │                      │
@@ -404,36 +405,100 @@ public record ExpenseLevers(
 
 ---
 
-### 6. SimulationView Implementation
+### 6. SimulationEngine and SimulationView
 
-**Question:** How does the engine implement M6's `SimulationView`?
+**Question:** How does the engine relate to M6's `SimulationView`?
+
+**Decision:** Engine *produces* views, not *is* a view.
+
+- **SimulationEngine** = orchestrator (runs loop, processes events, calls strategies)
+- **SimulationState** = mutable internal state (owned by engine)
+- **SimulationView** = immutable snapshot (passed to strategies)
 
 ```java
-public class SimulationEngine implements SimulationView {
-    private final Map<UUID, InvestmentAccount> accounts;
-    private final TimeSeries<MonthlySnapshot> history;
-    private final BigDecimal initialPortfolioBalance;
+// Engine orchestrates the simulation
+public class SimulationEngine {
+    private SimulationState state;  // mutable, internal
 
-    @Override
-    public BigDecimal getTotalPortfolioBalance() {
-        return accounts.values().stream()
-            .map(InvestmentAccount::getBalance)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    public TimeSeries<MonthlySnapshot> run(SimulationConfig config) {
+        TimeSeries<MonthlySnapshot> timeSeries = new TimeSeries<>();
+
+        for (YearMonth month = config.startMonth();
+             month.isBefore(config.endMonth());
+             month = month.plusMonths(1)) {
+
+            // 1. Create immutable view of current state
+            SimulationView view = state.snapshot();
+
+            // 2. Build context with view
+            SpendingContext context = buildContext(view, month);
+
+            // 3. Execute strategy (receives immutable view)
+            SpendingPlan plan = orchestrator.execute(strategy, context);
+
+            // 4. Apply plan to mutable state
+            state.apply(plan);
+
+            // 5. Record snapshot
+            timeSeries.add(state.toMonthlySnapshot(month));
+        }
+        return timeSeries;
+    }
+}
+
+// Mutable state owned by engine
+public class SimulationState {
+    private final Map<UUID, AccountState> accounts;
+    private final List<MonthlySnapshot> history;
+    private BigDecimal initialPortfolioBalance;
+    private boolean survivorMode;
+    private Map<ContingencyType, Boolean> refillModes;
+
+    // Create immutable view for strategies
+    public SimulationView snapshot() {
+        return new SimulationViewSnapshot(
+            copyAccountSnapshots(),
+            calculateTotalBalance(),
+            initialPortfolioBalance,
+            getPriorYearSpending(),
+            getPriorYearReturn(),
+            getLastRatchetMonth()
+        );
     }
 
-    @Override
-    public BigDecimal getPriorYearSpending() {
-        // Query history for prior year's total withdrawals
+    // Mutate state based on plan
+    public void apply(SpendingPlan plan) {
+        for (AccountWithdrawal withdrawal : plan.accountWithdrawals()) {
+            accounts.get(withdrawal.accountId()).withdraw(withdrawal.amount());
+        }
     }
+}
+
+// Immutable view passed to strategies (implements M6 interface)
+public record SimulationViewSnapshot(
+    List<AccountSnapshot> accountSnapshots,
+    BigDecimal totalPortfolioBalance,
+    BigDecimal initialPortfolioBalance,
+    BigDecimal priorYearSpending,
+    BigDecimal priorYearReturn,
+    Optional<YearMonth> lastRatchetMonth
+) implements SimulationView {
 
     @Override
     public List<AccountSnapshot> getAccountSnapshots() {
-        return accounts.values().stream()
-            .map(AccountSnapshot::from)
-            .toList();
+        return accountSnapshots;  // already immutable
     }
+
+    @Override
+    public BigDecimal getTotalPortfolioBalance() {
+        return totalPortfolioBalance;
+    }
+
+    // ... other SimulationView methods
 }
 ```
+
+**Key Principle:** Strategies receive immutable views. Only the engine mutates state.
 
 ---
 
