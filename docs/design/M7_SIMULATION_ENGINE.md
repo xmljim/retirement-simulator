@@ -77,47 +77,82 @@ The Simulation Engine is the orchestration core that ties together all previous 
 
 **Question:** What's in `MonthlySnapshot`?
 
-**Proposed Structure:**
+**Structure:**
 ```java
+public record AccountMonthlyFlow(
+    UUID accountId,
+    String accountName,
+    BigDecimal startingBalance,
+    BigDecimal contributions,
+    BigDecimal withdrawals,
+    BigDecimal returns,
+    BigDecimal endingBalance
+) {
+    // Computed
+    public BigDecimal netFlow() {
+        return contributions.subtract(withdrawals).add(returns);
+    }
+}
+
 public record MonthlySnapshot(
     YearMonth month,
 
-    // Account state
-    Map<UUID, BigDecimal> accountBalances,
-    BigDecimal totalPortfolioBalance,
-
-    // Transactions this month
-    List<Transaction> transactions,
+    // Per-account flows (the source of truth)
+    Map<UUID, AccountMonthlyFlow> accountFlows,
 
     // Income this month
     BigDecimal salaryIncome,
     BigDecimal socialSecurityIncome,
     BigDecimal pensionIncome,
     BigDecimal otherIncome,
-    BigDecimal totalIncome,
 
     // Expenses this month
     BigDecimal totalExpenses,
     Map<ExpenseCategoryGroup, BigDecimal> expensesByCategory,
 
-    // Flows this month
-    BigDecimal totalContributions,
-    BigDecimal totalWithdrawals,
-    BigDecimal netCashFlow,
-
-    // Cumulative metrics
+    // Cumulative metrics (running totals)
     BigDecimal cumulativeContributions,
     BigDecimal cumulativeWithdrawals,
     BigDecimal cumulativeReturns,
 
-    // Market this month
-    BigDecimal monthlyReturn,
-    BigDecimal ytdReturn,
-
     // Metadata
     SimulationPhase phase,
     List<String> eventsTriggered
-) {}
+) {
+    // Aggregated from accountFlows
+    public BigDecimal totalPortfolioBalance() {
+        return accountFlows.values().stream()
+            .map(AccountMonthlyFlow::endingBalance)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public BigDecimal totalContributions() {
+        return accountFlows.values().stream()
+            .map(AccountMonthlyFlow::contributions)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public BigDecimal totalWithdrawals() {
+        return accountFlows.values().stream()
+            .map(AccountMonthlyFlow::withdrawals)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public BigDecimal totalReturns() {
+        return accountFlows.values().stream()
+            .map(AccountMonthlyFlow::returns)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public BigDecimal totalIncome() {
+        return salaryIncome.add(socialSecurityIncome)
+            .add(pensionIncome).add(otherIncome);
+    }
+
+    public BigDecimal netCashFlow() {
+        return totalIncome().subtract(totalExpenses());
+    }
+}
 ```
 
 **Decision:** Monthly granularity is correct. Annual snapshots hide important nuance:
@@ -128,22 +163,9 @@ public record MonthlySnapshot(
 **Decision:** Net flows per account per month (no individual transactions).
 
 - Monthly is the finest granularity needed
-- Store aggregated flows, not individual transactions
+- `AccountMonthlyFlow` per account is the source of truth
+- Totals computed via aggregation methods
 - Reduces memory over multi-decade simulations
-
-```java
-public record AccountMonthlyFlow(
-    UUID accountId,
-    BigDecimal startingBalance,
-    BigDecimal contributions,
-    BigDecimal withdrawals,
-    BigDecimal returns,
-    BigDecimal endingBalance
-) {}
-
-// In MonthlySnapshot:
-Map<UUID, AccountMonthlyFlow> accountFlows;  // replaces List<Transaction>
-```
 
 ---
 
