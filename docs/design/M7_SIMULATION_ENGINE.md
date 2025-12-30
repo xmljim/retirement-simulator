@@ -124,8 +124,25 @@ public record MonthlySnapshot(
 - Market volatility is masked by annual averaging
 - Sequence-of-returns risk only visible at monthly level
 
-**Open Questions:**
-- [ ] How do we handle per-account transactions vs aggregated view?
+**Decision:** Net flows per account per month (no individual transactions).
+
+- Monthly is the finest granularity needed
+- Store aggregated flows, not individual transactions
+- Reduces memory over multi-decade simulations
+
+```java
+public record AccountMonthlyFlow(
+    UUID accountId,
+    BigDecimal startingBalance,
+    BigDecimal contributions,
+    BigDecimal withdrawals,
+    BigDecimal returns,
+    BigDecimal endingBalance
+) {}
+
+// In MonthlySnapshot:
+Map<UUID, AccountMonthlyFlow> accountFlows;  // replaces List<Transaction>
+```
 
 ---
 
