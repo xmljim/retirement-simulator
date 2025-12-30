@@ -1,8 +1,19 @@
 # M6: Distribution Strategies Design
 
-**Status:** Research Complete
+**Status:** Research Complete → Architecture Revised
 **Date:** December 29, 2025
+**Last Revised:** December 29, 2025
 **Milestone:** 6
+
+---
+
+## Revision History
+
+| Date | Change | Reason |
+|------|--------|--------|
+| 2025-12-29 | Added Simulation Integration Architecture | Design discussion revealed need for clean separation between simulation state and strategy calculations |
+| 2025-12-29 | Introduced `SimulationView` interface | Strategies need read-only access to both current balances and historical data |
+| 2025-12-29 | Refactored `SpendingContext` | Removed embedded historical fields; now uses `SimulationView` |
 
 ---
 
@@ -19,6 +30,255 @@
 ## Overview
 
 M6 implements retirement withdrawal strategies that determine how much to withdraw and from which accounts. This builds on M5's expense/budget modeling and integrates with existing calculators.
+
+---
+
+## Simulation Integration Architecture
+
+> **Key Architectural Decision:** The simulation engine owns all mutable state (account balances, time progression, market returns). Strategies are pure calculators that receive read-only views of simulation state and return withdrawal plans. This separation enables clean support for deterministic, Monte Carlo, and historical backtesting simulation modes.
+
+### The Problem
+
+Early design had strategies receiving a `SpendingContext` with embedded historical fields (`priorYearSpending`, `priorYearPortfolioReturn`, `yearsSinceLastRatchet`). This created several issues:
+
+1. **State ownership ambiguity:** Who updates these fields between periods?
+2. **Strategy-specific leakage:** `yearsSinceLastRatchet` is Kitces-specific but was in the general context
+3. **Simulation mode coupling:** Strategies couldn't be agnostic to whether they're in Monte Carlo run #847 or deterministic mode
+4. **Testing complexity:** Hard to test strategies in isolation without simulating full history
+
+### The Solution: SimulationView
+
+The simulation engine exposes a **read-only interface** that strategies use to query both current state and historical data:
+
+```java
+/**
+ * Read-only view of simulation state for strategy calculations.
+ *
+ * The simulation engine implements this interface, backed by its internal
+ * state and TimeSeries history. Strategies can query what they need without
+ * coupling to simulation internals.
+ */
+public interface SimulationView {
+
+    // ─── Current State (as of this simulation step) ───────────────────────
+
+    /** Current balance for a specific account */
+    BigDecimal getAccountBalance(UUID accountId);
+
+    /** Total portfolio balance across all accounts */
+    BigDecimal getTotalPortfolioBalance();
+
+    /** All accounts with current balances (read-only snapshots) */
+    List<AccountSnapshot> getAccountSnapshots();
+
+    /** Portfolio balance at retirement start (for 4% rule calculations) */
+    BigDecimal getInitialPortfolioBalance();
+
+    // ─── Historical Queries (for dynamic strategies) ──────────────────────
+
+    /** Total spending in the prior calendar year */
+    BigDecimal getPriorYearSpending();
+
+    /** Portfolio return (%) in the prior calendar year */
+    BigDecimal getPriorYearReturn();
+
+    /** Find when a spending ratchet last occurred (for Kitces) */
+    Optional<YearMonth> getLastRatchetMonth();
+
+    /** Cumulative withdrawals since retirement start */
+    BigDecimal getCumulativeWithdrawals();
+
+    /** Highest portfolio balance achieved (for drawdown calculations) */
+    BigDecimal getHighWaterMarkBalance();
+
+    /** Access to full history if needed (optional, for complex strategies) */
+    Optional<TimeSeries<MonthlySnapshot>> getHistory();
+}
+
+/**
+ * Immutable snapshot of an account's state at a point in time.
+ * Contains all info needed by strategies and sequencers without exposing mutable Portfolio.
+ */
+public record AccountSnapshot(
+    UUID accountId,
+    String accountName,
+    AccountType accountType,
+    BigDecimal balance,
+    AccountType.TaxTreatment taxTreatment,
+    boolean subjectToRmd,           // For RMD sequencing
+    AssetAllocation allocation      // For bucket strategy, rebalancing
+) {
+    /** Factory method to create from InvestmentAccount */
+    public static AccountSnapshot from(InvestmentAccount account) { ... }
+}
+```
+
+### Updated SpendingContext
+
+With `SimulationView` handling state access, `SpendingContext` becomes a lean container for **current period inputs**:
+
+```java
+/**
+ * Context for a single period's spending calculation.
+ *
+ * Contains current-period inputs (what's happening NOW) and a reference
+ * to SimulationView for historical/balance queries.
+ */
+public record SpendingContext(
+    // ─── Simulation State Access ──────────────────────────────────────────
+    SimulationView simulation,
+
+    // ─── Current Period Inputs ────────────────────────────────────────────
+    LocalDate date,
+    BigDecimal totalExpenses,
+    BigDecimal otherIncome,          // SS, pension, etc.
+
+    // ─── Person/Scenario Context ──────────────────────────────────────────
+    int age,
+    int birthYear,
+    LocalDate retirementStartDate,
+
+    // ─── Tax Context ──────────────────────────────────────────────────────
+    FilingStatus filingStatus,
+    BigDecimal currentTaxableIncome,
+
+    // ─── Strategy Configuration ───────────────────────────────────────────
+    Map<String, Object> strategyParams
+) {
+    // Convenience methods delegate to SimulationView
+    public BigDecimal currentPortfolioBalance() {
+        return simulation.getTotalPortfolioBalance();
+    }
+
+    public long monthsInRetirement() {
+        return ChronoUnit.MONTHS.between(retirementStartDate, date);
+    }
+
+    public int yearsInRetirement() {
+        return (int) (monthsInRetirement() / 12);
+    }
+
+    public BigDecimal incomeGap() {
+        return totalExpenses.subtract(otherIncome).max(BigDecimal.ZERO);
+    }
+}
+```
+
+### Execution Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         SIMULATION ENGINE (M7)                              │
+│                                                                             │
+│  Owns: Account Balances, TimeSeries History, Time Progression               │
+│  Implements: SimulationView interface                                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ Each simulation step:
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  1. Apply market returns to account balances                                │
+│     (Deterministic: fixed rate | Monte Carlo: random draw | Historical)     │
+│                                                                             │
+│  2. Build SpendingContext with SimulationView reference                     │
+│     ┌───────────────────────────────────────────────────────────────────┐   │
+│     │ SpendingContext {                                                 │   │
+│     │   simulation: this,        // SimulationView                      │   │
+│     │   date: currentDate,                                              │   │
+│     │   totalExpenses: 6000,                                            │   │
+│     │   otherIncome: 3000,       // SS started                          │   │
+│     │   age: 68,                                                        │   │
+│     │   ...                                                             │   │
+│     │ }                                                                 │   │
+│     └───────────────────────────────────────────────────────────────────┘   │
+│                                    │                                        │
+│                                    ▼                                        │
+│  3. Call Orchestrator                                                       │
+│     ┌──────────────────────────────────────────────────────────────────┐    │
+│     │ orchestrator.execute(strategy, sequencer, context)               │    │
+│     │                                                                  │    │
+│     │   Strategy: "I need $3,000 this month"                           │    │
+│     │     └─ may call context.simulation.getPriorYearSpending()        │    │
+│     │     └─ may call context.simulation.getTotalPortfolioBalance()    │    │
+│     │                                                                  │    │
+│     │   Sequencer: "Withdraw from: 401k → IRA → Roth"                  │    │
+│     │     └─ queries account balances via SimulationView               │    │
+│     │                                                                  │    │
+│     │   Returns: SpendingPlan with AccountWithdrawals                  │    │
+│     └──────────────────────────────────────────────────────────────────┘    │
+│                                    │                                        │
+│                                    ▼                                        │
+│  4. Execute SpendingPlan                                                    │
+│     - Update account balances (authoritative state)                         │
+│     - Record to TimeSeries history                                          │
+│                                                                             │
+│  5. Advance to next period                                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Simulation Mode Agnosticism
+
+Strategies don't know or care which simulation mode is running. They see "reality" through `SimulationView`:
+
+| Mode | How Returns Are Applied | What Strategy Sees |
+|------|------------------------|-------------------|
+| **Deterministic** | Fixed rate (e.g., 7% annually) | Steady balance growth |
+| **Monte Carlo** | Random draw from return distribution | Variable balances per run |
+| **Historical** | Actual market data (e.g., 2008 crash) | Historical sequence of returns |
+
+Example: Monte Carlo run #847 has a -10% year:
+```
+Before: Portfolio = $1,000,000
+After returns: Portfolio = $900,000
+Strategy calls: context.simulation.getTotalPortfolioBalance() → $900,000
+Guardrails strategy: "Withdrawal rate too high! Cut spending 10%"
+```
+
+The strategy reacts to current reality. The simulation controls what that reality is.
+
+### RMD Interaction
+
+RMDs are **mandatory minimums** that override strategy calculations:
+
+```
+Strategy says: "Withdraw $3,000/month"
+RMD requires:  "$5,000 from Traditional IRA this month"
+
+Orchestrator ensures:
+  1. At least $5,000 comes from IRA (satisfies RMD)
+  2. If $5,000 > $3,000 spending need, excess goes to:
+     - Taxable brokerage (reinvest)
+     - Cash reserve
+     - Or increases spending if lifestyle allows
+```
+
+The `RmdFirstSequencer` prioritizes RMD-subject accounts so RMDs are naturally satisfied during normal withdrawal sequencing.
+
+### Benefits of This Architecture
+
+1. **Clean separation of concerns**
+   - Simulation: owns state, controls time, applies returns
+   - Strategy: pure calculation given current state
+   - SimulationView: read-only bridge between them
+
+2. **Testable strategies**
+   - Mock `SimulationView` interface
+   - No need to simulate full history for unit tests
+
+3. **Simulation mode flexibility**
+   - Same strategy code works for all modes
+   - Mode selection is purely a simulation concern
+
+4. **Monte Carlo support**
+   - Each run starts with fresh `TimeSeries`
+   - No strategy state to snapshot/restore
+   - Strategies query history naturally scoped to current run
+
+5. **Historical data access**
+   - Dynamic strategies (Guardrails, Kitces) query what they need
+   - No need to pre-compute all possible historical metrics
+
+---
 
 ## Existing Foundation
 
@@ -37,17 +297,40 @@ M6 implements retirement withdrawal strategies that determine how much to withdr
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    WithdrawalOrchestrator                    │
-│  (Coordinates strategy + sequencing + RMD + execution)      │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         SIMULATION ENGINE (M7)                              │
+│                                                                             │
+│  Owns: Account Balances, TimeSeries History, Market Returns                 │
+│  Implements: SimulationView interface                                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+         │
+         │ provides read-only view
+         ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           SimulationView                                    │
+│  (Read-only interface to current balances + historical queries)             │
+└─────────────────────────────────────────────────────────────────────────────┘
+         │
+         │ injected into
+         ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           SpendingContext                                   │
+│  (Current period: date, expenses, income, age + SimulationView reference)   │
+└─────────────────────────────────────────────────────────────────────────────┘
+         │
+         │ passed to
+         ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        SpendingOrchestrator                                 │
+│  (Coordinates strategy + sequencing + RMD + execution)                      │
+└─────────────────────────────────────────────────────────────────────────────┘
                               │
           ┌───────────────────┼───────────────────┐
           ▼                   ▼                   ▼
-┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│ WithdrawalStrategy │  │ AccountSequencer │  │  RmdCalculator  │
-│   (HOW MUCH)      │  │ (WHICH ACCOUNTS) │  │  (MANDATORY)    │
-└─────────────────┘  └─────────────────┘  └─────────────────┘
+┌──────────────────┐  ┌──────────────────┐  ┌─────────────────┐
+│ SpendingStrategy │  │ AccountSequencer │  │  RmdCalculator  │
+│   (HOW MUCH)     │  │ (WHICH ACCOUNTS) │  │  (MANDATORY)    │
+└──────────────────┘  └──────────────────┘  └─────────────────┘
           │
     ┌─────┴─────┬─────────┬───────────┐
     ▼           ▼         ▼           ▼
@@ -61,47 +344,109 @@ M6 implements retirement withdrawal strategies that determine how much to withdr
 
 ## Sub-Milestones
 
-### M6a: Strategy Framework (~13 points)
+### M6a: Strategy Framework (~13 points) ✅ COMPLETE (with revisions pending)
 
 **Goal:** Establish the strategy pattern foundation.
 
-#### Interfaces
+**Status:** Core interfaces implemented. Requires refactoring per Simulation Integration Architecture.
+
+#### Implemented (Current)
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| `SpendingStrategy` | ✅ Done | Interface for withdrawal calculations |
+| `SpendingContext` | ⚠️ Needs Refactor | Must add `SimulationView`, remove historical fields |
+| `SpendingPlan` | ✅ Done | Withdrawal result record |
+| `AccountWithdrawal` | ✅ Done | Per-account withdrawal details |
+| `AccountSequencer` | ✅ Done | Interface for account ordering |
+| `TaxEfficientSequencer` | ✅ Done | Standard tax-efficient order |
+| `RmdFirstSequencer` | ✅ Done | RMD accounts prioritized |
+| `SpendingOrchestrator` | ✅ Done | Coordinates strategy + sequencing |
+| `DefaultSpendingOrchestrator` | ✅ Done | Default implementation |
+
+#### New Components Needed (per Architecture Revision)
+
+```java
+/**
+ * Read-only view of simulation state for strategy calculations.
+ * Implemented by the simulation engine (M7).
+ *
+ * For M6 testing, a mock/stub implementation will be provided.
+ */
+public interface SimulationView {
+    // Current state
+    BigDecimal getAccountBalance(UUID accountId);
+    BigDecimal getTotalPortfolioBalance();
+    List<AccountSnapshot> getAccountSnapshots();
+    BigDecimal getInitialPortfolioBalance();
+
+    // Historical queries (for dynamic strategies)
+    BigDecimal getPriorYearSpending();
+    BigDecimal getPriorYearReturn();
+    Optional<YearMonth> getLastRatchetMonth();
+    BigDecimal getCumulativeWithdrawals();
+    BigDecimal getHighWaterMarkBalance();
+    Optional<TimeSeries<MonthlySnapshot>> getHistory();
+}
+
+/**
+ * Immutable snapshot of account state for strategy queries.
+ */
+public record AccountSnapshot(
+    UUID accountId,
+    String accountName,
+    AccountType accountType,
+    BigDecimal balance,
+    AccountType.TaxTreatment taxTreatment
+) {}
+
+/**
+ * Stub implementation for M6 testing (before M7 exists).
+ */
+public class StubSimulationView implements SimulationView {
+    private final Portfolio portfolio;
+    private final BigDecimal initialBalance;
+    // ... stub implementations for historical queries
+}
+```
+
+#### SpendingContext Refactoring
+
+**Remove these fields** (now queried via SimulationView):
+- `Portfolio portfolio` → use `simulation.getAccountSnapshots()`
+- `BigDecimal priorYearSpending` → use `simulation.getPriorYearSpending()`
+- `BigDecimal priorYearPortfolioReturn` → use `simulation.getPriorYearReturn()`
+- `int yearsSinceLastRatchet` → derive from `simulation.getLastRatchetMonth()`
+- `BigDecimal initialPortfolioBalance` → use `simulation.getInitialPortfolioBalance()`
+
+**Keep these fields** (current period inputs):
+- `SimulationView simulation` (NEW)
+- `LocalDate date`
+- `BigDecimal totalExpenses`
+- `BigDecimal otherIncome`
+- `int age`
+- `int birthYear`
+- `LocalDate retirementStartDate`
+- `FilingStatus filingStatus`
+- `BigDecimal currentTaxableIncome`
+- `Map<String, Object> strategyParams`
+
+#### Existing Interfaces (Already Implemented)
 
 ```java
 // Core strategy interface
-public interface WithdrawalStrategy {
-    WithdrawalPlan calculateWithdrawal(WithdrawalContext context);
+public interface SpendingStrategy {
+    SpendingPlan calculateWithdrawal(SpendingContext context);
     String getName();
     String getDescription();
+    default boolean isDynamic() { return false; }
+    default boolean requiresPriorYearState() { return false; }
 }
 
-// Context passed to strategies (enhanced per research)
-public record WithdrawalContext(
-    Portfolio portfolio,
-    BigDecimal totalExpenses,
-    BigDecimal otherIncome,
-    LocalDate date,
-    int age,
-    int birthYear,
-    int yearsInRetirement,
-    BigDecimal initialPortfolioBalance,
-
-    // State tracking (for Guardrails/Kitces)
-    BigDecimal priorYearSpending,
-    BigDecimal priorYearPortfolioReturn,
-    int yearsSinceLastRatchet,
-
-    // Tax context (for sequencing)
-    BigDecimal currentTaxableIncome,
-    FilingStatus filingStatus,
-
-    Map<String, Object> strategyParams
-) {}
-
-// Result from strategy
-public record WithdrawalPlan(
+// Result from strategy (already implemented)
+public record SpendingPlan(
     BigDecimal targetWithdrawal,
-    BigDecimal adjustedWithdrawal,  // After RMD/constraints
+    BigDecimal adjustedWithdrawal,
     List<AccountWithdrawal> accountWithdrawals,
     boolean meetsTarget,
     BigDecimal shortfall,
@@ -124,7 +469,11 @@ public record AccountWithdrawal(
 
 ```java
 public interface AccountSequencer {
-    List<InvestmentAccount> sequence(Portfolio portfolio, WithdrawalContext context);
+    /**
+     * Sequences accounts for withdrawal order.
+     * Account balances are accessed via context.simulation().getAccountSnapshots()
+     */
+    List<AccountSnapshot> sequence(SpendingContext context);
     String getName();
 }
 
@@ -148,7 +497,7 @@ public class CustomSequencer implements AccountSequencer {
 #### Sequencer Selection Logic (from Research)
 
 ```java
-public AccountSequencer selectSequencer(WithdrawalContext ctx, RmdCalculator rmdCalc) {
+public AccountSequencer selectSequencer(SpendingContext ctx, RmdCalculator rmdCalc) {
     // 1. If RMDs required, use RMD-first
     if (rmdCalc.isRmdRequired(ctx.age(), ctx.birthYear())) {
         return new RmdFirstSequencer(rmdCalc);
@@ -161,23 +510,32 @@ public AccountSequencer selectSequencer(WithdrawalContext ctx, RmdCalculator rmd
 #### Orchestrator
 
 ```java
-public interface WithdrawalOrchestrator {
-    WithdrawalPlan execute(
-        Portfolio portfolio,
-        WithdrawalStrategy strategy,
+public interface SpendingOrchestrator {
+    /**
+     * Executes withdrawal using strategy and sequencer.
+     * All state accessed via context.simulation() (SimulationView)
+     */
+    SpendingPlan execute(
+        SpendingStrategy strategy,
         AccountSequencer sequencer,
-        WithdrawalContext context
+        SpendingContext context
     );
 }
 ```
 
 **Issues:**
-1. Create WithdrawalStrategy interface and WithdrawalPlan record (3)
-2. Create WithdrawalContext record with state/tax fields (3)
-3. Create AccountSequencer interface and AccountWithdrawal record (2)
-4. Implement TaxEfficientSequencer (2)
-5. Implement RmdFirstSequencer (2)
-6. Create WithdrawalOrchestrator interface (2)
+1. ~~Create SpendingStrategy interface and SpendingPlan record~~ ✅ #223
+2. ~~Create SpendingContext record~~ ✅ #224 (⚠️ needs refactor)
+3. ~~Create AccountSequencer interface and AccountWithdrawal record~~ ✅ #225
+4. ~~Implement TaxEfficientSequencer~~ ✅ #226
+5. ~~Implement RmdFirstSequencer~~ ✅ #227
+6. ~~Create SpendingOrchestrator interface~~ ✅ #228
+
+**New Issues (Architecture Revision):**
+7. Create SimulationView interface and AccountSnapshot record (3)
+8. Create StubSimulationView for M6 testing (2)
+9. Refactor SpendingContext to use SimulationView (3)
+10. Update existing tests to use StubSimulationView (2)
 
 ---
 
@@ -417,14 +775,78 @@ public class RmdAwareOrchestrator implements WithdrawalOrchestrator {
 
 ## Dependencies
 
+### Incoming Dependencies (M6 uses)
 - **From M5:** GapAnalyzer, Budget, FederalTaxCalculator, RmdCalculator
-- **To M7:** WithdrawalOrchestrator feeds into Simulation Engine
+
+### Outgoing Dependencies (M7 uses M6)
+- **To M7:** SpendingOrchestrator, SpendingStrategy implementations, AccountSequencer implementations
+
+### Cross-Milestone Interface: SimulationView
+
+The `SimulationView` interface is the **contract between M6 and M7**:
+
+| Milestone | Responsibility |
+|-----------|----------------|
+| **M6** | Defines the interface; strategies consume it |
+| **M6** | Provides `StubSimulationView` for testing strategies before M7 exists |
+| **M7** | Implements `SimulationView` backed by actual simulation state + TimeSeries |
+
+This allows M6 to be fully developed and tested independently, with M7 providing the real implementation later.
 
 ---
 
 ## Implementation Order
 
-1. **M6a first** - Framework must exist before strategies
-2. **M6b second** - Simple strategies validate framework
+### Revised Order (per Architecture Update)
+
+1. **Architecture Refactoring** (blocking)
+   - Create `SimulationView` interface
+   - Create `AccountSnapshot` record
+   - Create `StubSimulationView` for testing
+   - Refactor `SpendingContext` to use `SimulationView`
+   - Update existing M6a tests
+
+2. **M6b: Static & Income-Gap Strategies**
+   - Validate refactored framework with simple strategies
+   - Static strategy uses `simulation.getInitialPortfolioBalance()`
+   - Income-Gap strategy uses current period inputs only
+
 3. **M6c/M6d parallel** - Independent strategies
-4. **M6e last** - Integration requires all strategies
+   - Bucket Strategy (M6c)
+   - Guardrails (M6d) - validates `SimulationView` historical queries
+
+4. **M6e: Integration** - End-to-end flows with RMD coordination
+
+### Original Order (for reference)
+1. ~~M6a first~~ - Framework ✅ (needs refactoring)
+2. M6b second - Simple strategies validate framework
+3. M6c/M6d parallel - Independent strategies
+4. M6e last - Integration requires all strategies
+
+---
+
+## Open Questions
+
+These questions will be resolved during implementation:
+
+1. **Portfolio vs AccountSnapshots**: Should `SimulationView` expose `Portfolio` or only `List<AccountSnapshot>`?
+   - `AccountSnapshot` is cleaner (read-only, no mutation risk)
+   - But some operations may need richer account info (asset allocation, RMD eligibility)
+   - **Decision**: Use `List<AccountSnapshot>` exclusively. If additional account info is needed (e.g., RMD eligibility), extend `AccountSnapshot` to include it. This maintains clean read-only access and prevents mutation risk. Portfolio is no longer passed to orchestrator or sequencer.
+
+2. **RMD Excess Handling**: When RMDs exceed spending needs, where does excess go?
+   - Reinvest in taxable brokerage?
+   - Cash reserve bucket?
+   - Just record as "excess withdrawal" and let user decide?
+   - **Deferred to M6e**
+
+3. **Inflation in Context**: Should `SpendingContext` include inflation rate, or should strategies get it from configuration?
+   - Currently in `strategyParams` map
+   - May warrant a dedicated field for clarity
+   - **Decide during M6b implementation**
+
+4. **StubSimulationView Scope**: How sophisticated should the stub be?
+   - Minimal: just returns configured values
+   - Medium: tracks withdrawals and computes derived values
+   - Full: maintains actual TimeSeries for testing
+   - **Start minimal, expand as needed**
