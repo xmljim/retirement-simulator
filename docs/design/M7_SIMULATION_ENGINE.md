@@ -516,7 +516,14 @@ public record ExpenseLevers(
 ```java
 // Engine orchestrates the simulation
 public class SimulationEngine {
-    private SimulationState state;  // mutable, internal
+    private SimulationState state;
+    private final EventRegistry eventRegistry;
+    private final IncomeProcessor incomeProcessor;
+    private final ExpenseCalculator expenseCalculator;
+    private final ContributionRouter contributionRouter;
+    private final SpendingOrchestrator spendingOrchestrator;
+    private final ReturnCalculator returnCalculator;
+    private final TaxCalculator taxCalculator;
 
     public TimeSeries<MonthlySnapshot> run(SimulationConfig config) {
         TimeSeries<MonthlySnapshot> timeSeries = new TimeSeries<>();
@@ -525,22 +532,83 @@ public class SimulationEngine {
              month.isBefore(config.endMonth());
              month = month.plusMonths(1)) {
 
-            // 1. Create immutable view of current state
-            SimulationView view = state.snapshot();
+            // ─── Step 1: Determine Phase ───────────────────────────────
+            SimulationPhase phase = determinePhase(month);
 
-            // 2. Build context with view
-            SpendingContext context = buildContext(view, month);
+            // ─── Step 2: Process Income ────────────────────────────────
+            MonthlyIncome income = incomeProcessor.process(
+                state.getPersons(), month, phase);
 
-            // 3. Execute strategy (receives immutable view)
-            SpendingPlan plan = orchestrator.execute(strategy, context);
+            // ─── Step 3: Process Events ────────────────────────────────
+            List<SimulationEvent> triggered = eventRegistry.check(month, state);
+            for (SimulationEvent event : triggered) {
+                event.execute(state);  // Sets flags like survivorMode
+            }
 
-            // 4. Apply plan to mutable state
-            state.apply(plan);
+            // ─── Step 4: Calculate Expenses ────────────────────────────
+            MonthlyExpenses expenses = expenseCalculator.calculate(
+                state.getBudget(), month, state.getFlags());
 
-            // 5. Record snapshot
-            timeSeries.add(state.toMonthlySnapshot(month));
+            // ─── Step 5: Execute Contributions OR Withdrawals ──────────
+            Map<UUID, AccountMonthlyFlow> accountFlows;
+            if (phase == SimulationPhase.ACCUMULATION) {
+                accountFlows = executeContributions(income, month);
+            } else {
+                accountFlows = executeWithdrawals(income, expenses, month);
+            }
+
+            // ─── Step 6: Apply Monthly Returns ─────────────────────────
+            applyMonthlyReturns(accountFlows, config.getMarketLevers(), month);
+
+            // ─── Step 7: Record MonthlySnapshot ────────────────────────
+            TaxSummary taxes = taxCalculator.calculate(income, accountFlows);
+            MonthlySnapshot snapshot = buildSnapshot(
+                month, accountFlows, income, expenses, taxes, phase, triggered);
+            timeSeries.add(snapshot);
+            state.recordHistory(snapshot);
         }
         return timeSeries;
+    }
+
+    private Map<UUID, AccountMonthlyFlow> executeContributions(
+            MonthlyIncome income, YearMonth month) {
+        // Route contributions via M3 ContributionRouter
+        BigDecimal available = income.salary().subtract(income.expenses());
+        return contributionRouter.route(available, state.getAccounts(), month);
+    }
+
+    private Map<UUID, AccountMonthlyFlow> executeWithdrawals(
+            MonthlyIncome income, MonthlyExpenses expenses, YearMonth month) {
+        // Build context with immutable view
+        SimulationView view = state.snapshot();
+        SpendingContext context = SpendingContext.builder()
+            .simulation(view)
+            .date(month.atDay(1))
+            .totalExpenses(expenses.total())
+            .otherIncome(income.totalNonSalary())
+            .age(state.getPrimaryPerson().getAgeAt(month))
+            .birthYear(state.getPrimaryPerson().getBirthYear())
+            .build();
+
+        // Execute via M6 SpendingOrchestrator
+        SpendingPlan plan = spendingOrchestrator.execute(
+            state.getStrategy(), context);
+
+        // Apply withdrawals to state, return flows
+        return state.applyWithdrawals(plan);
+    }
+
+    private void applyMonthlyReturns(
+            Map<UUID, AccountMonthlyFlow> flows,
+            MarketLevers levers,
+            YearMonth month) {
+        BigDecimal monthlyRate = returnCalculator.getMonthlyReturn(levers, month);
+        for (AccountMonthlyFlow flow : flows.values()) {
+            BigDecimal newBalance = flow.endingBalance()
+                .multiply(BigDecimal.ONE.add(monthlyRate));
+            state.updateAccountBalance(flow.accountId(), newBalance);
+            flow.setReturns(newBalance.subtract(flow.endingBalance()));
+        }
     }
 }
 
