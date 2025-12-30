@@ -63,14 +63,17 @@ class SpendingContextTest {
         @Test
         @DisplayName("Should create valid context with builder")
         void createsValidContext() {
+            LocalDate retirementStart = LocalDate.of(2024, 1, 1);
+            LocalDate currentDate = LocalDate.of(2026, 6, 1); // 29 months after retirement
+
             SpendingContext context = SpendingContext.builder()
                     .portfolio(portfolio)
                     .totalExpenses(new BigDecimal("6000.00"))
                     .otherIncome(new BigDecimal("3000.00"))
-                    .date(LocalDate.of(2025, 6, 1))
-                    .age(65)
+                    .date(currentDate)
+                    .age(66)
                     .birthYear(1960)
-                    .yearsInRetirement(1)
+                    .retirementStartDate(retirementStart)
                     .initialPortfolioBalance(new BigDecimal("750000.00"))
                     .filingStatus(FilingStatus.MARRIED_FILING_JOINTLY)
                     .build();
@@ -78,10 +81,12 @@ class SpendingContextTest {
             assertEquals(portfolio, context.portfolio());
             assertEquals(0, new BigDecimal("6000.00").compareTo(context.totalExpenses()));
             assertEquals(0, new BigDecimal("3000.00").compareTo(context.otherIncome()));
-            assertEquals(LocalDate.of(2025, 6, 1), context.date());
-            assertEquals(65, context.age());
+            assertEquals(currentDate, context.date());
+            assertEquals(66, context.age());
             assertEquals(1960, context.birthYear());
-            assertEquals(1, context.yearsInRetirement());
+            assertEquals(retirementStart, context.retirementStartDate());
+            assertEquals(29, context.monthsInRetirement());
+            assertEquals(2, context.yearsInRetirement()); // 29 / 12 = 2
             assertEquals(FilingStatus.MARRIED_FILING_JOINTLY, context.filingStatus());
         }
 
@@ -109,6 +114,40 @@ class SpendingContextTest {
                     .build();
 
             assertEquals(0, portfolio.getTotalBalance().compareTo(context.initialPortfolioBalance()));
+        }
+
+        @Test
+        @DisplayName("Should default retirementStartDate from portfolio owner")
+        void defaultsRetirementStartDate() {
+            SpendingContext context = SpendingContext.builder()
+                    .portfolio(portfolio)
+                    .date(LocalDate.of(2027, 1, 1))
+                    .build();
+
+            // Should default to owner's retirement date (2025-01-01)
+            assertEquals(LocalDate.of(2025, 1, 1), context.retirementStartDate());
+            // 24 months between 2025-01-01 and 2027-01-01
+            assertEquals(24, context.monthsInRetirement());
+            assertEquals(2, context.yearsInRetirement());
+        }
+
+        @Test
+        @DisplayName("Should allow overriding retirementStartDate for scenario analysis")
+        void allowsRetirementStartDateOverride() {
+            // Portfolio owner's retirement date is 2025-01-01
+            // But we want to model "what if I retired in 2023 instead?"
+            LocalDate scenarioRetirement = LocalDate.of(2023, 1, 1);
+
+            SpendingContext context = SpendingContext.builder()
+                    .portfolio(portfolio)
+                    .date(LocalDate.of(2027, 1, 1))
+                    .retirementStartDate(scenarioRetirement)
+                    .build();
+
+            assertEquals(scenarioRetirement, context.retirementStartDate());
+            // 48 months between 2023-01-01 and 2027-01-01
+            assertEquals(48, context.monthsInRetirement());
+            assertEquals(4, context.yearsInRetirement());
         }
 
         @Test

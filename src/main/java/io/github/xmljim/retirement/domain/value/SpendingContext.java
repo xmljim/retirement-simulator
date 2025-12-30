@@ -2,6 +2,7 @@ package io.github.xmljim.retirement.domain.value;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,13 +26,18 @@ import io.github.xmljim.retirement.domain.model.Portfolio;
  *
  * <p>This record is immutable. Use the {@link Builder} to create instances.
  *
+ * <p>The {@code retirementStartDate} field enables accurate monthly calculations.
+ * If not explicitly set, the builder defaults to the portfolio owner's planned
+ * retirement date. This can be overridden for scenario analysis (e.g., "what if
+ * I retire at 62 vs 65?").
+ *
  * @param portfolio the retirement portfolio
  * @param totalExpenses total monthly expenses
  * @param otherIncome income from non-portfolio sources (SS, pension, etc.)
  * @param date the date for this calculation
  * @param age the person's current age
  * @param birthYear the person's birth year (for RMD calculations)
- * @param yearsInRetirement years since retirement started (0 = first year)
+ * @param retirementStartDate the date retirement started (for computing months/years in retirement)
  * @param initialPortfolioBalance portfolio balance at retirement start
  * @param priorYearSpending spending from the prior year (for Guardrails)
  * @param priorYearPortfolioReturn portfolio return from prior year
@@ -50,7 +56,7 @@ public record SpendingContext(
         LocalDate date,
         int age,
         int birthYear,
-        int yearsInRetirement,
+        LocalDate retirementStartDate,
         BigDecimal initialPortfolioBalance,
         BigDecimal priorYearSpending,
         BigDecimal priorYearPortfolioReturn,
@@ -66,6 +72,7 @@ public record SpendingContext(
     public SpendingContext {
         MissingRequiredFieldException.requireNonNull(portfolio, "portfolio");
         MissingRequiredFieldException.requireNonNull(date, "date");
+        MissingRequiredFieldException.requireNonNull(retirementStartDate, "retirementStartDate");
         totalExpenses = totalExpenses != null ? totalExpenses : BigDecimal.ZERO;
         otherIncome = otherIncome != null ? otherIncome : BigDecimal.ZERO;
         initialPortfolioBalance = initialPortfolioBalance != null
@@ -81,6 +88,30 @@ public record SpendingContext(
         strategyParams = strategyParams != null
                 ? Collections.unmodifiableMap(strategyParams)
                 : Collections.emptyMap();
+    }
+
+    /**
+     * Returns the number of months since retirement started.
+     *
+     * <p>This is computed from the {@code retirementStartDate} and {@code date} fields,
+     * providing accurate monthly granularity for inflation compounding calculations.
+     *
+     * @return the number of complete months since retirement started
+     */
+    public long monthsInRetirement() {
+        return ChronoUnit.MONTHS.between(retirementStartDate, date);
+    }
+
+    /**
+     * Returns the number of years since retirement started.
+     *
+     * <p>This is a convenience method that returns {@code monthsInRetirement() / 12}.
+     * For more precise calculations, use {@link #monthsInRetirement()}.
+     *
+     * @return the number of complete years since retirement started
+     */
+    public int yearsInRetirement() {
+        return (int) (monthsInRetirement() / 12);
     }
 
     /**
@@ -155,7 +186,7 @@ public record SpendingContext(
         private LocalDate date;
         private int age;
         private int birthYear;
-        private int yearsInRetirement;
+        private LocalDate retirementStartDate;
         private BigDecimal initialPortfolioBalance;
         private BigDecimal priorYearSpending = BigDecimal.ZERO;
         private BigDecimal priorYearPortfolioReturn = BigDecimal.ZERO;
@@ -231,13 +262,16 @@ public record SpendingContext(
         }
 
         /**
-         * Sets years in retirement.
+         * Sets the retirement start date.
          *
-         * @param yearsInRetirement the years
+         * <p>If not set, defaults to the portfolio owner's planned retirement date.
+         * This can be overridden for scenario analysis (e.g., "what if I retire at 62?").
+         *
+         * @param retirementStartDate the date retirement started
          * @return this builder
          */
-        public Builder yearsInRetirement(int yearsInRetirement) {
-            this.yearsInRetirement = yearsInRetirement;
+        public Builder retirementStartDate(LocalDate retirementStartDate) {
+            this.retirementStartDate = retirementStartDate;
             return this;
         }
 
@@ -334,8 +368,8 @@ public record SpendingContext(
          * Builds the SpendingContext instance.
          *
          * <p>If age or birthYear are not explicitly set, they will be derived
-         * from the portfolio owner's date of birth. Portfolio and its owner
-         * are required fields, so they will always be available for derivation.
+         * from the portfolio owner's date of birth. If retirementStartDate is not
+         * set, it defaults to the portfolio owner's planned retirement date.
          *
          * @return a new SpendingContext
          * @throws MissingRequiredFieldException if portfolio is not set
@@ -356,6 +390,12 @@ public record SpendingContext(
                 resolvedAge = portfolio.getOwner().getAge(date);
             }
 
+            // Default retirementStartDate from portfolio owner if not set
+            LocalDate resolvedRetirementStartDate = retirementStartDate;
+            if (resolvedRetirementStartDate == null) {
+                resolvedRetirementStartDate = portfolio.getOwner().getRetirementDate();
+            }
+
             return new SpendingContext(
                     portfolio,
                     totalExpenses,
@@ -363,7 +403,7 @@ public record SpendingContext(
                     date,
                     resolvedAge,
                     resolvedBirthYear,
-                    yearsInRetirement,
+                    resolvedRetirementStartDate,
                     initialPortfolioBalance,
                     priorYearSpending,
                     priorYearPortfolioReturn,
