@@ -493,8 +493,27 @@ public record MarketLevers(
 
 public record ExpenseLevers(
     Map<InflationType, BigDecimal> inflationRates,
-    BigDecimal healthcareTrend
-) {}
+    BigDecimal healthcareTrend,
+    ExpenseModifier discretionaryModifier,   // Larger curve for travel/entertainment
+    ExpenseModifier essentialsModifier,      // Gentler curve for food
+    ExpenseModifier healthcareModifier,      // Age-based INCREASE
+    ExpenseModifier survivorModifier         // Applied when survivorMode flag set
+) {
+    /** Create default levers with standard spending curves. */
+    public static ExpenseLevers withDefaults() {
+        return new ExpenseLevers(
+            InflationRates.defaults().asMap(),
+            new BigDecimal("0.05"),
+            SpendingCurveModifier.withDefaults(),           // 100% → 80% → 50%
+            SpendingCurveModifier.builder()                 // 100% → 90% → 75% (gentler)
+                .multiplier(SpendingPhase.SLOW_GO, new BigDecimal("0.90"))
+                .multiplier(SpendingPhase.NO_GO, new BigDecimal("0.75"))
+                .build(),
+            AgeBasedModifier.healthcareDefault(),           // Increases with age
+            SurvivorExpenseModifier.withDefaults()
+        );
+    }
+}
 ```
 
 **Decisions:**
@@ -503,6 +522,171 @@ public record ExpenseLevers(
   - For inflation: choose "fixed rate" OR "historical data" as an immutable option
   - Historical/Monte Carlo modes can use time-varying data, but the *choice* is immutable
   - Aligns with "point-in-time projection" principle
+
+---
+
+### 5a. Expense Model Integration
+
+**Question:** How do expense modifiers (SpendingCurve, Survivor, Age-Based) integrate with the simulation?
+
+**Background:** M5 implemented the expense modifier infrastructure:
+- `ExpenseModifier` functional interface with `modify(baseAmount, date, age)`
+- `SpendingCurveModifier` - Go-Go/Slow-Go/No-Go discretionary spending
+- `SurvivorExpenseModifier` - category-specific adjustments post-death
+- `AgeBasedModifier` - healthcare cost increases with age
+- `PayoffModifier` - mortgage drops to zero after payoff
+
+The `Budget` class applies inflation but does NOT apply age-based modifiers. This integration happens in M7.
+
+**Decision:** `ExpenseCalculator` wraps Budget and applies modifiers.
+
+```java
+/**
+ * Calculates monthly expenses with all applicable modifiers.
+ * Wraps Budget (M5) and applies expense modifiers from ExpenseLevers.
+ */
+public interface ExpenseCalculator {
+    MonthlyExpenses calculate(Budget budget, YearMonth month, SimulationFlags flags);
+}
+
+public record MonthlyExpenses(
+    BigDecimal totalExpenses,
+    Map<ExpenseCategoryGroup, BigDecimal> byCategory,
+    SpendingPhase currentPhase,         // For reporting
+    List<String> modifiersApplied       // For audit trail
+) {}
+
+public class DefaultExpenseCalculator implements ExpenseCalculator {
+    private final ExpenseLevers levers;
+
+    @Override
+    public MonthlyExpenses calculate(Budget budget, YearMonth month, SimulationFlags flags) {
+        LocalDate date = month.atDay(1);
+        int age = budget.getOwner().getAgeAt(date);
+
+        // 1. Get base expenses from Budget (includes inflation)
+        ExpenseBreakdown base = budget.getMonthlyBreakdown(date);
+
+        // 2. Build composite modifier based on category and flags
+        List<String> appliedModifiers = new ArrayList<>();
+        Map<ExpenseCategoryGroup, BigDecimal> adjusted = new EnumMap<>(ExpenseCategoryGroup.class);
+
+        base.getByGroup().forEach((group, amount) -> {
+            ExpenseModifier modifier = selectModifier(group, flags, appliedModifiers);
+            BigDecimal modifiedAmount = modifier.modify(amount, date, age);
+            adjusted.put(group, modifiedAmount);
+        });
+
+        BigDecimal total = adjusted.values().stream()
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        SpendingPhase phase = SpendingPhase.forAge(age);
+
+        return new MonthlyExpenses(total, adjusted, phase, appliedModifiers);
+    }
+
+    private ExpenseModifier selectModifier(
+            ExpenseCategoryGroup group,
+            SimulationFlags flags,
+            List<String> appliedModifiers) {
+
+        ExpenseModifier modifier = ExpenseModifier.identity();
+
+        // Apply spending curve to discretionary expenses
+        if (group == ExpenseCategoryGroup.DISCRETIONARY) {
+            modifier = modifier.andThen(levers.discretionaryModifier());
+            appliedModifiers.add("SpendingCurve");
+        }
+
+        // Apply survivor modifier if flag set
+        if (flags.survivorMode()) {
+            modifier = modifier.andThen(levers.survivorModifier());
+            appliedModifiers.add("Survivor");
+        }
+
+        return modifier;
+    }
+}
+```
+
+**Integration Flow:**
+```
+Budget (M5)                    ExpenseCalculator (M7)              Simulation Loop
+┌───────────────────┐          ┌──────────────────────────┐        ┌───────────────┐
+│ RecurringExpenses │          │ 1. Get base from Budget  │        │ Step 4        │
+│ + Inflation       │ ──────▶  │ 2. Check SimulationFlags │ ─────▶ │ Calculate     │
+│ = Base Expenses   │          │ 3. Apply modifiers       │        │ Expenses      │
+└───────────────────┘          │ 4. Return MonthlyExpenses│        └───────────────┘
+                               └──────────────────────────┘
+```
+
+**Category-to-Modifier Mapping:**
+
+The spending curve affects more than just discretionary spending. Research shows:
+- **Discretionary** (travel, entertainment) - significant reduction with age
+- **Food** - moderate reduction (people eat less as they age)
+- **Healthcare** - INCREASES with age (opposite direction!)
+- **Housing** - relatively stable
+- **Debt** - follows payoff schedules
+
+| Category | Modifier | Multiplier Direction | Applied When |
+|----------|----------|---------------------|--------------|
+| TRAVEL, ENTERTAINMENT | SpendingCurveModifier | ↓ decreasing | Always during retirement |
+| FOOD, DINING | SpendingCurveModifier (gentler) | ↓ decreasing (smaller magnitude) | Always during retirement |
+| HEALTHCARE, MEDICAL | AgeBasedModifier | ↑ INCREASING | Always |
+| HOUSING, UTILITIES | Identity / Survivor | — stable / ↓ on death | `survivorMode` flag |
+| MORTGAGE, DEBT | PayoffModifier | → zero at end | Built into RecurringExpense endDate |
+
+**SpendingCurveModifier Configuration:**
+```java
+// Standard discretionary curve (larger drops)
+SpendingCurveModifier discretionary = SpendingCurveModifier.builder()
+    .multiplier(SpendingPhase.GO_GO, new BigDecimal("1.00"))
+    .multiplier(SpendingPhase.SLOW_GO, new BigDecimal("0.80"))
+    .multiplier(SpendingPhase.NO_GO, new BigDecimal("0.50"))
+    .interpolate(true)
+    .build();
+
+// Gentler curve for food/essentials (smaller drops)
+SpendingCurveModifier essentials = SpendingCurveModifier.builder()
+    .multiplier(SpendingPhase.GO_GO, new BigDecimal("1.00"))
+    .multiplier(SpendingPhase.SLOW_GO, new BigDecimal("0.90"))
+    .multiplier(SpendingPhase.NO_GO, new BigDecimal("0.75"))
+    .interpolate(true)
+    .build();
+```
+
+**Enhanced ExpenseLevers:**
+```java
+public record ExpenseLevers(
+    Map<InflationType, BigDecimal> inflationRates,
+    BigDecimal healthcareTrend,
+    ExpenseModifier discretionaryModifier,   // Larger curve for travel/entertainment
+    ExpenseModifier essentialsModifier,      // Gentler curve for food
+    ExpenseModifier healthcareModifier,      // Age-based INCREASE
+    ExpenseModifier survivorModifier         // Applied when survivorMode flag set
+) {}
+```
+
+**SimulationFlags:**
+```java
+public record SimulationFlags(
+    boolean survivorMode,                    // Spouse deceased
+    Set<ExpenseCategory> contingencyActive,  // Categories with active contingency
+    boolean refillMode,                      // Redirecting to contingency reserve
+    Map<String, Object> custom               // Extensibility
+) {
+    public static SimulationFlags initial() {
+        return new SimulationFlags(false, Set.of(), false, Map.of());
+    }
+}
+```
+
+**Why this design?**
+1. **Separation of concerns** - Budget owns base expenses + inflation; Calculator owns modifiers
+2. **Testable** - Can test modifier logic independently
+3. **Configurable** - ExpenseLevers can swap modifiers for different scenarios
+4. **Event-driven** - Flags set by events, Calculator checks flags each month
 
 ---
 
