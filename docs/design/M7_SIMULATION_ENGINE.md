@@ -252,25 +252,67 @@ Retired + part-time work:
 
 **Question:** How are events registered and fired?
 
-**Proposed Approach:**
+**Decision:** Events can be **deterministic**, **probabilistic**, or **random**.
+
+| Type | When Known | Example |
+|------|------------|---------|
+| **Deterministic** | Pre-registered at start | Retirement date, SS claiming, mortgage payoff |
+| **Probabilistic** | Derived from tables + variance | Death (actuarial ± 5 years), LTC need |
+| **Random** | Monte Carlo draw each run | Market crash, job loss, windfall |
+
+**Event Interface:**
 ```java
 public interface SimulationEvent {
-    YearMonth getTriggerDate();
-    void execute(SimulationContext context);
+    String getName();
     String getDescription();
+    void execute(SimulationContext context);
 }
 
-// Examples
-- RetirementStartEvent
-- SocialSecurityStartEvent
-- RmdStartEvent
-- MortgagePayoffEvent
-- SpouseDeathEvent
-- SpendingPhaseTransitionEvent
+// Deterministic: known trigger date
+public interface ScheduledEvent extends SimulationEvent {
+    YearMonth getTriggerDate();
+}
+
+// Probabilistic: may or may not occur, with probability
+public interface ProbabilisticEvent extends SimulationEvent {
+    boolean shouldTrigger(SimulationContext context, RandomGenerator random);
+    default BigDecimal getBaseProbability() { return BigDecimal.ZERO; }
+}
+```
+
+**Deterministic Events (pre-registered):**
+- `RetirementStartEvent` - from PersonProfile.retirementDate
+- `SocialSecurityStartEvent` - from PersonProfile.ssClaimingAge
+- `RmdStartEvent` - from birth year + SECURE 2.0 rules
+- `MortgagePayoffEvent` - from expense end date
+- `SpendingPhaseTransitionEvent` - from age brackets (Go-Go → Slow-Go)
+
+**Probabilistic Events:**
+```java
+public class SpouseDeathEvent implements ProbabilisticEvent {
+    private final PersonProfile spouse;
+    private final ActuarialTable table;
+    private final int varianceYears; // e.g., ±5 years
+
+    @Override
+    public boolean shouldTrigger(SimulationContext ctx, RandomGenerator random) {
+        int expectedAge = table.getLifeExpectancy(spouse);
+        int actualAge = expectedAge + random.nextInt(-varianceYears, varianceYears + 1);
+        return spouse.getAgeAt(ctx.currentMonth()) >= actualAge;
+    }
+}
+```
+
+**Event Execution Flow:**
+```
+Each month:
+    1. Check deterministic events (is trigger date == current month?)
+    2. Check probabilistic events (roll dice based on context)
+    3. Execute triggered events (may modify future state)
+    4. Record triggered events in MonthlySnapshot
 ```
 
 **Open Questions:**
-- [ ] Are events pre-registered or detected dynamically?
 - [ ] How do events affect future months (e.g., expense changes)?
 
 ---
