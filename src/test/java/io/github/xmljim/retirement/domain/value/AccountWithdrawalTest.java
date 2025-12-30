@@ -12,51 +12,31 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import io.github.xmljim.retirement.domain.calculator.StubSimulationView;
 import io.github.xmljim.retirement.domain.enums.AccountType;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
-import io.github.xmljim.retirement.domain.model.InvestmentAccount;
 
 @DisplayName("AccountWithdrawal Tests")
 class AccountWithdrawalTest {
 
-    private InvestmentAccount traditional401k;
-    private InvestmentAccount traditionalIra;
-    private InvestmentAccount rothIra;
-    private InvestmentAccount hsa;
+    private AccountSnapshot traditional401k;
+    private AccountSnapshot traditionalIra;
+    private AccountSnapshot rothIra;
+    private AccountSnapshot hsa;
 
     @BeforeEach
     void setUp() {
-        traditional401k = InvestmentAccount.builder()
-                .name("Traditional 401k")
-                .accountType(AccountType.TRADITIONAL_401K)
-                .balance(new BigDecimal("100000.00"))
-                .allocation(AssetAllocation.of(60, 35, 5))
-                .preRetirementReturnRate(0.07)
-                .build();
+        traditional401k = StubSimulationView.createTestAccount(
+                "Traditional 401k", AccountType.TRADITIONAL_401K, new BigDecimal("100000.00"));
 
-        traditionalIra = InvestmentAccount.builder()
-                .name("Traditional IRA")
-                .accountType(AccountType.TRADITIONAL_IRA)
-                .balance(new BigDecimal("50000.00"))
-                .allocation(AssetAllocation.of(60, 35, 5))
-                .preRetirementReturnRate(0.07)
-                .build();
+        traditionalIra = StubSimulationView.createTestAccount(
+                "Traditional IRA", AccountType.TRADITIONAL_IRA, new BigDecimal("50000.00"));
 
-        rothIra = InvestmentAccount.builder()
-                .name("Roth IRA")
-                .accountType(AccountType.ROTH_IRA)
-                .balance(new BigDecimal("75000.00"))
-                .allocation(AssetAllocation.of(70, 25, 5))
-                .preRetirementReturnRate(0.08)
-                .build();
+        rothIra = StubSimulationView.createTestAccount(
+                "Roth IRA", AccountType.ROTH_IRA, new BigDecimal("75000.00"));
 
-        hsa = InvestmentAccount.builder()
-                .name("HSA")
-                .accountType(AccountType.HSA)
-                .balance(new BigDecimal("20000.00"))
-                .allocation(AssetAllocation.of(50, 40, 10))
-                .preRetirementReturnRate(0.06)
-                .build();
+        hsa = StubSimulationView.createTestAccount(
+                "HSA", AccountType.HSA, new BigDecimal("20000.00"));
     }
 
     @Nested
@@ -67,13 +47,13 @@ class AccountWithdrawalTest {
         @DisplayName("Should create valid withdrawal with builder")
         void createsValidWithdrawal() {
             AccountWithdrawal withdrawal = AccountWithdrawal.builder()
-                    .account(traditional401k)
+                    .accountSnapshot(traditional401k)
                     .amount(new BigDecimal("5000.00"))
                     .priorBalance(new BigDecimal("100000.00"))
                     .newBalance(new BigDecimal("95000.00"))
                     .build();
 
-            assertEquals(traditional401k.getId(), withdrawal.accountId());
+            assertEquals(traditional401k.accountId(), withdrawal.accountId());
             assertEquals("Traditional 401k", withdrawal.accountName());
             assertEquals(AccountType.TRADITIONAL_401K, withdrawal.accountType());
             assertEquals(0, new BigDecimal("5000.00").compareTo(withdrawal.amount()));
@@ -85,7 +65,7 @@ class AccountWithdrawalTest {
         @DisplayName("Should default tax treatment from account type")
         void defaultsTaxTreatment() {
             AccountWithdrawal withdrawal = AccountWithdrawal.builder()
-                    .account(traditionalIra)
+                    .accountSnapshot(traditionalIra)
                     .amount(new BigDecimal("1000.00"))
                     .build();
 
@@ -96,7 +76,7 @@ class AccountWithdrawalTest {
         @DisplayName("Should allow override of tax treatment")
         void overridesTaxTreatment() {
             AccountWithdrawal withdrawal = AccountWithdrawal.builder()
-                    .account(traditionalIra)
+                    .accountSnapshot(traditionalIra)
                     .amount(new BigDecimal("1000.00"))
                     .taxTreatment(AccountType.TaxTreatment.ROTH)
                     .build();
@@ -108,7 +88,7 @@ class AccountWithdrawalTest {
         @DisplayName("Should default amounts to zero")
         void defaultsAmountsToZero() {
             AccountWithdrawal withdrawal = AccountWithdrawal.builder()
-                    .account(rothIra)
+                    .accountSnapshot(rothIra)
                     .build();
 
             assertEquals(0, BigDecimal.ZERO.compareTo(withdrawal.amount()));
@@ -122,7 +102,7 @@ class AccountWithdrawalTest {
     class ValidationTests {
 
         @Test
-        @DisplayName("Should throw for null account")
+        @DisplayName("Should throw for null account snapshot")
         void nullAccountThrows() {
             assertThrows(MissingRequiredFieldException.class, () ->
                     AccountWithdrawal.builder()
@@ -139,7 +119,7 @@ class AccountWithdrawalTest {
         @DisplayName("Pre-tax withdrawals should be taxable")
         void preTaxIsTaxable() {
             AccountWithdrawal withdrawal = AccountWithdrawal.builder()
-                    .account(traditional401k)
+                    .accountSnapshot(traditional401k)
                     .amount(new BigDecimal("5000.00"))
                     .build();
 
@@ -150,7 +130,7 @@ class AccountWithdrawalTest {
         @DisplayName("Roth withdrawals should not be taxable")
         void rothNotTaxable() {
             AccountWithdrawal withdrawal = AccountWithdrawal.builder()
-                    .account(rothIra)
+                    .accountSnapshot(rothIra)
                     .amount(new BigDecimal("5000.00"))
                     .build();
 
@@ -161,7 +141,7 @@ class AccountWithdrawalTest {
         @DisplayName("HSA withdrawals should not be taxable")
         void hsaNotTaxable() {
             AccountWithdrawal withdrawal = AccountWithdrawal.builder()
-                    .account(hsa)
+                    .accountSnapshot(hsa)
                     .amount(new BigDecimal("1000.00"))
                     .build();
 
@@ -177,7 +157,7 @@ class AccountWithdrawalTest {
         @DisplayName("Should detect depleted account")
         void detectsDepleted() {
             AccountWithdrawal withdrawal = AccountWithdrawal.builder()
-                    .account(traditionalIra)
+                    .accountSnapshot(traditionalIra)
                     .amount(new BigDecimal("10000.00"))
                     .priorBalance(new BigDecimal("10000.00"))
                     .newBalance(BigDecimal.ZERO)
@@ -190,7 +170,7 @@ class AccountWithdrawalTest {
         @DisplayName("Should detect non-depleted account")
         void detectsNotDepleted() {
             AccountWithdrawal withdrawal = AccountWithdrawal.builder()
-                    .account(traditionalIra)
+                    .accountSnapshot(traditionalIra)
                     .amount(new BigDecimal("5000.00"))
                     .priorBalance(new BigDecimal("10000.00"))
                     .newBalance(new BigDecimal("5000.00"))
@@ -204,7 +184,7 @@ class AccountWithdrawalTest {
         void detectsPartialWithdrawal() {
             // Requested $10000 but only $7000 available
             AccountWithdrawal withdrawal = AccountWithdrawal.builder()
-                    .account(traditionalIra)
+                    .accountSnapshot(traditionalIra)
                     .amount(new BigDecimal("10000.00"))
                     .priorBalance(new BigDecimal("7000.00"))
                     .newBalance(BigDecimal.ZERO)
@@ -218,7 +198,7 @@ class AccountWithdrawalTest {
         @DisplayName("Should not flag full withdrawal as partial")
         void fullWithdrawalNotPartial() {
             AccountWithdrawal withdrawal = AccountWithdrawal.builder()
-                    .account(traditionalIra)
+                    .accountSnapshot(traditionalIra)
                     .amount(new BigDecimal("10000.00"))
                     .priorBalance(new BigDecimal("10000.00"))
                     .newBalance(BigDecimal.ZERO)
@@ -234,17 +214,17 @@ class AccountWithdrawalTest {
     class AccountReferenceTests {
 
         @Test
-        @DisplayName("Should provide access to underlying account")
+        @DisplayName("Should provide access to underlying account snapshot")
         void providesAccountReference() {
             AccountWithdrawal withdrawal = AccountWithdrawal.builder()
-                    .account(traditional401k)
+                    .accountSnapshot(traditional401k)
                     .amount(new BigDecimal("5000.00"))
                     .build();
 
-            assertEquals(traditional401k, withdrawal.account());
-            assertEquals(traditional401k.getId(), withdrawal.accountId());
-            assertEquals(traditional401k.getName(), withdrawal.accountName());
-            assertEquals(traditional401k.getAccountType(), withdrawal.accountType());
+            assertEquals(traditional401k, withdrawal.accountSnapshot());
+            assertEquals(traditional401k.accountId(), withdrawal.accountId());
+            assertEquals(traditional401k.accountName(), withdrawal.accountName());
+            assertEquals(traditional401k.accountType(), withdrawal.accountType());
         }
     }
 }

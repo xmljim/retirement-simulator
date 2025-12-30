@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 
 import io.github.xmljim.retirement.domain.enums.AccountType;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
-import io.github.xmljim.retirement.domain.model.InvestmentAccount;
 
 /**
  * Represents a withdrawal from a single investment account.
@@ -16,7 +15,7 @@ import io.github.xmljim.retirement.domain.model.InvestmentAccount;
  * <p>Tax treatment is included to support tax-efficient withdrawal sequencing
  * and tax liability calculations.
  *
- * @param account the investment account the withdrawal is from
+ * @param accountSnapshot the account snapshot the withdrawal is from
  * @param amount the withdrawal amount
  * @param priorBalance the account balance before withdrawal
  * @param newBalance the account balance after withdrawal
@@ -24,7 +23,7 @@ import io.github.xmljim.retirement.domain.model.InvestmentAccount;
  * @see io.github.xmljim.retirement.domain.value.SpendingPlan
  */
 public record AccountWithdrawal(
-        InvestmentAccount account,
+        AccountSnapshot accountSnapshot,
         BigDecimal amount,
         BigDecimal priorBalance,
         BigDecimal newBalance,
@@ -35,11 +34,11 @@ public record AccountWithdrawal(
      * Compact constructor with validation.
      */
     public AccountWithdrawal {
-        MissingRequiredFieldException.requireNonNull(account, "account");
+        MissingRequiredFieldException.requireNonNull(accountSnapshot, "accountSnapshot");
         amount = amount != null ? amount : BigDecimal.ZERO;
         priorBalance = priorBalance != null ? priorBalance : BigDecimal.ZERO;
         newBalance = newBalance != null ? newBalance : BigDecimal.ZERO;
-        taxTreatment = taxTreatment != null ? taxTreatment : account.getAccountType().getTaxTreatment();
+        taxTreatment = taxTreatment != null ? taxTreatment : accountSnapshot.taxTreatment();
     }
 
     /**
@@ -48,7 +47,7 @@ public record AccountWithdrawal(
      * @return the account's unique identifier
      */
     public String accountId() {
-        return account.getId();
+        return accountSnapshot.accountId();
     }
 
     /**
@@ -57,7 +56,7 @@ public record AccountWithdrawal(
      * @return the account's display name
      */
     public String accountName() {
-        return account.getName();
+        return accountSnapshot.accountName();
     }
 
     /**
@@ -66,7 +65,7 @@ public record AccountWithdrawal(
      * @return the type of account
      */
     public AccountType accountType() {
-        return account.getAccountType();
+        return accountSnapshot.accountType();
     }
 
     /**
@@ -116,20 +115,20 @@ public record AccountWithdrawal(
      * Builder for creating AccountWithdrawal instances.
      */
     public static class Builder {
-        private InvestmentAccount account;
+        private AccountSnapshot accountSnapshot;
         private BigDecimal amount = BigDecimal.ZERO;
         private BigDecimal priorBalance = BigDecimal.ZERO;
         private BigDecimal newBalance = BigDecimal.ZERO;
         private AccountType.TaxTreatment taxTreatment;
 
         /**
-         * Sets the investment account.
+         * Sets the account snapshot.
          *
-         * @param account the investment account
+         * @param accountSnapshot the account snapshot
          * @return this builder
          */
-        public Builder account(InvestmentAccount account) {
-            this.account = account;
+        public Builder accountSnapshot(AccountSnapshot accountSnapshot) {
+            this.accountSnapshot = accountSnapshot;
             return this;
         }
 
@@ -184,7 +183,7 @@ public record AccountWithdrawal(
          */
         public AccountWithdrawal build() {
             return new AccountWithdrawal(
-                    account,
+                    accountSnapshot,
                     amount,
                     priorBalance,
                     newBalance,

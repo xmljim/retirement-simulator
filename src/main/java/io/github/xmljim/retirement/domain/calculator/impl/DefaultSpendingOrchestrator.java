@@ -9,8 +9,7 @@ import io.github.xmljim.retirement.domain.calculator.RmdCalculator;
 import io.github.xmljim.retirement.domain.calculator.SpendingOrchestrator;
 import io.github.xmljim.retirement.domain.calculator.SpendingStrategy;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
-import io.github.xmljim.retirement.domain.model.InvestmentAccount;
-import io.github.xmljim.retirement.domain.model.Portfolio;
+import io.github.xmljim.retirement.domain.value.AccountSnapshot;
 import io.github.xmljim.retirement.domain.value.AccountWithdrawal;
 import io.github.xmljim.retirement.domain.value.SpendingContext;
 import io.github.xmljim.retirement.domain.value.SpendingPlan;
@@ -53,15 +52,14 @@ public class DefaultSpendingOrchestrator implements SpendingOrchestrator {
 
     @Override
     public SpendingPlan execute(
-            Portfolio portfolio,
             SpendingStrategy strategy,
             AccountSequencer sequencer,
             SpendingContext context) {
 
-        MissingRequiredFieldException.requireNonNull(portfolio, "portfolio");
         MissingRequiredFieldException.requireNonNull(strategy, "strategy");
         MissingRequiredFieldException.requireNonNull(sequencer, "sequencer");
         MissingRequiredFieldException.requireNonNull(context, "context");
+        MissingRequiredFieldException.requireNonNull(context.simulation(), "context.simulation()");
 
         // 1. Calculate target withdrawal from strategy
         SpendingPlan strategyPlan = strategy.calculateWithdrawal(context);
@@ -72,12 +70,12 @@ public class DefaultSpendingOrchestrator implements SpendingOrchestrator {
             return SpendingPlan.noWithdrawalNeeded(strategy.getName());
         }
 
-        // 2. Sequence accounts
-        List<InvestmentAccount> orderedAccounts = sequencer.sequence(portfolio, context);
+        // 2. Sequence accounts (sequencer gets accounts from context.simulation())
+        List<AccountSnapshot> orderedAccounts = sequencer.sequence(context);
 
         // 3. Execute withdrawals from accounts in sequence using Stream reduce
         WithdrawalState finalState = orderedAccounts.stream()
-                .filter(account -> account.getBalance().compareTo(BigDecimal.ZERO) > 0)
+                .filter(AccountSnapshot::hasBalance)
                 .reduce(
                         new WithdrawalState(new ArrayList<>(), targetWithdrawal, BigDecimal.ZERO),
                         (state, account) -> state.processAccount(account),
@@ -121,23 +119,23 @@ public class DefaultSpendingOrchestrator implements SpendingOrchestrator {
             BigDecimal totalWithdrawn
     ) {
         /**
-         * Processes an account and returns updated state.
+         * Processes an account snapshot and returns updated state.
          *
-         * @param account the account to potentially withdraw from
+         * @param account the account snapshot to potentially withdraw from
          * @return updated state after processing the account
          */
-        WithdrawalState processAccount(InvestmentAccount account) {
+        WithdrawalState processAccount(AccountSnapshot account) {
             // If we've already withdrawn enough, return unchanged state
             if (remaining.compareTo(BigDecimal.ZERO) <= 0) {
                 return this;
             }
 
-            BigDecimal accountBalance = account.getBalance();
+            BigDecimal accountBalance = account.balance();
             BigDecimal withdrawalAmount = remaining.min(accountBalance);
             BigDecimal newBalance = accountBalance.subtract(withdrawalAmount);
 
             AccountWithdrawal withdrawal = AccountWithdrawal.builder()
-                    .account(account)
+                    .accountSnapshot(account)
                     .amount(withdrawalAmount)
                     .priorBalance(accountBalance)
                     .newBalance(newBalance)
