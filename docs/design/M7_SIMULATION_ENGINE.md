@@ -541,9 +541,7 @@ public class SimulationEngine {
 
             // ─── Step 3: Process Events ────────────────────────────────
             List<SimulationEvent> triggered = eventRegistry.check(month, state);
-            for (SimulationEvent event : triggered) {
-                event.execute(state);  // Sets flags like survivorMode
-            }
+            triggered.forEach(event -> event.execute(state));
 
             // ─── Step 4: Calculate Expenses ────────────────────────────
             MonthlyExpenses expenses = expenseCalculator.calculate(
@@ -603,12 +601,12 @@ public class SimulationEngine {
             MarketLevers levers,
             YearMonth month) {
         BigDecimal monthlyRate = returnCalculator.getMonthlyReturn(levers, month);
-        for (AccountMonthlyFlow flow : flows.values()) {
-            BigDecimal newBalance = flow.endingBalance()
-                .multiply(BigDecimal.ONE.add(monthlyRate));
+
+        flows.values().forEach(flow -> {
+            var newBalance = flow.endingBalance().multiply(BigDecimal.ONE.add(monthlyRate));
             state.updateAccountBalance(flow.accountId(), newBalance);
-            flow.setReturns(newBalance.subtract(flow.endingBalance()));
-        }
+            flow.withReturns(newBalance.subtract(flow.endingBalance()));
+        });
     }
 }
 
@@ -634,9 +632,8 @@ public class SimulationState {
 
     // Mutate state based on plan
     public void apply(SpendingPlan plan) {
-        for (AccountWithdrawal withdrawal : plan.accountWithdrawals()) {
-            accounts.get(withdrawal.accountId()).withdraw(withdrawal.amount());
-        }
+        plan.accountWithdrawals().forEach(withdrawal ->
+            accounts.get(withdrawal.accountId()).withdraw(withdrawal.amount()));
     }
 }
 
