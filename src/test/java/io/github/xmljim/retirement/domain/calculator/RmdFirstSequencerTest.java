@@ -17,10 +17,7 @@ import io.github.xmljim.retirement.domain.calculator.impl.DefaultRmdCalculator;
 import io.github.xmljim.retirement.domain.calculator.impl.RmdFirstSequencer;
 import io.github.xmljim.retirement.domain.enums.AccountType;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
-import io.github.xmljim.retirement.domain.model.InvestmentAccount;
-import io.github.xmljim.retirement.domain.model.PersonProfile;
-import io.github.xmljim.retirement.domain.model.Portfolio;
-import io.github.xmljim.retirement.domain.value.AssetAllocation;
+import io.github.xmljim.retirement.domain.value.AccountSnapshot;
 import io.github.xmljim.retirement.domain.value.SpendingContext;
 
 @DisplayName("RmdFirstSequencer Tests")
@@ -28,7 +25,6 @@ class RmdFirstSequencerTest {
 
     private RmdFirstSequencer sequencer;
     private RmdCalculator rmdCalculator;
-    private PersonProfile owner;
     private LocalDate retirementStart;
 
     @BeforeEach
@@ -36,19 +32,10 @@ class RmdFirstSequencerTest {
         rmdCalculator = new DefaultRmdCalculator();
         sequencer = new RmdFirstSequencer(rmdCalculator);
         retirementStart = LocalDate.of(2020, 1, 1);
-        owner = PersonProfile.builder()
-                .name("Test Owner")
-                .dateOfBirth(LocalDate.of(1955, 1, 1))
-                .retirementDate(LocalDate.of(2020, 1, 1))
-                .build();
     }
 
-    private SpendingContext createContext(Portfolio portfolio) {
-        StubSimulationView simulation = StubSimulationView.withAccounts(
-                portfolio.getAccounts().stream()
-                        .map(a -> StubSimulationView.createTestAccount(
-                                a.getName(), a.getAccountType(), a.getBalance()))
-                        .toList());
+    private SpendingContext createContext(AccountSnapshot... accounts) {
+        StubSimulationView simulation = StubSimulationView.withAccounts(List.of(accounts));
         return SpendingContext.builder()
                 .simulation(simulation)
                 .date(LocalDate.now())
@@ -58,14 +45,8 @@ class RmdFirstSequencerTest {
                 .build();
     }
 
-    private InvestmentAccount createAccount(String name, AccountType type, BigDecimal balance) {
-        return InvestmentAccount.builder()
-                .name(name)
-                .accountType(type)
-                .balance(balance)
-                .allocation(AssetAllocation.of(60, 35, 5))
-                .preRetirementReturnRate(0.07)
-                .build();
+    private AccountSnapshot createAccount(String name, AccountType type, BigDecimal balance) {
+        return StubSimulationView.createTestAccount(name, type, balance);
     }
 
     @Nested
@@ -75,51 +56,45 @@ class RmdFirstSequencerTest {
         @Test
         @DisplayName("Should put Traditional IRA before Roth IRA")
         void traditionalIraFirst() {
-            Portfolio portfolio = Portfolio.builder()
-                    .owner(owner)
-                    .addAccount(createAccount("Roth IRA", AccountType.ROTH_IRA, new BigDecimal("100000")))
-                    .addAccount(createAccount("Traditional IRA", AccountType.TRADITIONAL_IRA, new BigDecimal("200000")))
-                    .build();
+            SpendingContext context = createContext(
+                    createAccount("Roth IRA", AccountType.ROTH_IRA, new BigDecimal("100000")),
+                    createAccount("Traditional IRA", AccountType.TRADITIONAL_IRA, new BigDecimal("200000")));
 
-            List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
+            List<AccountSnapshot> ordered = sequencer.sequence(context);
 
             assertEquals(2, ordered.size());
-            assertEquals("Traditional IRA", ordered.get(0).getName());
-            assertEquals("Roth IRA", ordered.get(1).getName());
+            assertEquals("Traditional IRA", ordered.get(0).accountName());
+            assertEquals("Roth IRA", ordered.get(1).accountName());
         }
 
         @Test
         @DisplayName("Should put Traditional 401k before taxable brokerage")
         void traditional401kBeforeTaxable() {
-            Portfolio portfolio = Portfolio.builder()
-                    .owner(owner)
-                    .addAccount(createAccount("Brokerage", AccountType.TAXABLE_BROKERAGE, new BigDecimal("50000")))
-                    .addAccount(createAccount("401k", AccountType.TRADITIONAL_401K, new BigDecimal("300000")))
-                    .build();
+            SpendingContext context = createContext(
+                    createAccount("Brokerage", AccountType.TAXABLE_BROKERAGE, new BigDecimal("50000")),
+                    createAccount("401k", AccountType.TRADITIONAL_401K, new BigDecimal("300000")));
 
-            List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
+            List<AccountSnapshot> ordered = sequencer.sequence(context);
 
             assertEquals(2, ordered.size());
-            assertEquals("401k", ordered.get(0).getName());
-            assertEquals("Brokerage", ordered.get(1).getName());
+            assertEquals("401k", ordered.get(0).accountName());
+            assertEquals("Brokerage", ordered.get(1).accountName());
         }
 
         @Test
         @DisplayName("Should sort RMD accounts by balance descending")
         void rmdAccountsSortedByBalanceDescending() {
-            Portfolio portfolio = Portfolio.builder()
-                    .owner(owner)
-                    .addAccount(createAccount("Small IRA", AccountType.TRADITIONAL_IRA, new BigDecimal("50000")))
-                    .addAccount(createAccount("Large 401k", AccountType.TRADITIONAL_401K, new BigDecimal("500000")))
-                    .addAccount(createAccount("Medium IRA", AccountType.TRADITIONAL_IRA, new BigDecimal("150000")))
-                    .build();
+            SpendingContext context = createContext(
+                    createAccount("Small IRA", AccountType.TRADITIONAL_IRA, new BigDecimal("50000")),
+                    createAccount("Large 401k", AccountType.TRADITIONAL_401K, new BigDecimal("500000")),
+                    createAccount("Medium IRA", AccountType.TRADITIONAL_IRA, new BigDecimal("150000")));
 
-            List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
+            List<AccountSnapshot> ordered = sequencer.sequence(context);
 
             assertEquals(3, ordered.size());
-            assertEquals("Large 401k", ordered.get(0).getName());
-            assertEquals("Medium IRA", ordered.get(1).getName());
-            assertEquals("Small IRA", ordered.get(2).getName());
+            assertEquals("Large 401k", ordered.get(0).accountName());
+            assertEquals("Medium IRA", ordered.get(1).accountName());
+            assertEquals("Small IRA", ordered.get(2).accountName());
         }
     }
 
@@ -130,19 +105,17 @@ class RmdFirstSequencerTest {
         @Test
         @DisplayName("Should order non-RMD accounts tax-efficiently")
         void nonRmdAccountsTaxEfficient() {
-            Portfolio portfolio = Portfolio.builder()
-                    .owner(owner)
-                    .addAccount(createAccount("HSA", AccountType.HSA, new BigDecimal("30000")))
-                    .addAccount(createAccount("Roth IRA", AccountType.ROTH_IRA, new BigDecimal("100000")))
-                    .addAccount(createAccount("Brokerage", AccountType.TAXABLE_BROKERAGE, new BigDecimal("50000")))
-                    .build();
+            SpendingContext context = createContext(
+                    createAccount("HSA", AccountType.HSA, new BigDecimal("30000")),
+                    createAccount("Roth IRA", AccountType.ROTH_IRA, new BigDecimal("100000")),
+                    createAccount("Brokerage", AccountType.TAXABLE_BROKERAGE, new BigDecimal("50000")));
 
-            List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
+            List<AccountSnapshot> ordered = sequencer.sequence(context);
 
             assertEquals(3, ordered.size());
-            assertEquals("Brokerage", ordered.get(0).getName());
-            assertEquals("Roth IRA", ordered.get(1).getName());
-            assertEquals("HSA", ordered.get(2).getName());
+            assertEquals("Brokerage", ordered.get(0).accountName());
+            assertEquals("Roth IRA", ordered.get(1).accountName());
+            assertEquals("HSA", ordered.get(2).accountName());
         }
     }
 
@@ -153,55 +126,49 @@ class RmdFirstSequencerTest {
         @Test
         @DisplayName("Should sequence mixed portfolio correctly")
         void mixedPortfolioSequence() {
-            Portfolio portfolio = Portfolio.builder()
-                    .owner(owner)
-                    .addAccount(createAccount("Roth IRA", AccountType.ROTH_IRA, new BigDecimal("100000")))
-                    .addAccount(createAccount("HSA", AccountType.HSA, new BigDecimal("30000")))
-                    .addAccount(createAccount("401k", AccountType.TRADITIONAL_401K, new BigDecimal("300000")))
-                    .addAccount(createAccount("Brokerage", AccountType.TAXABLE_BROKERAGE, new BigDecimal("50000")))
-                    .addAccount(createAccount("Traditional IRA", AccountType.TRADITIONAL_IRA, new BigDecimal("150000")))
-                    .build();
+            SpendingContext context = createContext(
+                    createAccount("Roth IRA", AccountType.ROTH_IRA, new BigDecimal("100000")),
+                    createAccount("HSA", AccountType.HSA, new BigDecimal("30000")),
+                    createAccount("401k", AccountType.TRADITIONAL_401K, new BigDecimal("300000")),
+                    createAccount("Brokerage", AccountType.TAXABLE_BROKERAGE, new BigDecimal("50000")),
+                    createAccount("Traditional IRA", AccountType.TRADITIONAL_IRA, new BigDecimal("150000")));
 
-            List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
+            List<AccountSnapshot> ordered = sequencer.sequence(context);
 
             assertEquals(5, ordered.size());
-            assertEquals("401k", ordered.get(0).getName());
-            assertEquals("Traditional IRA", ordered.get(1).getName());
-            assertEquals("Brokerage", ordered.get(2).getName());
-            assertEquals("Roth IRA", ordered.get(3).getName());
-            assertEquals("HSA", ordered.get(4).getName());
+            assertEquals("401k", ordered.get(0).accountName());
+            assertEquals("Traditional IRA", ordered.get(1).accountName());
+            assertEquals("Brokerage", ordered.get(2).accountName());
+            assertEquals("Roth IRA", ordered.get(3).accountName());
+            assertEquals("HSA", ordered.get(4).accountName());
         }
 
         @Test
         @DisplayName("Should handle portfolio with only non-RMD accounts")
         void onlyNonRmdAccounts() {
-            Portfolio portfolio = Portfolio.builder()
-                    .owner(owner)
-                    .addAccount(createAccount("Roth IRA", AccountType.ROTH_IRA, new BigDecimal("100000")))
-                    .addAccount(createAccount("Brokerage", AccountType.TAXABLE_BROKERAGE, new BigDecimal("50000")))
-                    .build();
+            SpendingContext context = createContext(
+                    createAccount("Roth IRA", AccountType.ROTH_IRA, new BigDecimal("100000")),
+                    createAccount("Brokerage", AccountType.TAXABLE_BROKERAGE, new BigDecimal("50000")));
 
-            List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
+            List<AccountSnapshot> ordered = sequencer.sequence(context);
 
             assertEquals(2, ordered.size());
-            assertEquals("Brokerage", ordered.get(0).getName());
-            assertEquals("Roth IRA", ordered.get(1).getName());
+            assertEquals("Brokerage", ordered.get(0).accountName());
+            assertEquals("Roth IRA", ordered.get(1).accountName());
         }
 
         @Test
         @DisplayName("Should handle portfolio with only RMD accounts")
         void onlyRmdAccounts() {
-            Portfolio portfolio = Portfolio.builder()
-                    .owner(owner)
-                    .addAccount(createAccount("401k", AccountType.TRADITIONAL_401K, new BigDecimal("300000")))
-                    .addAccount(createAccount("Traditional IRA", AccountType.TRADITIONAL_IRA, new BigDecimal("150000")))
-                    .build();
+            SpendingContext context = createContext(
+                    createAccount("401k", AccountType.TRADITIONAL_401K, new BigDecimal("300000")),
+                    createAccount("Traditional IRA", AccountType.TRADITIONAL_IRA, new BigDecimal("150000")));
 
-            List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
+            List<AccountSnapshot> ordered = sequencer.sequence(context);
 
             assertEquals(2, ordered.size());
-            assertEquals("401k", ordered.get(0).getName());
-            assertEquals("Traditional IRA", ordered.get(1).getName());
+            assertEquals("401k", ordered.get(0).accountName());
+            assertEquals("Traditional IRA", ordered.get(1).accountName());
         }
     }
 
@@ -212,37 +179,31 @@ class RmdFirstSequencerTest {
         @Test
         @DisplayName("Should exclude zero balance accounts")
         void excludesZeroBalance() {
-            Portfolio portfolio = Portfolio.builder()
-                    .owner(owner)
-                    .addAccount(createAccount("Empty 401k", AccountType.TRADITIONAL_401K, BigDecimal.ZERO))
-                    .addAccount(createAccount("Roth IRA", AccountType.ROTH_IRA, new BigDecimal("100000")))
-                    .build();
+            SpendingContext context = createContext(
+                    createAccount("Empty 401k", AccountType.TRADITIONAL_401K, BigDecimal.ZERO),
+                    createAccount("Roth IRA", AccountType.ROTH_IRA, new BigDecimal("100000")));
 
-            List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
+            List<AccountSnapshot> ordered = sequencer.sequence(context);
 
             assertEquals(1, ordered.size());
-            assertEquals("Roth IRA", ordered.get(0).getName());
+            assertEquals("Roth IRA", ordered.get(0).accountName());
         }
 
         @Test
         @DisplayName("Should handle empty portfolio")
         void handlesEmptyPortfolio() {
-            Portfolio portfolio = Portfolio.builder()
-                    .owner(owner)
-                    .build();
+            SpendingContext context = createContext();
 
-            List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
+            List<AccountSnapshot> ordered = sequencer.sequence(context);
 
             assertTrue(ordered.isEmpty());
         }
 
         @Test
-        @DisplayName("Should throw for null portfolio")
-        void throwsForNullPortfolio() {
-            Portfolio emptyPortfolio = Portfolio.builder().owner(owner).build();
-            SpendingContext context = createContext(emptyPortfolio);
+        @DisplayName("Should throw for null context")
+        void throwsForNullContext() {
             assertThrows(MissingRequiredFieldException.class, () ->
-                    sequencer.sequence(null, context));
+                    sequencer.sequence(null));
         }
 
         @Test

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,10 +20,7 @@ import io.github.xmljim.retirement.domain.calculator.impl.RmdFirstSequencer;
 import io.github.xmljim.retirement.domain.calculator.impl.TaxEfficientSequencer;
 import io.github.xmljim.retirement.domain.enums.AccountType;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
-import io.github.xmljim.retirement.domain.model.InvestmentAccount;
-import io.github.xmljim.retirement.domain.model.PersonProfile;
-import io.github.xmljim.retirement.domain.model.Portfolio;
-import io.github.xmljim.retirement.domain.value.AssetAllocation;
+import io.github.xmljim.retirement.domain.value.AccountSnapshot;
 import io.github.xmljim.retirement.domain.value.SpendingContext;
 import io.github.xmljim.retirement.domain.value.SpendingPlan;
 
@@ -30,8 +28,6 @@ import io.github.xmljim.retirement.domain.value.SpendingPlan;
 class DefaultSpendingOrchestratorTest {
 
     private DefaultSpendingOrchestrator orchestrator;
-    private PersonProfile owner;
-    private Portfolio portfolio;
     private LocalDate retirementStart;
 
     @BeforeEach
@@ -39,51 +35,10 @@ class DefaultSpendingOrchestratorTest {
         RmdCalculator rmdCalculator = new DefaultRmdCalculator();
         orchestrator = new DefaultSpendingOrchestrator(rmdCalculator);
         retirementStart = LocalDate.of(2020, 1, 1);
-
-        owner = PersonProfile.builder()
-                .name("Test Owner")
-                .dateOfBirth(LocalDate.of(1960, 1, 1))
-                .retirementDate(LocalDate.of(2025, 1, 1))
-                .build();
-
-        InvestmentAccount account401k = InvestmentAccount.builder()
-                .name("401(k)")
-                .accountType(AccountType.TRADITIONAL_401K)
-                .balance(new BigDecimal("200000"))
-                .allocation(AssetAllocation.of(60, 35, 5))
-                .preRetirementReturnRate(0.07)
-                .build();
-
-        InvestmentAccount rothIra = InvestmentAccount.builder()
-                .name("Roth IRA")
-                .accountType(AccountType.ROTH_IRA)
-                .balance(new BigDecimal("100000"))
-                .allocation(AssetAllocation.of(70, 25, 5))
-                .preRetirementReturnRate(0.08)
-                .build();
-
-        InvestmentAccount brokerage = InvestmentAccount.builder()
-                .name("Brokerage")
-                .accountType(AccountType.TAXABLE_BROKERAGE)
-                .balance(new BigDecimal("50000"))
-                .allocation(AssetAllocation.of(50, 40, 10))
-                .preRetirementReturnRate(0.06)
-                .build();
-
-        portfolio = Portfolio.builder()
-                .owner(owner)
-                .addAccount(account401k)
-                .addAccount(rothIra)
-                .addAccount(brokerage)
-                .build();
     }
 
-    private SpendingContext createContext(Portfolio portfolio) {
-        StubSimulationView simulation = StubSimulationView.withAccounts(
-                portfolio.getAccounts().stream()
-                        .map(a -> StubSimulationView.createTestAccount(
-                                a.getName(), a.getAccountType(), a.getBalance()))
-                        .toList());
+    private SpendingContext createContext(AccountSnapshot... accounts) {
+        StubSimulationView simulation = StubSimulationView.withAccounts(List.of(accounts));
         return SpendingContext.builder()
                 .simulation(simulation)
                 .totalExpenses(new BigDecimal("5000"))
@@ -93,12 +48,8 @@ class DefaultSpendingOrchestratorTest {
                 .build();
     }
 
-    private SpendingContext createContextWithAge(Portfolio portfolio, int age, int birthYear) {
-        StubSimulationView simulation = StubSimulationView.withAccounts(
-                portfolio.getAccounts().stream()
-                        .map(a -> StubSimulationView.createTestAccount(
-                                a.getName(), a.getAccountType(), a.getBalance()))
-                        .toList());
+    private SpendingContext createContextWithAge(int age, int birthYear, AccountSnapshot... accounts) {
+        StubSimulationView simulation = StubSimulationView.withAccounts(List.of(accounts));
         return SpendingContext.builder()
                 .simulation(simulation)
                 .totalExpenses(new BigDecimal("5000"))
@@ -108,6 +59,10 @@ class DefaultSpendingOrchestratorTest {
                 .birthYear(birthYear)
                 .retirementStartDate(retirementStart)
                 .build();
+    }
+
+    private AccountSnapshot createAccount(String name, AccountType type, BigDecimal balance) {
+        return StubSimulationView.createTestAccount(name, type, balance);
     }
 
     // Simple test strategy that returns a fixed withdrawal amount
@@ -142,11 +97,14 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should execute withdrawal from single account")
         void executesWithdrawalFromSingleAccount() {
-            SpendingContext context = createContext(portfolio);
+            SpendingContext context = createContext(
+                    createAccount("401(k)", AccountType.TRADITIONAL_401K, new BigDecimal("200000")),
+                    createAccount("Roth IRA", AccountType.ROTH_IRA, new BigDecimal("100000")),
+                    createAccount("Brokerage", AccountType.TAXABLE_BROKERAGE, new BigDecimal("50000")));
             SpendingStrategy strategy = createFixedStrategy(new BigDecimal("10000"));
             AccountSequencer sequencer = new TaxEfficientSequencer();
 
-            SpendingPlan plan = orchestrator.execute(portfolio, strategy, sequencer, context);
+            SpendingPlan plan = orchestrator.execute(strategy, sequencer, context);
 
             assertEquals(0, new BigDecimal("10000").compareTo(plan.targetWithdrawal()));
             assertEquals(0, new BigDecimal("10000").compareTo(plan.adjustedWithdrawal()));
@@ -158,11 +116,14 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should execute withdrawal across multiple accounts")
         void executesWithdrawalAcrossMultipleAccounts() {
-            SpendingContext context = createContext(portfolio);
+            SpendingContext context = createContext(
+                    createAccount("401(k)", AccountType.TRADITIONAL_401K, new BigDecimal("200000")),
+                    createAccount("Roth IRA", AccountType.ROTH_IRA, new BigDecimal("100000")),
+                    createAccount("Brokerage", AccountType.TAXABLE_BROKERAGE, new BigDecimal("50000")));
             SpendingStrategy strategy = createFixedStrategy(new BigDecimal("75000"));
             AccountSequencer sequencer = new TaxEfficientSequencer();
 
-            SpendingPlan plan = orchestrator.execute(portfolio, strategy, sequencer, context);
+            SpendingPlan plan = orchestrator.execute(strategy, sequencer, context);
 
             assertTrue(plan.meetsTarget());
             assertTrue(plan.accountWithdrawals().size() > 1);
@@ -172,11 +133,12 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should return no withdrawal when target is zero")
         void noWithdrawalWhenTargetZero() {
-            SpendingContext context = createContext(portfolio);
+            SpendingContext context = createContext(
+                    createAccount("401(k)", AccountType.TRADITIONAL_401K, new BigDecimal("200000")));
             SpendingStrategy strategy = createFixedStrategy(BigDecimal.ZERO);
             AccountSequencer sequencer = new TaxEfficientSequencer();
 
-            SpendingPlan plan = orchestrator.execute(portfolio, strategy, sequencer, context);
+            SpendingPlan plan = orchestrator.execute(strategy, sequencer, context);
 
             assertEquals(0, BigDecimal.ZERO.compareTo(plan.targetWithdrawal()));
             assertEquals(0, BigDecimal.ZERO.compareTo(plan.adjustedWithdrawal()));
@@ -192,11 +154,14 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should track shortfall when portfolio insufficient")
         void tracksShortfall() {
-            SpendingContext context = createContext(portfolio);
+            SpendingContext context = createContext(
+                    createAccount("401(k)", AccountType.TRADITIONAL_401K, new BigDecimal("200000")),
+                    createAccount("Roth IRA", AccountType.ROTH_IRA, new BigDecimal("100000")),
+                    createAccount("Brokerage", AccountType.TAXABLE_BROKERAGE, new BigDecimal("50000")));
             SpendingStrategy strategy = createFixedStrategy(new BigDecimal("500000"));
             AccountSequencer sequencer = new TaxEfficientSequencer();
 
-            SpendingPlan plan = orchestrator.execute(portfolio, strategy, sequencer, context);
+            SpendingPlan plan = orchestrator.execute(strategy, sequencer, context);
 
             assertFalse(plan.meetsTarget());
             assertTrue(plan.shortfall().compareTo(BigDecimal.ZERO) > 0);
@@ -212,7 +177,8 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should select TaxEfficientSequencer when not subject to RMD")
         void selectsTaxEfficientWhenNotRmd() {
-            SpendingContext context = createContext(portfolio);
+            SpendingContext context = createContext(
+                    createAccount("401(k)", AccountType.TRADITIONAL_401K, new BigDecimal("200000")));
 
             AccountSequencer sequencer = orchestrator.selectDefaultSequencer(context);
 
@@ -222,7 +188,8 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should select RmdFirstSequencer when subject to RMD")
         void selectsRmdFirstWhenRmd() {
-            SpendingContext context = createContextWithAge(portfolio, 76, 1950);
+            SpendingContext context = createContextWithAge(76, 1950,
+                    createAccount("401(k)", AccountType.TRADITIONAL_401K, new BigDecimal("200000")));
 
             AccountSequencer sequencer = orchestrator.selectDefaultSequencer(context);
 
@@ -232,10 +199,12 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should use overloaded method with default sequencer")
         void usesDefaultSequencerOverload() {
-            SpendingContext context = createContext(portfolio);
+            SpendingContext context = createContext(
+                    createAccount("401(k)", AccountType.TRADITIONAL_401K, new BigDecimal("200000")),
+                    createAccount("Brokerage", AccountType.TAXABLE_BROKERAGE, new BigDecimal("50000")));
             SpendingStrategy strategy = createFixedStrategy(new BigDecimal("10000"));
 
-            SpendingPlan plan = orchestrator.execute(portfolio, strategy, context);
+            SpendingPlan plan = orchestrator.execute(strategy, context);
 
             assertTrue(plan.meetsTarget());
             assertEquals("Tax-Efficient", plan.metadata().get("sequencer"));
@@ -247,34 +216,25 @@ class DefaultSpendingOrchestratorTest {
     class ValidationTests {
 
         @Test
-        @DisplayName("Should throw for null portfolio")
-        void throwsForNullPortfolio() {
-            SpendingContext context = createContext(portfolio);
-            SpendingStrategy strategy = createFixedStrategy(new BigDecimal("10000"));
-            AccountSequencer sequencer = new TaxEfficientSequencer();
-
-            assertThrows(MissingRequiredFieldException.class, () ->
-                    orchestrator.execute(null, strategy, sequencer, context));
-        }
-
-        @Test
         @DisplayName("Should throw for null strategy")
         void throwsForNullStrategy() {
-            SpendingContext context = createContext(portfolio);
+            SpendingContext context = createContext(
+                    createAccount("401(k)", AccountType.TRADITIONAL_401K, new BigDecimal("200000")));
             AccountSequencer sequencer = new TaxEfficientSequencer();
 
             assertThrows(MissingRequiredFieldException.class, () ->
-                    orchestrator.execute(portfolio, null, sequencer, context));
+                    orchestrator.execute(null, sequencer, context));
         }
 
         @Test
         @DisplayName("Should throw for null sequencer")
         void throwsForNullSequencer() {
-            SpendingContext context = createContext(portfolio);
+            SpendingContext context = createContext(
+                    createAccount("401(k)", AccountType.TRADITIONAL_401K, new BigDecimal("200000")));
             SpendingStrategy strategy = createFixedStrategy(new BigDecimal("10000"));
 
             assertThrows(MissingRequiredFieldException.class, () ->
-                    orchestrator.execute(portfolio, strategy, null, context));
+                    orchestrator.execute(strategy, null, context));
         }
 
         @Test
@@ -284,7 +244,7 @@ class DefaultSpendingOrchestratorTest {
             AccountSequencer sequencer = new TaxEfficientSequencer();
 
             assertThrows(MissingRequiredFieldException.class, () ->
-                    orchestrator.execute(portfolio, strategy, sequencer, null));
+                    orchestrator.execute(strategy, sequencer, null));
         }
 
         @Test
@@ -302,11 +262,12 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should include sequencer name in metadata")
         void includesSequencerInMetadata() {
-            SpendingContext context = createContext(portfolio);
+            SpendingContext context = createContext(
+                    createAccount("401(k)", AccountType.TRADITIONAL_401K, new BigDecimal("200000")));
             SpendingStrategy strategy = createFixedStrategy(new BigDecimal("10000"));
             AccountSequencer sequencer = new TaxEfficientSequencer();
 
-            SpendingPlan plan = orchestrator.execute(portfolio, strategy, sequencer, context);
+            SpendingPlan plan = orchestrator.execute(strategy, sequencer, context);
 
             assertEquals("Tax-Efficient", plan.metadata().get("sequencer"));
         }
@@ -314,11 +275,12 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should include accounts used count in metadata")
         void includesAccountsUsedInMetadata() {
-            SpendingContext context = createContext(portfolio);
+            SpendingContext context = createContext(
+                    createAccount("401(k)", AccountType.TRADITIONAL_401K, new BigDecimal("200000")));
             SpendingStrategy strategy = createFixedStrategy(new BigDecimal("10000"));
             AccountSequencer sequencer = new TaxEfficientSequencer();
 
-            SpendingPlan plan = orchestrator.execute(portfolio, strategy, sequencer, context);
+            SpendingPlan plan = orchestrator.execute(strategy, sequencer, context);
 
             assertTrue(plan.metadata().containsKey("accountsUsed"));
         }

@@ -2,8 +2,7 @@ package io.github.xmljim.retirement.domain.calculator;
 
 import java.util.List;
 
-import io.github.xmljim.retirement.domain.model.InvestmentAccount;
-import io.github.xmljim.retirement.domain.model.Portfolio;
+import io.github.xmljim.retirement.domain.value.AccountSnapshot;
 import io.github.xmljim.retirement.domain.value.SpendingContext;
 
 /**
@@ -21,13 +20,13 @@ import io.github.xmljim.retirement.domain.value.SpendingContext;
  * <p>Usage example:
  * <pre>{@code
  * AccountSequencer sequencer = new TaxEfficientSequencer();
- * List<InvestmentAccount> orderedAccounts = sequencer.sequence(portfolio, context);
+ * List<AccountSnapshot> orderedAccounts = sequencer.sequence(context);
  *
  * // Withdraw from accounts in order until target met
  * BigDecimal remaining = targetWithdrawal;
- * for (InvestmentAccount account : orderedAccounts) {
+ * for (AccountSnapshot account : orderedAccounts) {
  *     if (remaining.compareTo(BigDecimal.ZERO) <= 0) break;
- *     BigDecimal withdrawal = remaining.min(account.getBalance());
+ *     BigDecimal withdrawal = remaining.min(account.balance());
  *     remaining = remaining.subtract(withdrawal);
  * }
  * }</pre>
@@ -37,26 +36,29 @@ import io.github.xmljim.retirement.domain.value.SpendingContext;
  *
  * @see SpendingStrategy
  * @see SpendingContext
+ * @see AccountSnapshot
  */
 public interface AccountSequencer {
 
     /**
      * Returns accounts in withdrawal priority order.
      *
-     * <p>The returned list contains accounts from the portfolio ordered by
-     * withdrawal priority. Accounts earlier in the list should be drawn
-     * from before accounts later in the list.
+     * <p>The returned list contains account snapshots ordered by withdrawal
+     * priority. Accounts earlier in the list should be drawn from before
+     * accounts later in the list.
+     *
+     * <p>Account information is obtained from
+     * {@code context.simulation().getAccountSnapshots()}.
      *
      * <p>The list may exclude accounts that should not be used (e.g., accounts
      * with zero balance, or accounts reserved for specific purposes).
      *
-     * @param portfolio the portfolio containing accounts to sequence
-     * @param context the spending context (may affect ordering decisions)
-     * @return list of accounts in withdrawal priority order
+     * @param context the spending context containing simulation with accounts
+     * @return list of account snapshots in withdrawal priority order
      * @throws io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException
-     *         if portfolio is null
+     *         if context or simulation is null
      */
-    List<InvestmentAccount> sequence(Portfolio portfolio, SpendingContext context);
+    List<AccountSnapshot> sequence(SpendingContext context);
 
     /**
      * Returns the sequencer name for identification.

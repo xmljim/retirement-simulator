@@ -1,6 +1,5 @@
 package io.github.xmljim.retirement.domain.calculator;
 
-import io.github.xmljim.retirement.domain.model.Portfolio;
 import io.github.xmljim.retirement.domain.value.SpendingContext;
 import io.github.xmljim.retirement.domain.value.SpendingPlan;
 
@@ -15,16 +14,20 @@ import io.github.xmljim.retirement.domain.value.SpendingPlan;
  *   <li>Builds and returns a complete {@link SpendingPlan}</li>
  * </ol>
  *
+ * <p>Account information is obtained from the {@link SpendingContext#simulation()}
+ * via {@code context.simulation().getAccountSnapshots()}. This allows the orchestrator
+ * to work with read-only account snapshots rather than requiring direct portfolio access.
+ *
  * <p>Usage example:
  * <pre>{@code
- * SpendingOrchestrator orchestrator = new DefaultSpendingOrchestrator();
+ * SpendingOrchestrator orchestrator = new DefaultSpendingOrchestrator(rmdCalc);
  *
  * SpendingStrategy strategy = new StaticSpendingStrategy(0.04, 0.025);
  * AccountSequencer sequencer = context.isSubjectToRmd()
  *     ? new RmdFirstSequencer(rmdCalc)
  *     : new TaxEfficientSequencer();
  *
- * SpendingPlan plan = orchestrator.execute(portfolio, strategy, sequencer, context);
+ * SpendingPlan plan = orchestrator.execute(strategy, sequencer, context);
  *
  * if (!plan.meetsTarget()) {
  *     // Handle shortfall
@@ -52,16 +55,16 @@ public interface SpendingOrchestrator {
      *   <li>Return a complete SpendingPlan with all details</li>
      * </ol>
      *
-     * @param portfolio the portfolio to withdraw from
+     * <p>Account information is obtained from {@code context.simulation().getAccountSnapshots()}.
+     *
      * @param strategy the spending strategy determining withdrawal amount
      * @param sequencer the account sequencer determining withdrawal order
-     * @param context the spending context with expenses, income, and state
+     * @param context the spending context with expenses, income, state, and simulation
      * @return the complete spending plan with account withdrawals
      * @throws io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException
      *         if required parameters are null
      */
     SpendingPlan execute(
-            Portfolio portfolio,
             SpendingStrategy strategy,
             AccountSequencer sequencer,
             SpendingContext context
@@ -76,17 +79,15 @@ public interface SpendingOrchestrator {
      *   <li>Otherwise: Uses TaxEfficientSequencer</li>
      * </ul>
      *
-     * @param portfolio the portfolio to withdraw from
      * @param strategy the spending strategy
      * @param context the spending context
      * @return the complete spending plan
      */
     default SpendingPlan execute(
-            Portfolio portfolio,
             SpendingStrategy strategy,
             SpendingContext context) {
         AccountSequencer sequencer = selectDefaultSequencer(context);
-        return execute(portfolio, strategy, sequencer, context);
+        return execute(strategy, sequencer, context);
     }
 
     /**

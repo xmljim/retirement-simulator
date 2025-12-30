@@ -1,6 +1,5 @@
 package io.github.xmljim.retirement.domain.calculator.impl;
 
-import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -8,8 +7,7 @@ import java.util.stream.Collectors;
 import io.github.xmljim.retirement.domain.calculator.AccountSequencer;
 import io.github.xmljim.retirement.domain.enums.AccountType;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
-import io.github.xmljim.retirement.domain.model.InvestmentAccount;
-import io.github.xmljim.retirement.domain.model.Portfolio;
+import io.github.xmljim.retirement.domain.value.AccountSnapshot;
 import io.github.xmljim.retirement.domain.value.SpendingContext;
 
 /**
@@ -35,7 +33,7 @@ import io.github.xmljim.retirement.domain.value.SpendingContext;
  * <p>Usage:
  * <pre>{@code
  * AccountSequencer sequencer = new TaxEfficientSequencer();
- * List<InvestmentAccount> ordered = sequencer.sequence(portfolio, context);
+ * List<AccountSnapshot> ordered = sequencer.sequence(context);
  * // Process accounts in order
  * }</pre>
  *
@@ -56,11 +54,12 @@ public class TaxEfficientSequencer implements AccountSequencer {
     }
 
     @Override
-    public List<InvestmentAccount> sequence(Portfolio portfolio, SpendingContext context) {
-        MissingRequiredFieldException.requireNonNull(portfolio, "portfolio");
+    public List<AccountSnapshot> sequence(SpendingContext context) {
+        MissingRequiredFieldException.requireNonNull(context, "context");
+        MissingRequiredFieldException.requireNonNull(context.simulation(), "context.simulation()");
 
-        return portfolio.getAccounts().stream()
-                .filter(account -> account.getBalance().compareTo(BigDecimal.ZERO) > 0)
+        return context.simulation().getAccountSnapshots().stream()
+                .filter(AccountSnapshot::hasBalance)
                 .sorted(taxEfficientComparator())
                 .collect(Collectors.toList());
     }
@@ -88,10 +87,10 @@ public class TaxEfficientSequencer implements AccountSequencer {
      *
      * @return the comparator
      */
-    private Comparator<InvestmentAccount> taxEfficientComparator() {
+    private Comparator<AccountSnapshot> taxEfficientComparator() {
         return Comparator
                 .comparingInt(this::getTaxTreatmentPriority)
-                .thenComparing(InvestmentAccount::getBalance);
+                .thenComparing(AccountSnapshot::balance);
     }
 
     /**
@@ -105,11 +104,11 @@ public class TaxEfficientSequencer implements AccountSequencer {
      *   <li>4 = HSA (preserve for medical)</li>
      * </ul>
      *
-     * @param account the investment account
+     * @param account the account snapshot
      * @return the priority number
      */
-    private int getTaxTreatmentPriority(InvestmentAccount account) {
-        AccountType.TaxTreatment treatment = account.getAccountType().getTaxTreatment();
+    private int getTaxTreatmentPriority(AccountSnapshot account) {
+        AccountType.TaxTreatment treatment = account.taxTreatment();
         return switch (treatment) {
             case TAXABLE -> 1;
             case PRE_TAX -> 2;

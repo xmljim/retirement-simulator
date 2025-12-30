@@ -1,6 +1,5 @@
 package io.github.xmljim.retirement.domain.calculator.impl;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -8,9 +7,9 @@ import java.util.stream.Collectors;
 
 import io.github.xmljim.retirement.domain.calculator.AccountSequencer;
 import io.github.xmljim.retirement.domain.calculator.RmdCalculator;
+import io.github.xmljim.retirement.domain.enums.AccountType;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
-import io.github.xmljim.retirement.domain.model.InvestmentAccount;
-import io.github.xmljim.retirement.domain.model.Portfolio;
+import io.github.xmljim.retirement.domain.value.AccountSnapshot;
 import io.github.xmljim.retirement.domain.value.SpendingContext;
 
 /**
@@ -34,7 +33,7 @@ import io.github.xmljim.retirement.domain.value.SpendingContext;
  * AccountSequencer sequencer = new RmdFirstSequencer(rmdCalc);
  *
  * if (context.isSubjectToRmd()) {
- *     List<InvestmentAccount> ordered = sequencer.sequence(portfolio, context);
+ *     List<AccountSnapshot> ordered = sequencer.sequence(context);
  *     // RMD accounts will appear first in the list
  * }
  * }</pre>
@@ -50,47 +49,41 @@ public class RmdFirstSequencer implements AccountSequencer {
                     + "then follows tax-efficient ordering for remaining accounts.";
 
     private final RmdCalculator rmdCalculator;
-    private final TaxEfficientSequencer fallbackSequencer;
 
     /**
      * Creates a new RmdFirstSequencer.
      *
-     * @param rmdCalculator the RMD calculator for determining RMD-subject accounts
+     * @param rmdCalculator the RMD calculator for RMD amount calculations
      * @throws MissingRequiredFieldException if rmdCalculator is null
      */
     public RmdFirstSequencer(RmdCalculator rmdCalculator) {
         MissingRequiredFieldException.requireNonNull(rmdCalculator, "rmdCalculator");
         this.rmdCalculator = rmdCalculator;
-        this.fallbackSequencer = new TaxEfficientSequencer();
     }
 
     @Override
-    public List<InvestmentAccount> sequence(Portfolio portfolio, SpendingContext context) {
-        MissingRequiredFieldException.requireNonNull(portfolio, "portfolio");
+    public List<AccountSnapshot> sequence(SpendingContext context) {
+        MissingRequiredFieldException.requireNonNull(context, "context");
+        MissingRequiredFieldException.requireNonNull(context.simulation(), "context.simulation()");
 
-        List<InvestmentAccount> accountsWithBalance = portfolio.getAccounts().stream()
-                .filter(account -> account.getBalance().compareTo(BigDecimal.ZERO) > 0)
+        List<AccountSnapshot> accountsWithBalance = context.simulation().getAccountSnapshots().stream()
+                .filter(AccountSnapshot::hasBalance)
                 .collect(Collectors.toList());
 
         // Separate RMD and non-RMD accounts
-        List<InvestmentAccount> rmdAccounts = accountsWithBalance.stream()
-                .filter(account -> rmdCalculator.isSubjectToRmd(account.getAccountType()))
-                .sorted(Comparator.comparing(InvestmentAccount::getBalance).reversed())
+        List<AccountSnapshot> rmdAccounts = accountsWithBalance.stream()
+                .filter(AccountSnapshot::subjectToRmd)
+                .sorted(Comparator.comparing(AccountSnapshot::balance).reversed())
                 .collect(Collectors.toList());
 
-        List<InvestmentAccount> nonRmdAccounts = accountsWithBalance.stream()
-                .filter(account -> !rmdCalculator.isSubjectToRmd(account.getAccountType()))
+        List<AccountSnapshot> nonRmdAccounts = accountsWithBalance.stream()
+                .filter(account -> !account.subjectToRmd())
+                .sorted(taxEfficientComparator())
                 .collect(Collectors.toList());
 
         // Create result: RMD accounts first, then tax-efficient ordering for rest
-        List<InvestmentAccount> result = new ArrayList<>(rmdAccounts);
-
-        // Sort non-RMD accounts using tax-efficient ordering
-        if (!nonRmdAccounts.isEmpty()) {
-            Portfolio nonRmdPortfolio = createPortfolioSubset(portfolio, nonRmdAccounts);
-            List<InvestmentAccount> sortedNonRmd = fallbackSequencer.sequence(nonRmdPortfolio, context);
-            result.addAll(sortedNonRmd);
-        }
+        List<AccountSnapshot> result = new ArrayList<>(rmdAccounts);
+        result.addAll(nonRmdAccounts);
 
         return result;
     }
@@ -116,18 +109,38 @@ public class RmdFirstSequencer implements AccountSequencer {
     }
 
     /**
-     * Creates a temporary portfolio containing only the specified accounts.
+     * Returns the RMD calculator used by this sequencer.
      *
-     * <p>This is used to delegate non-RMD account sequencing to the
-     * TaxEfficientSequencer.
-     *
-     * @param original the original portfolio
-     * @param accounts the accounts to include
-     * @return a new portfolio with the subset of accounts
+     * @return the RMD calculator
      */
-    private Portfolio createPortfolioSubset(Portfolio original, List<InvestmentAccount> accounts) {
-        Portfolio.Builder builder = Portfolio.builder().owner(original.getOwner());
-        accounts.forEach(builder::addAccount);
-        return builder.build();
+    public RmdCalculator getRmdCalculator() {
+        return rmdCalculator;
+    }
+
+    /**
+     * Creates a comparator for tax-efficient ordering of non-RMD accounts.
+     *
+     * <p>Orders by tax treatment priority (TAXABLE, PRE_TAX, ROTH, HSA),
+     * then by balance ascending.
+     *
+     * @return the comparator
+     */
+    private Comparator<AccountSnapshot> taxEfficientComparator() {
+        return Comparator
+                .comparingInt(this::getTaxTreatmentPriority)
+                .thenComparing(AccountSnapshot::balance);
+    }
+
+    /**
+     * Returns the withdrawal priority for a tax treatment.
+     */
+    private int getTaxTreatmentPriority(AccountSnapshot account) {
+        AccountType.TaxTreatment treatment = account.taxTreatment();
+        return switch (treatment) {
+            case TAXABLE -> 1;
+            case PRE_TAX -> 2;
+            case ROTH -> 3;
+            case HSA -> 4;
+        };
     }
 }
