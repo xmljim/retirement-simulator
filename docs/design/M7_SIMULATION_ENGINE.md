@@ -93,6 +93,23 @@ The simulator is a **projection tool**, not a life modeler:
 
 **Structure:**
 ```java
+public record TaxSummary(
+    // Income components
+    BigDecimal taxableIncome,           // Total taxable income this month
+    BigDecimal taxableSSIncome,         // Portion of SS that's taxable (up to 85%)
+    BigDecimal taxableWithdrawals,      // Pre-tax withdrawals (Traditional)
+    BigDecimal taxFreeWithdrawals,      // Roth withdrawals (not taxable)
+
+    // Tax calculations
+    BigDecimal federalTaxLiability,     // From FederalTaxCalculator
+    BigDecimal effectiveTaxRate,        // federalTax / taxableIncome
+    BigDecimal marginalTaxBracket,      // Current bracket (for Roth conversion decisions)
+
+    // Future: Roth conversion tracking
+    BigDecimal rothConversionAmount,    // If any conversion this month
+    BigDecimal rothConversionTax        // Tax on conversion
+) {}
+
 public record AccountMonthlyFlow(
     UUID accountId,
     String accountName,
@@ -124,10 +141,14 @@ public record MonthlySnapshot(
     BigDecimal totalExpenses,
     Map<ExpenseCategoryGroup, BigDecimal> expensesByCategory,
 
+    // Taxes this month
+    TaxSummary taxes,
+
     // Cumulative metrics (running totals)
     BigDecimal cumulativeContributions,
     BigDecimal cumulativeWithdrawals,
     BigDecimal cumulativeReturns,
+    BigDecimal cumulativeTaxesPaid,
 
     // Metadata
     SimulationPhase phase,
