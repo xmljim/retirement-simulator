@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import io.github.xmljim.retirement.domain.calculator.SpendingOrchestrator;
 import io.github.xmljim.retirement.domain.calculator.SpendingStrategy;
 import io.github.xmljim.retirement.domain.calculator.StubSimulationView;
+import io.github.xmljim.retirement.domain.config.RmdRules;
 import io.github.xmljim.retirement.domain.enums.AccountType;
 import io.github.xmljim.retirement.domain.value.SpendingContext;
 import io.github.xmljim.retirement.domain.value.SpendingPlan;
@@ -23,56 +24,14 @@ import io.github.xmljim.retirement.domain.value.SpendingPlan;
 class RmdAwareOrchestratorTest {
 
     private static final BigDecimal MILLION = new BigDecimal("1000000");
-    private StubRmdCalculator rmdCalculator;
+    private DefaultRmdCalculator rmdCalculator;
     private RmdAwareOrchestrator orchestrator;
 
     @BeforeEach
     void setUp() {
-        rmdCalculator = new StubRmdCalculator();
+        RmdRules rules = RmdRulesTestLoader.loadFromYaml();
+        rmdCalculator = new DefaultRmdCalculator(rules);
         orchestrator = new RmdAwareOrchestrator(rmdCalculator);
-    }
-
-    /**
-     * Stub RMD calculator for testing that doesn't require Spring config.
-     */
-    static class StubRmdCalculator extends DefaultRmdCalculator {
-
-        @Override
-        public BigDecimal calculateRmd(BigDecimal priorYearEndBalance, int age) {
-            BigDecimal factor = getDistributionFactor(age);
-            if (factor.compareTo(BigDecimal.ZERO) == 0) {
-                return BigDecimal.ZERO;
-            }
-            return priorYearEndBalance.divide(factor, 2, java.math.RoundingMode.HALF_UP);
-        }
-
-        @Override
-        public BigDecimal getDistributionFactor(int age) {
-            // IRS Uniform Lifetime Table (simplified)
-            return switch (age) {
-                case 72 -> new BigDecimal("27.4");
-                case 73 -> new BigDecimal("26.5");
-                case 74 -> new BigDecimal("25.5");
-                case 75 -> new BigDecimal("24.6");
-                case 76 -> new BigDecimal("23.7");
-                case 77 -> new BigDecimal("22.9");
-                case 78 -> new BigDecimal("22.0");
-                case 79 -> new BigDecimal("21.1");
-                case 80 -> new BigDecimal("20.2");
-                default -> age >= 72 ? new BigDecimal("20.0") : BigDecimal.ZERO;
-            };
-        }
-
-        @Override
-        public int getRmdStartAge(int birthYear) {
-            if (birthYear <= 1950) {
-                return 72;
-            } else if (birthYear <= 1959) {
-                return 73;
-            } else {
-                return 75;
-            }
-        }
     }
 
     @Nested
