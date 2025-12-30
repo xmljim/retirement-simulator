@@ -29,11 +29,13 @@ class RmdFirstSequencerTest {
     private RmdFirstSequencer sequencer;
     private RmdCalculator rmdCalculator;
     private PersonProfile owner;
+    private LocalDate retirementStart;
 
     @BeforeEach
     void setUp() {
         rmdCalculator = new DefaultRmdCalculator();
         sequencer = new RmdFirstSequencer(rmdCalculator);
+        retirementStart = LocalDate.of(2020, 1, 1);
         owner = PersonProfile.builder()
                 .name("Test Owner")
                 .dateOfBirth(LocalDate.of(1955, 1, 1))
@@ -42,11 +44,17 @@ class RmdFirstSequencerTest {
     }
 
     private SpendingContext createContext(Portfolio portfolio) {
+        StubSimulationView simulation = StubSimulationView.withAccounts(
+                portfolio.getAccounts().stream()
+                        .map(a -> StubSimulationView.createTestAccount(
+                                a.getName(), a.getAccountType(), a.getBalance()))
+                        .toList());
         return SpendingContext.builder()
-                .portfolio(portfolio)
+                .simulation(simulation)
                 .date(LocalDate.now())
                 .age(70)
                 .birthYear(1955)
+                .retirementStartDate(retirementStart)
                 .build();
     }
 
@@ -109,7 +117,6 @@ class RmdFirstSequencerTest {
             List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
 
             assertEquals(3, ordered.size());
-            // Sorted by balance descending
             assertEquals("Large 401k", ordered.get(0).getName());
             assertEquals("Medium IRA", ordered.get(1).getName());
             assertEquals("Small IRA", ordered.get(2).getName());
@@ -133,7 +140,6 @@ class RmdFirstSequencerTest {
             List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
 
             assertEquals(3, ordered.size());
-            // Tax-efficient: TAXABLE → ROTH → HSA
             assertEquals("Brokerage", ordered.get(0).getName());
             assertEquals("Roth IRA", ordered.get(1).getName());
             assertEquals("HSA", ordered.get(2).getName());
@@ -159,12 +165,8 @@ class RmdFirstSequencerTest {
             List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
 
             assertEquals(5, ordered.size());
-
-            // First: RMD accounts (sorted by balance desc)
             assertEquals("401k", ordered.get(0).getName());
             assertEquals("Traditional IRA", ordered.get(1).getName());
-
-            // Then: Non-RMD accounts (tax-efficient)
             assertEquals("Brokerage", ordered.get(2).getName());
             assertEquals("Roth IRA", ordered.get(3).getName());
             assertEquals("HSA", ordered.get(4).getName());
@@ -182,7 +184,6 @@ class RmdFirstSequencerTest {
             List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
 
             assertEquals(2, ordered.size());
-            // Falls back to tax-efficient: TAXABLE first
             assertEquals("Brokerage", ordered.get(0).getName());
             assertEquals("Roth IRA", ordered.get(1).getName());
         }
@@ -199,7 +200,6 @@ class RmdFirstSequencerTest {
             List<InvestmentAccount> ordered = sequencer.sequence(portfolio, createContext(portfolio));
 
             assertEquals(2, ordered.size());
-            // Sorted by balance descending
             assertEquals("401k", ordered.get(0).getName());
             assertEquals("Traditional IRA", ordered.get(1).getName());
         }
@@ -239,7 +239,8 @@ class RmdFirstSequencerTest {
         @Test
         @DisplayName("Should throw for null portfolio")
         void throwsForNullPortfolio() {
-            SpendingContext context = createContext(Portfolio.builder().owner(owner).build());
+            Portfolio emptyPortfolio = Portfolio.builder().owner(owner).build();
+            SpendingContext context = createContext(emptyPortfolio);
             assertThrows(MissingRequiredFieldException.class, () ->
                     sequencer.sequence(null, context));
         }

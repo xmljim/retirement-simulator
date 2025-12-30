@@ -28,10 +28,12 @@ class TaxEfficientSequencerTest {
     private TaxEfficientSequencer sequencer;
     private PersonProfile owner;
     private SpendingContext context;
+    private LocalDate retirementStart;
 
     @BeforeEach
     void setUp() {
         sequencer = new TaxEfficientSequencer();
+        retirementStart = LocalDate.of(2020, 1, 1);
         owner = PersonProfile.builder()
                 .name("Test Owner")
                 .dateOfBirth(LocalDate.of(1960, 1, 1))
@@ -40,9 +42,15 @@ class TaxEfficientSequencerTest {
     }
 
     private SpendingContext createContext(Portfolio portfolio) {
+        StubSimulationView simulation = StubSimulationView.withAccounts(
+                portfolio.getAccounts().stream()
+                        .map(a -> StubSimulationView.createTestAccount(
+                                a.getName(), a.getAccountType(), a.getBalance()))
+                        .toList());
         return SpendingContext.builder()
-                .portfolio(portfolio)
+                .simulation(simulation)
                 .date(LocalDate.now())
+                .retirementStartDate(retirementStart)
                 .build();
     }
 

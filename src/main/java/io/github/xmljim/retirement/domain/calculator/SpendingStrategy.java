@@ -23,12 +23,11 @@ import io.github.xmljim.retirement.domain.value.SpendingPlan;
  * <pre>{@code
  * SpendingStrategy strategy = new StaticSpendingStrategy(0.04, 0.025);
  * SpendingContext context = SpendingContext.builder()
- *     .portfolio(portfolio)
+ *     .simulation(simulationView)
  *     .totalExpenses(monthlyExpenses)
  *     .otherIncome(ssIncome.add(pensionIncome))
  *     .date(LocalDate.now())
- *     .yearsInRetirement(5)
- *     .initialPortfolioBalance(initialBalance)
+ *     .retirementStartDate(retirementStart)
  *     .build();
  *
  * SpendingPlan plan = strategy.calculateWithdrawal(context);
