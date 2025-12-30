@@ -42,7 +42,7 @@ import io.github.xmljim.retirement.domain.value.AssetAllocation;
  * @see SimulationView
  * @see io.github.xmljim.retirement.domain.value.SpendingContext
  */
-public class StubSimulationView implements SimulationView {
+public final class StubSimulationView implements SimulationView {
 
     private final List<AccountSnapshot> accounts;
     private final BigDecimal initialPortfolioBalance;
