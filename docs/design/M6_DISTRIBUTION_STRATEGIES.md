@@ -1,6 +1,6 @@
 # M6: Distribution Strategies Design
 
-**Status:** Research Complete → Architecture Revised → M6c Deferred
+**Status:** ✅ COMPLETE
 **Date:** December 29, 2025
 **Last Revised:** December 30, 2025
 **Milestone:** 6
@@ -776,8 +776,8 @@ public class RmdAwareOrchestrator implements WithdrawalOrchestrator {
 | M6a | 14 | Framework, Sequencing, Context | ✅ Complete |
 | M6b | 8 | Static & Income-Gap (simpler) | ✅ Complete |
 | M6c | 15 | Bucket Strategy + Refill Logic | ⏸️ Deferred |
-| M6d | 15 | Guardrails (3 presets) | 🔄 In Progress |
-| M6e | 8 | RMD Integration | Pending |
+| M6d | 15 | Guardrails (3 presets) | ✅ Complete |
+| M6e | 8 | RMD Integration | ✅ Complete |
 | **Active Total** | **45** | (excluding deferred M6c) |
 
 **Research Issues (completed):**
@@ -811,7 +811,7 @@ This allows M6 to be fully developed and tested independently, with M7 providing
 
 ## Implementation Order
 
-### Current Order (Updated December 30, 2025)
+### Final Status (December 30, 2025)
 
 1. **M6a: Architecture & Framework** ✅ COMPLETE
    - Created `SimulationView` interface
@@ -829,11 +829,16 @@ This allows M6 to be fully developed and tested independently, with M7 providing
    - Determined to be an allocation model, not a spending strategy
    - See issues #232-236 for details
 
-4. **M6d: Guardrails Strategy** 🔄 IN PROGRESS
+4. **M6d: Guardrails Strategy** ✅ COMPLETE
    - Guyton-Klinger, Vanguard Dynamic, Kitces Ratcheting presets
-   - Validates `SimulationView` historical queries
+   - `GuardrailsConfiguration` with builder pattern
+   - Inflation skipping, capital preservation, prosperity rules
 
-5. **M6e: Integration** - End-to-end flows with RMD coordination
+5. **M6e: RMD Integration** ✅ COMPLETE
+   - `RmdAwareOrchestrator` ensuring RMD compliance
+   - RMD-first withdrawal sequencing
+   - End-to-end integration tests
+   - Documentation and package-info files
 
 ---
 
@@ -862,3 +867,138 @@ These questions will be resolved during implementation:
    - Medium: tracks withdrawals and computes derived values
    - Full: maintains actual TimeSeries for testing
    - **Start minimal, expand as needed**
+
+---
+
+## Usage Examples
+
+### Static 4% Strategy
+
+```java
+// Create simulation view with account data
+StubSimulationView sim = StubSimulationView.builder()
+    .addAccount(StubSimulationView.createTestAccount(
+        "Traditional 401k", AccountType.TRADITIONAL_401K, new BigDecimal("600000")))
+    .addAccount(StubSimulationView.createTestAccount(
+        "Roth IRA", AccountType.ROTH_IRA, new BigDecimal("200000")))
+    .addAccount(StubSimulationView.createTestAccount(
+        "Brokerage", AccountType.TAXABLE_BROKERAGE, new BigDecimal("200000")))
+    .initialPortfolioBalance(new BigDecimal("1000000"))
+    .build();
+
+// Create spending context
+SpendingContext context = SpendingContext.builder()
+    .simulation(sim)
+    .date(LocalDate.of(2025, 6, 1))
+    .retirementStartDate(LocalDate.of(2025, 1, 1))
+    .totalExpenses(new BigDecimal("5000"))
+    .otherIncome(new BigDecimal("2000"))  // Social Security
+    .build();
+
+// Execute static 4% strategy
+SpendingStrategy strategy = new StaticSpendingStrategy();
+SpendingOrchestrator orchestrator = new DefaultSpendingOrchestrator(rmdCalculator);
+SpendingPlan plan = orchestrator.execute(strategy, context);
+
+// Result: 4% of $1M = $40K/year = $3,333/month, capped at gap ($3K)
+System.out.println("Target: " + plan.targetWithdrawal());
+System.out.println("Met target: " + plan.meetsTarget());
+```
+
+### Income Gap Strategy with Tax Gross-Up
+
+```java
+// Gap strategy withdraws only what's needed
+SpendingStrategy strategy = new IncomeGapStrategy(new BigDecimal("0.22")); // 22% tax rate
+
+SpendingPlan plan = orchestrator.execute(strategy, context);
+
+// Gap = $5,000 - $2,000 = $3,000
+// Gross-up for taxes: $3,000 / 0.78 = $3,846
+System.out.println("Gross withdrawal needed: " + plan.targetWithdrawal());
+```
+
+### Guardrails Strategy (Guyton-Klinger)
+
+```java
+// Year 2 with prior year data
+StubSimulationView sim = StubSimulationView.builder()
+    .addAccount(...)
+    .priorYearSpending(new BigDecimal("52000"))  // Last year's spending
+    .priorYearReturn(new BigDecimal("-0.15"))    // 15% market decline
+    .build();
+
+GuardrailsConfiguration config = GuardrailsConfiguration.guytonKlinger();
+SpendingStrategy strategy = new GuardrailsSpendingStrategy(config);
+
+SpendingPlan plan = strategy.calculateWithdrawal(context);
+
+// If withdrawal rate exceeds upper guardrail (120% of initial),
+// capital preservation rule triggers 10% spending cut
+System.out.println("Adjustment: " + plan.metadata().get("adjustment"));
+System.out.println("Reason: " + plan.metadata().get("reason"));
+```
+
+### RMD-Aware Orchestrator
+
+```java
+// Age 76, RMD required
+SpendingContext context = SpendingContext.builder()
+    .simulation(sim)
+    .date(LocalDate.of(2025, 6, 1))
+    .age(76)
+    .birthYear(1949)
+    .totalExpenses(new BigDecimal("3000"))
+    .otherIncome(new BigDecimal("2500"))  // Gap is only $500
+    .build();
+
+// RMD-aware orchestrator ensures RMD compliance
+RmdRules rules = RmdRulesTestLoader.loadFromYaml();
+RmdCalculator rmdCalculator = new DefaultRmdCalculator(rules);
+SpendingOrchestrator orchestrator = new RmdAwareOrchestrator(rmdCalculator);
+
+SpendingPlan plan = orchestrator.execute(new IncomeGapStrategy(), context);
+
+// Even though gap is $500, RMD forces higher withdrawal
+System.out.println("RMD required: " + plan.metadata().get("rmdRequired"));
+System.out.println("RMD forced: " + plan.metadata().get("rmdForced"));
+System.out.println("Actual withdrawal: " + plan.targetWithdrawal());
+```
+
+### Account Sequencing
+
+```java
+// Tax-efficient sequencer: Taxable → Traditional → Roth
+AccountSequencer taxEfficient = new TaxEfficientSequencer();
+List<AccountSnapshot> ordered = taxEfficient.sequence(context);
+
+// RMD-first sequencer: RMD accounts first, then tax-efficient
+AccountSequencer rmdFirst = new RmdFirstSequencer(rmdCalculator);
+List<AccountSnapshot> rmdOrdered = rmdFirst.sequence(context);
+
+// Execute with specific sequencer
+SpendingPlan plan = orchestrator.execute(strategy, taxEfficient, context);
+```
+
+### Guardrails Presets Comparison
+
+```java
+// Three preset configurations available
+GuardrailsConfiguration gk = GuardrailsConfiguration.guytonKlinger();
+// - 5.2% initial rate
+// - 10% adjustments both ways
+// - Skip inflation on down years
+// - 15-year capital preservation rule
+
+GuardrailsConfiguration vanguard = GuardrailsConfiguration.vanguardDynamic();
+// - 4% initial rate
+// - 5% ceiling (max increase)
+// - 2.5% floor (max decrease)
+// - No rate-based guardrails
+
+GuardrailsConfiguration kitces = GuardrailsConfiguration.kitcesRatcheting();
+// - 4% initial rate
+// - 10% ratchet increase only (no cuts)
+// - Triggers at 50% portfolio growth
+// - 3-year minimum between ratchets
+```
