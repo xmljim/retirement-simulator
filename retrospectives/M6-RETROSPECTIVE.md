@@ -146,6 +146,33 @@ Milestone 6 delivered comprehensive distribution strategy capabilities for retir
 
 ## What Didn't Go Well
 
+### Insufficient Upfront Architecture Planning
+
+**Problem:** M6 was built "bottom-up" without a clear "top-down" view of how M7 (Simulation Engine) would consume it. The `SimulationView` interface emerged *reactively* when we discovered strategies couldn't own state - it should have been designed *proactively* before implementation began.
+
+**Impact:** Required mid-milestone architectural revision. `SpendingContext` was refactored twice (once to add fields, once to remove them and use `SimulationView`). The Portfolio parameter was added to orchestrator, then removed.
+
+**Root Cause:** M6 was treated as an isolated feature rather than a component in a larger system. Even a rough sketch of "simulation loop calls strategy → strategy returns plan → simulation executes plan" would have clarified the interface contract upfront.
+
+**Lesson:** For orchestration milestones, sketch the integration architecture BEFORE implementation. Ask: "Who owns the state? Who mutates it? What's read-only?"
+
+### Conceptual Confusion: Strategy vs Allocation vs Expense Models
+
+**Problem:** Retirement planning literature blurs lines between spending strategies, allocation strategies, and expense models. We didn't clearly distinguish these upfront:
+
+| Concern | Question | Milestone |
+|---------|----------|-----------|
+| **Expense/Budget** | "How much do I need?" | M5 |
+| **Spending Strategy** | "How much should I withdraw?" | M6 |
+| **Allocation** | "Where should my money be positioned?" | NOT M6 |
+
+**Impact:**
+- Wasted design effort on M6c (Bucket Strategy) before recognizing it's an allocation model, not a spending strategy
+- Confusion about where spending curve (Go-Go/Slow-Go/No-Go) belongs - it's an expense modifier (#44), not a distribution strategy
+- Churn in issue scoping and PR focus
+
+**Lesson:** For future milestones, explicitly define what's IN scope and OUT of scope based on the *type of concern*, not just feature names.
+
 ### Context Window Exhaustion
 
 **Problem:** Multiple sessions hit context limits requiring conversation continuation.
@@ -211,6 +238,25 @@ Milestone 6 delivered comprehensive distribution strategy capabilities for retir
 4. **Single Source of Truth** - Test data should come from the same configuration files as production. `RmdRulesTestLoader` exemplifies this.
 
 5. **Deferred != Failed** - Not implementing bucket strategy was the RIGHT decision. It would have added complexity without proportional benefit.
+
+---
+
+## Why M6 Was the Hardest Milestone
+
+M6 represented a fundamental shift in complexity from previous milestones:
+
+| Milestones 1-5 | Milestone 6 |
+|----------------|-------------|
+| Data models and calculations | Orchestration and coordination |
+| Clear inputs → outputs | Stateful interactions over time |
+| Self-contained components | Components that integrate with future M7 |
+| "What is this thing?" | "How do things work together?" |
+
+**M1-M5** were largely about defining *what* things are: accounts, contributions, income sources, expenses. They have clear boundaries - a `SocialSecurityBenefit` doesn't need to know about `Budget`.
+
+**M6** introduced *how* things interact: strategies query state, sequencers order accounts, orchestrators coordinate execution, and all of it must integrate with a simulation engine that doesn't exist yet. This is **orchestration complexity** - a fundamentally different kind of problem.
+
+The lesson for M7 and beyond: when a milestone involves *coordinating* other milestones' outputs, invest heavily in integration architecture upfront. The cost of mid-stream architectural changes is high.
 
 ---
 
