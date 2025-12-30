@@ -465,8 +465,43 @@ public class SimulationEngine implements SimulationView {
 - Replay actual market sequences (e.g., 1966 start, 2000 start, 2008 start)
 - Tests sequence-of-returns risk with real data
 
-**Open Questions:**
-- [ ] Historical: what data source? How far back?
+**Decision:** Store historical returns as YAML configuration.
+
+```yaml
+# application-historical-returns.yml
+historical-returns:
+  stocks:
+    - { year: 1926, month: 1, return: 0.0012 }
+    - { year: 1926, month: 2, return: -0.0034 }
+    # ... through present
+  bonds:
+    - { year: 1976, month: 1, return: 0.0008 }
+    # ... through present
+  inflation:
+    - { year: 1926, month: 1, rate: 0.0015 }
+    # ... through present
+```
+
+**Data Sources:**
+- S&P 500: Shiller data (1926-present)
+- Bonds: 10-year Treasury / Barclays Aggregate (1976-present)
+- Inflation: BLS CPI data (1913-present)
+
+**Usage:**
+```java
+public record HistoricalReturns(
+    Map<YearMonth, BigDecimal> stockReturns,
+    Map<YearMonth, BigDecimal> bondReturns,
+    Map<YearMonth, BigDecimal> inflationRates
+) {
+    public BigDecimal getBlendedReturn(YearMonth month, BigDecimal stockAllocation) {
+        BigDecimal stockReturn = stockReturns.get(month);
+        BigDecimal bondReturn = bondReturns.get(month);
+        return stockReturn.multiply(stockAllocation)
+            .add(bondReturn.multiply(BigDecimal.ONE.subtract(stockAllocation)));
+    }
+}
+```
 
 ---
 
