@@ -1,4 +1,4 @@
-package io.github.xmljim.retirement.domain.calculator.impl;
+package io.github.xmljim.retirement.domain.integration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -16,6 +16,9 @@ import io.github.xmljim.retirement.domain.calculator.ContributionLimitChecker;
 import io.github.xmljim.retirement.domain.calculator.LimitCheckResult;
 import io.github.xmljim.retirement.domain.calculator.TestIrsLimitsFixture;
 import io.github.xmljim.retirement.domain.calculator.YTDContributionTracker;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultContributionLimitChecker;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultYTDContributionTracker;
+import io.github.xmljim.retirement.domain.calculator.impl.Secure2ContributionRules;
 import io.github.xmljim.retirement.domain.config.IrsContributionLimits;
 import io.github.xmljim.retirement.domain.enums.AccountType;
 import io.github.xmljim.retirement.domain.enums.ContributionType;
