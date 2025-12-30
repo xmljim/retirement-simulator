@@ -42,6 +42,7 @@ import io.github.xmljim.retirement.domain.config.SurvivorExpenseRules;
  * <p>For testing or alternative implementations, you can instantiate
  * the calculator classes directly or create mock implementations.
  */
+@SuppressWarnings("PMD.CouplingBetweenObjects") // Factory classes inherently couple to many types
 public final class CalculatorFactory {
 
     private static final InflationCalculator INFLATION_CALCULATOR =
