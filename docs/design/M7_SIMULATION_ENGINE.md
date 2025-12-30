@@ -181,8 +181,13 @@ For each month from start to end:
 - Annual contribution = monthly × 12
 - Employer match calculated on monthly contribution
 
-**Open Questions:**
-- [ ] RMDs are annual but can be taken monthly. How to model?
+**Decision:** RMDs handled by `RmdAwareOrchestrator` (M6).
+
+- Annual RMD calculated from prior year-end balance
+- Orchestrator divides by 12 for monthly minimum
+- Each month: `effectiveWithdrawal = max(strategyTarget, monthlyRmd)`
+- 12 monthly portions = annual requirement satisfied
+- No special annual logic needed in simulation engine
 
 ---
 
