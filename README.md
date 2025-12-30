@@ -141,7 +141,7 @@ See [Contributing](docs/CONTRIBUTING.md) for detailed guidelines.
 | M3b | Income-Based Phase-Outs | Complete |
 | M4 | Income Modeling | Complete |
 | M5 | Expense & Budget Modeling | Complete |
-| M6 | Distribution Strategies | Planned |
+| M6 | Distribution Strategies | Complete |
 | M7 | Simulation Engine | Planned |
 | M8 | Scenario Analysis | Planned |
 | M9 | Output & Reporting | Planned |

@@ -627,7 +627,7 @@ Apply appropriate patterns where they add value:
 
 ## Current State
 
-### Implemented (Milestones 1, 2, 3a, 3b & 4 Complete)
+### Implemented (Milestones 1, 2, 3a, 3b, 4, 5 & 6 Complete)
 
 **Domain Model** (`io.github.xmljim.retirement.domain.model`):
 - `PersonProfile` - Individual with DOB, retirement date, life expectancy, linked spouse support
@@ -742,6 +742,34 @@ Apply appropriate patterns where they add value:
 - `MaritalStatus` - MARRIED, SINGLE, DIVORCED, WIDOWED (M4)
 - `MarriageEndReason` - DIVORCE, DEATH (M4)
 
+**Distribution Strategy Framework** (`io.github.xmljim.retirement.domain.calculator`):
+- `SpendingStrategy` - Interface for withdrawal calculation strategies (M6)
+- `SpendingOrchestrator` - Coordinates strategy + sequencing + execution (M6)
+- `AccountSequencer` - Interface for account withdrawal ordering (M6)
+- `SimulationView` - Read-only interface to simulation state (M6)
+
+**Distribution Strategy Implementations** (`io.github.xmljim.retirement.domain.calculator.impl`):
+- `StaticSpendingStrategy` - 4% rule with inflation adjustment (M6)
+- `IncomeGapStrategy` - Withdraw gap with optional tax gross-up (M6)
+- `GuardrailsSpendingStrategy` - Dynamic withdrawals with guardrails (M6)
+- `DefaultSpendingOrchestrator` - Default orchestrator implementation (M6)
+- `RmdAwareOrchestrator` - RMD-compliant orchestrator (M6)
+- `TaxEfficientSequencer` - Taxable → Traditional → Roth ordering (M6)
+- `RmdFirstSequencer` - RMD accounts prioritized (M6)
+
+**Distribution Strategy Configuration** (`io.github.xmljim.retirement.domain.config`):
+- `GuardrailsConfiguration` - Guardrails strategy configuration with presets (M6)
+- Preset factories: `guytonKlinger()`, `vanguardDynamic()`, `kitcesRatcheting()`
+
+**Distribution Strategy Value Objects** (`io.github.xmljim.retirement.domain.value`):
+- `SpendingContext` - Context for spending calculations with SimulationView (M6)
+- `SpendingPlan` - Result of spending strategy calculation (M6)
+- `AccountWithdrawal` - Per-account withdrawal details (M6)
+- `AccountSnapshot` - Immutable snapshot of account state (M6)
+
+**Test Support** (`io.github.xmljim.retirement.domain.calculator`):
+- `StubSimulationView` - Testing stub for M6 strategies without M7 (M6)
+
 ### Legacy Code (Deprecated)
 
 The following classes are deprecated and maintained for backwards compatibility:
@@ -758,13 +786,13 @@ The following classes are deprecated and maintained for backwards compatibility:
 - Original enums - replaced by `domain.enums` equivalents
 
 ### Not Yet Implemented
-- Expense/budget modeling (M5)
-- Distribution strategies (M6)
 - Simulation engine (M7)
 - Scenario analysis (M8)
 - Reporting module (M9)
-- API layer (M10)
-- UI (M11)
+- Persistence layer (M10)
+- Security layer (M11)
+- API layer (M12)
+- UI (M13)
 
 ---
 
@@ -1126,10 +1154,10 @@ The following classes are deprecated and maintained for backwards compatibility:
 - Chained CPI indexing for inflation
 - Standard deduction calculations
 
-### Milestone 6: Distribution Strategies
+### Milestone 6: Distribution Strategies ✅ COMPLETE
 **Goal**: Implement retirement withdrawal strategies and account sequencing
 
-**Status**: Research Complete, Implementation Planned
+**Status**: Complete (December 2025)
 
 **Design Documents**:
 - [M6 Design](docs/design/M6_DISTRIBUTION_STRATEGIES.md)
@@ -1137,41 +1165,45 @@ The following classes are deprecated and maintained for backwards compatibility:
 - [Bucket Strategy Research](docs/research/BUCKET_STRATEGY_RESEARCH.md)
 - [Tax Sequencing Research](docs/research/TAX_SEQUENCING_RESEARCH.md)
 
-**Sub-Milestones**:
+#### M6a: Strategy Framework (Completed)
+- [x] `SpendingStrategy` interface with Strategy pattern
+- [x] `SpendingContext` record with `SimulationView` reference
+- [x] `SpendingPlan` result record with account-level details and metadata
+- [x] `AccountWithdrawal` record for per-account withdrawal tracking
+- [x] `AccountSequencer` interface for withdrawal ordering
+- [x] `TaxEfficientSequencer` (Taxable → Traditional → Roth)
+- [x] `RmdFirstSequencer` (RMD accounts first, then tax-efficient)
+- [x] `SpendingOrchestrator` interface and `DefaultSpendingOrchestrator`
+- [x] `SimulationView` interface for read-only simulation state access
+- [x] `AccountSnapshot` record for immutable account state
+- [x] `StubSimulationView` for testing without M7
 
-#### M6a: Strategy Framework (14 points)
-- `WithdrawalStrategy` interface (Strategy pattern)
-- `WithdrawalContext` record with state tracking (prior spending, portfolio returns)
-- `WithdrawalPlan` result record with account-level details
-- `AccountSequencer` interface for withdrawal ordering
-- `TaxEfficientSequencer` (Taxable → Traditional → Roth)
-- `RmdFirstSequencer` (RMD accounts first, then tax-efficient)
-- `WithdrawalOrchestrator` to coordinate strategy + sequencing
+#### M6b: Static & Income-Gap Strategies (Completed)
+- [x] `StaticSpendingStrategy` - 4% rule with inflation adjustment
+- [x] `IncomeGapStrategy` - Withdraw gap with optional tax gross-up
+- [x] Integration tests with orchestrator
 
-#### M6b: Static & Income-Gap Strategies (8 points)
-- `StaticWithdrawalStrategy` (4% rule with inflation adjustment)
-- `IncomeGapStrategy` (GapAnalyzer-driven, tax gross-up)
+#### M6c: Bucket Strategy (Deferred)
+- Determined to be an asset allocation model, not a spending strategy
+- Complexity not justified for marginal benefit over simpler strategies
 
-#### M6c: Bucket Strategy (15 points)
-- `Bucket` and `BucketType` models (SHORT_TERM, MEDIUM_TERM, LONG_TERM)
-- `BucketConfiguration` with refill parameters
-- `RefillTrigger` enum (THRESHOLD, CALENDAR, MARKET, HYBRID)
-- `BucketWithdrawalStrategy` implementation
-- `BucketRefillCalculator` with hybrid refill logic
+#### M6d: Guardrails Strategy (Completed)
+- [x] `GuardrailsConfiguration` record with comprehensive parameters
+- [x] Preset factories: `guytonKlinger()`, `vanguardDynamic()`, `kitcesRatcheting()`
+- [x] `GuardrailsSpendingStrategy` with dynamic adjustments
+- [x] Inflation skipping on down years (Guyton-Klinger Rule 2)
+- [x] Capital preservation and prosperity rule triggers
+- [x] Absolute floor/ceiling constraints
+- [x] Minimum years between ratchets (Kitces)
 
-#### M6d: Guardrails Strategy (15 points)
-- `GuardrailsConfiguration` with comprehensive parameters
-- Preset factories: `guytonKlinger()`, `vanguardDynamic()`, `kitcesRatcheting()`
-- Guyton-Klinger 4-rule logic (Portfolio Mgmt, Withdrawal, Cap Preservation, Prosperity)
-- Kitces ratchet-only logic (50% growth trigger, 3-year minimum)
-- State tracking for prior spending and ratchet timing
+#### M6e: RMD Integration (Completed)
+- [x] `RmdAwareOrchestrator` ensuring RMD compliance
+- [x] RMD-first withdrawal sequencing with forced withdrawals
+- [x] Tracking of RMD vs discretionary withdrawals
+- [x] End-to-end integration tests covering all strategies
+- [x] Documentation and package-info files
 
-#### M6e: RMD Integration (8 points)
-- `RmdAwareOrchestrator` implementation
-- RMD-first withdrawal sequencing
-- End-to-end integration tests
-
-**Total**: ~60 story points across 22 issues
+**Total**: ~45 story points (excluding deferred M6c)
 
 ### Milestone 7: Simulation Engine
 **Goal**: Generate complete monthly transaction sequences
