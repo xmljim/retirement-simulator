@@ -1,4 +1,4 @@
-package io.github.xmljim.retirement.domain.calculator;
+package io.github.xmljim.retirement.domain.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

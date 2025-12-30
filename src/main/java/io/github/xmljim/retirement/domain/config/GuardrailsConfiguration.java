@@ -1,4 +1,4 @@
-package io.github.xmljim.retirement.domain.calculator;
+package io.github.xmljim.retirement.domain.config;
 
 import java.math.BigDecimal;
 
@@ -30,9 +30,10 @@ import java.math.BigDecimal;
  *     .build();
  * }</pre>
  *
- * @see GuardrailsSpendingStrategy
+ * @see io.github.xmljim.retirement.domain.calculator.impl.GuardrailsSpendingStrategy
  */
 public record GuardrailsConfiguration(
+        String name,
         BigDecimal initialWithdrawalRate,
         BigDecimal upperThresholdMultiplier,
         BigDecimal increaseAdjustment,
@@ -61,6 +62,7 @@ public record GuardrailsConfiguration(
      */
     public static GuardrailsConfiguration guytonKlinger() {
         return new GuardrailsConfiguration(
+                "Guyton-Klinger",
                 new BigDecimal("0.052"),
                 new BigDecimal("0.80"),
                 new BigDecimal("0.10"),
@@ -88,6 +90,7 @@ public record GuardrailsConfiguration(
      */
     public static GuardrailsConfiguration vanguardDynamic() {
         return new GuardrailsConfiguration(
+                "Vanguard Dynamic",
                 new BigDecimal("0.04"),
                 null,
                 new BigDecimal("0.05"),
@@ -117,6 +120,7 @@ public record GuardrailsConfiguration(
      */
     public static GuardrailsConfiguration kitcesRatcheting() {
         return new GuardrailsConfiguration(
+                "Kitces Ratcheting",
                 new BigDecimal("0.04"),
                 new BigDecimal("0.667"),
                 new BigDecimal("0.10"),
@@ -172,6 +176,7 @@ public record GuardrailsConfiguration(
      * Builder for creating custom GuardrailsConfiguration instances.
      */
     public static class Builder {
+        private String name = "Custom";
         private BigDecimal initialWithdrawalRate = new BigDecimal("0.04");
         private BigDecimal upperThresholdMultiplier;
         private BigDecimal increaseAdjustment = new BigDecimal("0.10");
@@ -183,6 +188,12 @@ public record GuardrailsConfiguration(
         private boolean skipInflationOnDownYears = false;
         private int minimumYearsBetweenRatchets = 1;
         private int yearsBeforeCapPreservationEnds = 0;
+
+        /** Sets the configuration name. */
+        public Builder name(String name) {
+            this.name = name;
+            return this;
+        }
 
         /** Sets the initial withdrawal rate (e.g., 0.04 for 4%). */
         public Builder initialWithdrawalRate(BigDecimal rate) {
@@ -253,6 +264,7 @@ public record GuardrailsConfiguration(
         /** Builds the configuration. */
         public GuardrailsConfiguration build() {
             return new GuardrailsConfiguration(
+                    name,
                     initialWithdrawalRate,
                     upperThresholdMultiplier,
                     increaseAdjustment,

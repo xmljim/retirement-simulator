@@ -13,8 +13,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import io.github.xmljim.retirement.domain.calculator.GuardrailsConfiguration;
 import io.github.xmljim.retirement.domain.calculator.StubSimulationView;
+import io.github.xmljim.retirement.domain.config.GuardrailsConfiguration;
 import io.github.xmljim.retirement.domain.enums.AccountType;
 import io.github.xmljim.retirement.domain.value.SpendingContext;
 import io.github.xmljim.retirement.domain.value.SpendingPlan;
@@ -56,7 +56,7 @@ class GuardrailsSpendingStrategyTest {
             SpendingPlan plan = strategy.calculateWithdrawal(context);
 
             assertTrue(plan.targetWithdrawal().compareTo(BigDecimal.ZERO) > 0);
-            assertEquals("Guardrails", plan.strategyUsed());
+            assertEquals("Guardrails (Guyton-Klinger)", plan.strategyUsed());
         }
 
         @Test
@@ -265,11 +265,11 @@ class GuardrailsSpendingStrategyTest {
         }
 
         @Test
-        @DisplayName("Strategy returns correct name")
+        @DisplayName("Strategy returns correct name with config type")
         void correctName() {
             GuardrailsSpendingStrategy strategy = new GuardrailsSpendingStrategy(
                     GuardrailsConfiguration.guytonKlinger());
-            assertEquals("Guardrails", strategy.getName());
+            assertEquals("Guardrails (Guyton-Klinger)", strategy.getName());
         }
 
         @Test

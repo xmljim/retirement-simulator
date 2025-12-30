@@ -5,8 +5,8 @@ import java.math.RoundingMode;
 import java.time.YearMonth;
 import java.util.Optional;
 
-import io.github.xmljim.retirement.domain.calculator.GuardrailsConfiguration;
 import io.github.xmljim.retirement.domain.calculator.SpendingStrategy;
+import io.github.xmljim.retirement.domain.config.GuardrailsConfiguration;
 import io.github.xmljim.retirement.domain.value.SpendingContext;
 import io.github.xmljim.retirement.domain.value.SpendingPlan;
 
@@ -186,7 +186,7 @@ public class GuardrailsSpendingStrategy implements SpendingStrategy {
 
     @Override
     public String getName() {
-        return "Guardrails";
+        return "Guardrails (" + config.name() + ")";
     }
 
     @Override
