@@ -408,8 +408,25 @@ public class SimulationEngine implements SimulationView {
 | MONTE_CARLO | Random draw from distribution | Probability analysis |
 | HISTORICAL | Actual market sequence | Stress testing |
 
+**Deterministic Mode:**
+- Single run with fixed assumptions
+- Good for "what if" scenario planning
+- Returns `TimeSeries<MonthlySnapshot>`
+
+**Monte Carlo Mode:** → See Research Issue #268
+- Requires separate research on:
+  - Number of runs (convergence)
+  - Virtual threading for parallelism
+  - Seed handling for reproducibility
+  - Aggregation model (`MonteCarloResult`)
+  - Return distributions
+- Returns `MonteCarloResult` containing multiple `TimeSeries` + statistics
+
+**Historical Mode:**
+- Replay actual market sequences (e.g., 1966 start, 2000 start, 2008 start)
+- Tests sequence-of-returns risk with real data
+
 **Open Questions:**
-- [ ] Monte Carlo: how many runs? How to aggregate results?
 - [ ] Historical: what data source? How far back?
 
 ---
