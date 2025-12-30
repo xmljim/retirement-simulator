@@ -1,6 +1,7 @@
 package io.github.xmljim.retirement.domain.value;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
@@ -8,9 +9,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import io.github.xmljim.retirement.domain.calculator.SimulationView;
 import io.github.xmljim.retirement.domain.enums.FilingStatus;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
-import io.github.xmljim.retirement.domain.model.Portfolio;
 
 /**
  * Context for spending strategy calculations.
@@ -18,49 +19,66 @@ import io.github.xmljim.retirement.domain.model.Portfolio;
  * <p>Provides all information needed by a {@code SpendingStrategy} to calculate
  * the appropriate withdrawal amount. This includes:
  * <ul>
- *   <li>Current portfolio and expenses</li>
- *   <li>Other income sources reducing withdrawal need</li>
- *   <li>State tracking for dynamic strategies (Guardrails, Kitces)</li>
+ *   <li>Simulation state access via {@link SimulationView}</li>
+ *   <li>Current period inputs (date, expenses, income)</li>
+ *   <li>Person/scenario context (age, retirement date)</li>
  *   <li>Tax context for withdrawal sequencing</li>
  * </ul>
  *
  * <p>This record is immutable. Use the {@link Builder} to create instances.
  *
- * <p>The {@code retirementStartDate} field enables accurate monthly calculations.
- * If not explicitly set, the builder defaults to the portfolio owner's planned
- * retirement date. This can be overridden for scenario analysis (e.g., "what if
- * I retire at 62 vs 65?").
+ * <h2>Simulation Integration</h2>
  *
- * @param portfolio the retirement portfolio
+ * <p>Historical data (prior year spending, returns, etc.) and current portfolio
+ * balances are accessed via the {@link SimulationView} interface. This enables:
+ * <ul>
+ *   <li>Clean separation between simulation state and strategy calculations</li>
+ *   <li>Simulation mode agnosticism (deterministic, Monte Carlo, historical)</li>
+ *   <li>Easy testing with {@code StubSimulationView}</li>
+ * </ul>
+ *
+ * <h2>Usage</h2>
+ *
+ * <pre>{@code
+ * SpendingContext context = SpendingContext.builder()
+ *     .simulation(simulationView)
+ *     .date(LocalDate.of(2025, 6, 1))
+ *     .totalExpenses(new BigDecimal("6000"))
+ *     .otherIncome(new BigDecimal("3000"))
+ *     .age(68)
+ *     .birthYear(1957)
+ *     .retirementStartDate(LocalDate.of(2022, 1, 1))
+ *     .filingStatus(FilingStatus.MARRIED_FILING_JOINTLY)
+ *     .build();
+ *
+ * // Access simulation state
+ * BigDecimal balance = context.simulation().getTotalPortfolioBalance();
+ * BigDecimal priorSpending = context.simulation().getPriorYearSpending();
+ * }</pre>
+ *
+ * @param simulation read-only view of simulation state (balances, history)
+ * @param date the date for this calculation
  * @param totalExpenses total monthly expenses
  * @param otherIncome income from non-portfolio sources (SS, pension, etc.)
- * @param date the date for this calculation
  * @param age the person's current age
  * @param birthYear the person's birth year (for RMD calculations)
- * @param retirementStartDate the date retirement started (for computing months/years in retirement)
- * @param initialPortfolioBalance portfolio balance at retirement start
- * @param priorYearSpending spending from the prior year (for Guardrails)
- * @param priorYearPortfolioReturn portfolio return from prior year
- * @param yearsSinceLastRatchet years since last spending increase (Kitces)
+ * @param retirementStartDate the date retirement started
  * @param currentTaxableIncome taxable income for the year so far
  * @param filingStatus tax filing status
  * @param strategyParams additional strategy-specific parameters
+ * @see SimulationView
  * @see io.github.xmljim.retirement.domain.calculator.SpendingStrategy
  */
 @SuppressFBWarnings(value = "EI_EXPOSE_REP",
         justification = "Record makes defensive copy in compact constructor; map is unmodifiable")
 public record SpendingContext(
-        Portfolio portfolio,
+        SimulationView simulation,
+        LocalDate date,
         BigDecimal totalExpenses,
         BigDecimal otherIncome,
-        LocalDate date,
         int age,
         int birthYear,
         LocalDate retirementStartDate,
-        BigDecimal initialPortfolioBalance,
-        BigDecimal priorYearSpending,
-        BigDecimal priorYearPortfolioReturn,
-        int yearsSinceLastRatchet,
         BigDecimal currentTaxableIncome,
         FilingStatus filingStatus,
         Map<String, Object> strategyParams
@@ -70,18 +88,11 @@ public record SpendingContext(
      * Compact constructor with validation and defensive copies.
      */
     public SpendingContext {
-        MissingRequiredFieldException.requireNonNull(portfolio, "portfolio");
+        MissingRequiredFieldException.requireNonNull(simulation, "simulation");
         MissingRequiredFieldException.requireNonNull(date, "date");
         MissingRequiredFieldException.requireNonNull(retirementStartDate, "retirementStartDate");
         totalExpenses = totalExpenses != null ? totalExpenses : BigDecimal.ZERO;
         otherIncome = otherIncome != null ? otherIncome : BigDecimal.ZERO;
-        initialPortfolioBalance = initialPortfolioBalance != null
-                ? initialPortfolioBalance
-                : portfolio.getTotalBalance();
-        priorYearSpending = priorYearSpending != null ? priorYearSpending : BigDecimal.ZERO;
-        priorYearPortfolioReturn = priorYearPortfolioReturn != null
-                ? priorYearPortfolioReturn
-                : BigDecimal.ZERO;
         currentTaxableIncome = currentTaxableIncome != null
                 ? currentTaxableIncome
                 : BigDecimal.ZERO;
@@ -129,16 +140,31 @@ public record SpendingContext(
     /**
      * Returns the current portfolio balance.
      *
+     * <p>Delegates to {@code simulation().getTotalPortfolioBalance()}.
+     *
      * @return the total portfolio balance
      */
     public BigDecimal currentPortfolioBalance() {
-        return portfolio.getTotalBalance();
+        return simulation.getTotalPortfolioBalance();
+    }
+
+    /**
+     * Returns the initial portfolio balance at retirement start.
+     *
+     * <p>Delegates to {@code simulation().getInitialPortfolioBalance()}.
+     *
+     * @return the initial portfolio balance
+     */
+    public BigDecimal initialPortfolioBalance() {
+        return simulation.getInitialPortfolioBalance();
     }
 
     /**
      * Returns the current withdrawal rate based on portfolio balance.
      *
      * <p>Formula: priorYearSpending / currentPortfolioBalance
+     *
+     * <p>Prior year spending is obtained from {@code simulation().getPriorYearSpending()}.
      *
      * @return the current withdrawal rate as a decimal
      */
@@ -147,7 +173,8 @@ public record SpendingContext(
         if (balance.compareTo(BigDecimal.ZERO) == 0) {
             return BigDecimal.ZERO;
         }
-        return priorYearSpending.divide(balance, 4, java.math.RoundingMode.HALF_UP);
+        BigDecimal priorSpending = simulation.getPriorYearSpending();
+        return priorSpending.divide(balance, 4, RoundingMode.HALF_UP);
     }
 
     /**
@@ -180,29 +207,39 @@ public record SpendingContext(
      * Builder for creating SpendingContext instances.
      */
     public static class Builder {
-        private Portfolio portfolio;
+        private SimulationView simulation;
+        private LocalDate date;
         private BigDecimal totalExpenses = BigDecimal.ZERO;
         private BigDecimal otherIncome = BigDecimal.ZERO;
-        private LocalDate date;
         private int age;
         private int birthYear;
         private LocalDate retirementStartDate;
-        private BigDecimal initialPortfolioBalance;
-        private BigDecimal priorYearSpending = BigDecimal.ZERO;
-        private BigDecimal priorYearPortfolioReturn = BigDecimal.ZERO;
-        private int yearsSinceLastRatchet;
         private BigDecimal currentTaxableIncome = BigDecimal.ZERO;
         private FilingStatus filingStatus;
         private Map<String, Object> strategyParams = new HashMap<>();
 
         /**
-         * Sets the portfolio.
+         * Sets the simulation view for accessing portfolio state and history.
          *
-         * @param portfolio the portfolio
+         * <p>This is required. The simulation view provides read-only access to
+         * current balances and historical data.
+         *
+         * @param simulation the simulation view
          * @return this builder
          */
-        public Builder portfolio(Portfolio portfolio) {
-            this.portfolio = portfolio;
+        public Builder simulation(SimulationView simulation) {
+            this.simulation = simulation;
+            return this;
+        }
+
+        /**
+         * Sets the date for this calculation.
+         *
+         * @param date the date
+         * @return this builder
+         */
+        public Builder date(LocalDate date) {
+            this.date = date;
             return this;
         }
 
@@ -225,17 +262,6 @@ public record SpendingContext(
          */
         public Builder otherIncome(BigDecimal otherIncome) {
             this.otherIncome = otherIncome;
-            return this;
-        }
-
-        /**
-         * Sets the date.
-         *
-         * @param date the date
-         * @return this builder
-         */
-        public Builder date(LocalDate date) {
-            this.date = date;
             return this;
         }
 
@@ -264,58 +290,14 @@ public record SpendingContext(
         /**
          * Sets the retirement start date.
          *
-         * <p>If not set, defaults to the portfolio owner's planned retirement date.
-         * This can be overridden for scenario analysis (e.g., "what if I retire at 62?").
+         * <p>This is used to compute months/years in retirement for
+         * inflation calculations and dynamic strategy adjustments.
          *
          * @param retirementStartDate the date retirement started
          * @return this builder
          */
         public Builder retirementStartDate(LocalDate retirementStartDate) {
             this.retirementStartDate = retirementStartDate;
-            return this;
-        }
-
-        /**
-         * Sets the initial portfolio balance.
-         *
-         * @param initialPortfolioBalance the balance
-         * @return this builder
-         */
-        public Builder initialPortfolioBalance(BigDecimal initialPortfolioBalance) {
-            this.initialPortfolioBalance = initialPortfolioBalance;
-            return this;
-        }
-
-        /**
-         * Sets prior year spending.
-         *
-         * @param priorYearSpending the spending
-         * @return this builder
-         */
-        public Builder priorYearSpending(BigDecimal priorYearSpending) {
-            this.priorYearSpending = priorYearSpending;
-            return this;
-        }
-
-        /**
-         * Sets prior year portfolio return.
-         *
-         * @param priorYearPortfolioReturn the return
-         * @return this builder
-         */
-        public Builder priorYearPortfolioReturn(BigDecimal priorYearPortfolioReturn) {
-            this.priorYearPortfolioReturn = priorYearPortfolioReturn;
-            return this;
-        }
-
-        /**
-         * Sets years since last ratchet.
-         *
-         * @param yearsSinceLastRatchet the years
-         * @return this builder
-         */
-        public Builder yearsSinceLastRatchet(int yearsSinceLastRatchet) {
-            this.yearsSinceLastRatchet = yearsSinceLastRatchet;
             return this;
         }
 
@@ -367,47 +349,22 @@ public record SpendingContext(
         /**
          * Builds the SpendingContext instance.
          *
-         * <p>If age or birthYear are not explicitly set, they will be derived
-         * from the portfolio owner's date of birth. If retirementStartDate is not
-         * set, it defaults to the portfolio owner's planned retirement date.
-         *
          * @return a new SpendingContext
-         * @throws MissingRequiredFieldException if portfolio is not set
+         * @throws MissingRequiredFieldException if simulation or date is not set
          */
         public SpendingContext build() {
-            // Validate portfolio early - owner and dateOfBirth are guaranteed by Portfolio/PersonProfile
-            MissingRequiredFieldException.requireNonNull(portfolio, "portfolio");
-
-            // Derive age and birthYear from portfolio owner if not set
-            int resolvedAge = age;
-            int resolvedBirthYear = birthYear;
-
-            LocalDate ownerDob = portfolio.getOwner().getDateOfBirth();
-            if (resolvedBirthYear == 0) {
-                resolvedBirthYear = ownerDob.getYear();
-            }
-            if (resolvedAge == 0 && date != null) {
-                resolvedAge = portfolio.getOwner().getAge(date);
-            }
-
-            // Default retirementStartDate from portfolio owner if not set
-            LocalDate resolvedRetirementStartDate = retirementStartDate;
-            if (resolvedRetirementStartDate == null) {
-                resolvedRetirementStartDate = portfolio.getOwner().getRetirementDate();
-            }
+            MissingRequiredFieldException.requireNonNull(simulation, "simulation");
+            MissingRequiredFieldException.requireNonNull(date, "date");
+            MissingRequiredFieldException.requireNonNull(retirementStartDate, "retirementStartDate");
 
             return new SpendingContext(
-                    portfolio,
+                    simulation,
+                    date,
                     totalExpenses,
                     otherIncome,
-                    date,
-                    resolvedAge,
-                    resolvedBirthYear,
-                    resolvedRetirementStartDate,
-                    initialPortfolioBalance,
-                    priorYearSpending,
-                    priorYearPortfolioReturn,
-                    yearsSinceLastRatchet,
+                    age,
+                    birthYear,
+                    retirementStartDate,
                     currentTaxableIncome,
                     filingStatus,
                     strategyParams

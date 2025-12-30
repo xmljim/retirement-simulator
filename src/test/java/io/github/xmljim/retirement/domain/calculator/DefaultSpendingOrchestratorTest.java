@@ -30,14 +30,15 @@ import io.github.xmljim.retirement.domain.value.SpendingPlan;
 class DefaultSpendingOrchestratorTest {
 
     private DefaultSpendingOrchestrator orchestrator;
-    private RmdCalculator rmdCalculator;
     private PersonProfile owner;
     private Portfolio portfolio;
+    private LocalDate retirementStart;
 
     @BeforeEach
     void setUp() {
-        rmdCalculator = new DefaultRmdCalculator();
+        RmdCalculator rmdCalculator = new DefaultRmdCalculator();
         orchestrator = new DefaultSpendingOrchestrator(rmdCalculator);
+        retirementStart = LocalDate.of(2020, 1, 1);
 
         owner = PersonProfile.builder()
                 .name("Test Owner")
@@ -77,30 +78,35 @@ class DefaultSpendingOrchestratorTest {
                 .build();
     }
 
-    /**
-     * Creates a context for the given portfolio.
-     * Age and birthYear are derived from the portfolio owner's date of birth.
-     */
     private SpendingContext createContext(Portfolio portfolio) {
+        StubSimulationView simulation = StubSimulationView.withAccounts(
+                portfolio.getAccounts().stream()
+                        .map(a -> StubSimulationView.createTestAccount(
+                                a.getName(), a.getAccountType(), a.getBalance()))
+                        .toList());
         return SpendingContext.builder()
-                .portfolio(portfolio)
+                .simulation(simulation)
                 .totalExpenses(new BigDecimal("5000"))
                 .otherIncome(new BigDecimal("2000"))
                 .date(LocalDate.now())
+                .retirementStartDate(retirementStart)
                 .build();
     }
 
-    /**
-     * Creates a context with explicit age and birthYear for RMD testing.
-     */
     private SpendingContext createContextWithAge(Portfolio portfolio, int age, int birthYear) {
+        StubSimulationView simulation = StubSimulationView.withAccounts(
+                portfolio.getAccounts().stream()
+                        .map(a -> StubSimulationView.createTestAccount(
+                                a.getName(), a.getAccountType(), a.getBalance()))
+                        .toList());
         return SpendingContext.builder()
-                .portfolio(portfolio)
+                .simulation(simulation)
                 .totalExpenses(new BigDecimal("5000"))
                 .otherIncome(new BigDecimal("2000"))
                 .date(LocalDate.now())
                 .age(age)
                 .birthYear(birthYear)
+                .retirementStartDate(retirementStart)
                 .build();
     }
 
@@ -153,7 +159,6 @@ class DefaultSpendingOrchestratorTest {
         @DisplayName("Should execute withdrawal across multiple accounts")
         void executesWithdrawalAcrossMultipleAccounts() {
             SpendingContext context = createContext(portfolio);
-            // Withdraw more than brokerage has ($50k), requiring multiple accounts
             SpendingStrategy strategy = createFixedStrategy(new BigDecimal("75000"));
             AccountSequencer sequencer = new TaxEfficientSequencer();
 
@@ -188,7 +193,6 @@ class DefaultSpendingOrchestratorTest {
         @DisplayName("Should track shortfall when portfolio insufficient")
         void tracksShortfall() {
             SpendingContext context = createContext(portfolio);
-            // Request more than total portfolio ($350k)
             SpendingStrategy strategy = createFixedStrategy(new BigDecimal("500000"));
             AccountSequencer sequencer = new TaxEfficientSequencer();
 
@@ -208,7 +212,7 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should select TaxEfficientSequencer when not subject to RMD")
         void selectsTaxEfficientWhenNotRmd() {
-            SpendingContext context = createContext(portfolio); // Age 65, RMD at 75
+            SpendingContext context = createContext(portfolio);
 
             AccountSequencer sequencer = orchestrator.selectDefaultSequencer(context);
 
@@ -218,7 +222,7 @@ class DefaultSpendingOrchestratorTest {
         @Test
         @DisplayName("Should select RmdFirstSequencer when subject to RMD")
         void selectsRmdFirstWhenRmd() {
-            SpendingContext context = createContextWithAge(portfolio, 76, 1950); // Age 76, born 1950 → RMD at 72
+            SpendingContext context = createContextWithAge(portfolio, 76, 1950);
 
             AccountSequencer sequencer = orchestrator.selectDefaultSequencer(context);
 
@@ -231,7 +235,6 @@ class DefaultSpendingOrchestratorTest {
             SpendingContext context = createContext(portfolio);
             SpendingStrategy strategy = createFixedStrategy(new BigDecimal("10000"));
 
-            // Use overloaded method without explicit sequencer
             SpendingPlan plan = orchestrator.execute(portfolio, strategy, context);
 
             assertTrue(plan.meetsTarget());
