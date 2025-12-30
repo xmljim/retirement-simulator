@@ -340,8 +340,30 @@ Each month:
     4. Record triggered events in MonthlySnapshot
 ```
 
-**Open Questions:**
-- [ ] How do events affect future months (e.g., expense changes)?
+**Decision:** Events set flags/modify state; calculators react to flags.
+
+**Survivor Event Flow:**
+```
+SpouseDeathEvent fires
+    → Set survivorMode = true in SimulationContext
+    → SurvivorExpenseCalculator (M5) applies adjustments when flag set
+    → Housing 70%, Food 60%, Healthcare 100%, etc.
+```
+
+**Contingency Event Flow:**
+```
+ContingencyExpenseEvent fires (e.g., "Car repair $2000")
+    │
+    ├─ Check ContingencyReserve balance for category
+    │   ├─ Sufficient → Withdraw from contingency fund
+    │   └─ Insufficient → Withdraw available + remainder from portfolio
+    │
+    └─ Set refillMode for that category
+        → Subsequent months redirect cash flow to refill
+        → Until target balance reached
+```
+
+**Key Principle:** Events modify flags/state, calculators are stateless and check flags each month. This keeps calculators pure and testable.
 
 ---
 
