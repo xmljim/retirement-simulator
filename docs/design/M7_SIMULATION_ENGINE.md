@@ -358,6 +358,159 @@ YearMonth getSocialSecurityStartMonth(PersonProfile person) {
 }
 ```
 
+---
+
+### 3a. Survivor Transition
+
+**Discovered Issue:** #293
+
+When one spouse passes, the simulation must handle three concerns:
+1. **Identity** - Track which profile is deceased vs. survivor
+2. **Portfolio consolidation** - Merge deceased's accounts into survivor's portfolio
+3. **Survivor benefits** - Compute adjusted SS and pension amounts
+
+**SurvivorTransition Class:**
+
+```java
+/**
+ * Encapsulates the state transition when one spouse passes.
+ * Created by SimulationEngine when death event fires.
+ */
+public class SurvivorTransition {
+    private final PersonProfile deceasedProfile;
+    private final PersonProfile survivorProfile;
+    private final LocalDate transitionDate;
+    private final SpousalBenefitCalculator ssCalculator;
+
+    // ─── 1. Identity ───────────────────────────────────────────────
+    public PersonProfile getDeceasedProfile() { return deceasedProfile; }
+    public PersonProfile getSurvivorProfile() { return survivorProfile; }
+    public LocalDate getTransitionDate() { return transitionDate; }
+
+    // ─── 2. Portfolio Consolidation ────────────────────────────────
+    /**
+     * Merges deceased's accounts into survivor's portfolio.
+     * Spouse-to-spouse inheritance has no special rollover rules.
+     */
+    public Portfolio consolidatePortfolios(Portfolio deceased, Portfolio survivor) {
+        List<InvestmentAccount> mergedAccounts = new ArrayList<>(survivor.accounts());
+
+        // Transfer ownership of deceased's accounts to survivor
+        deceased.accounts().forEach(account -> {
+            InvestmentAccount transferred = account.withOwner(survivorProfile);
+            mergedAccounts.add(transferred);
+        });
+
+        return Portfolio.builder()
+            .owner(survivorProfile)
+            .accounts(mergedAccounts)
+            .build();
+    }
+
+    // ─── 3. Survivor Social Security ───────────────────────────────
+    /**
+     * Calculates survivor SS benefit: higher of own or deceased's benefit.
+     * Uses SpousalBenefitCalculator.calculateSurvivorBenefit().
+     */
+    public SocialSecurityBenefit calculateSurvivorSS(
+            SocialSecurityBenefit deceasedSS,
+            SocialSecurityBenefit survivorSS) {
+
+        BigDecimal survivorBenefit = ssCalculator.calculateSurvivorBenefit(
+            deceasedSS, survivorSS, transitionDate);
+
+        // Return new SS benefit with survivor amount
+        return SocialSecurityBenefit.builder()
+            .fraBenefit(survivorBenefit)
+            .birthYear(survivorProfile.getBirthYear())
+            .claimingAgeMonths(survivorSS.getClaimingAgeMonths())
+            .startDate(survivorSS.getStartDate())
+            .build();
+    }
+
+    // ─── 4. Survivor Pension ───────────────────────────────────────
+    /**
+     * Calculates survivor pension based on PensionPaymentForm.
+     * - SINGLE_LIFE → $0 (benefit ends with deceased)
+     * - JOINT_50 → 50% of original
+     * - JOINT_75 → 75% of original
+     * - JOINT_100 → 100% of original
+     */
+    public BigDecimal calculateSurvivorPension(Pension pension) {
+        return switch (pension.getPaymentForm()) {
+            case SINGLE_LIFE -> BigDecimal.ZERO;
+            case JOINT_50 -> pension.getMonthlyBenefit().multiply(new BigDecimal("0.50"));
+            case JOINT_75 -> pension.getMonthlyBenefit().multiply(new BigDecimal("0.75"));
+            case JOINT_100 -> pension.getMonthlyBenefit();
+        };
+    }
+
+    /**
+     * Builds a new IncomeProfile for the survivor with adjusted benefits.
+     */
+    public IncomeProfile buildSurvivorIncomeProfile(
+            IncomeProfile deceasedIncome,
+            IncomeProfile survivorIncome) {
+
+        // Calculate survivor SS (higher of own or deceased's)
+        SocialSecurityBenefit survivorSS = calculateSurvivorSS(
+            deceasedIncome.getSocialSecurity().orElse(null),
+            survivorIncome.getSocialSecurity().orElse(null));
+
+        // Adjust pensions based on payment form
+        List<Pension> adjustedPensions = new ArrayList<>();
+
+        // Survivor's own pensions continue at full value
+        adjustedPensions.addAll(survivorIncome.pensions());
+
+        // Deceased's pensions adjusted by payment form
+        deceasedIncome.pensions().stream()
+            .filter(p -> p.getPaymentForm() != PensionPaymentForm.SINGLE_LIFE)
+            .map(p -> p.withMonthlyBenefit(calculateSurvivorPension(p)))
+            .forEach(adjustedPensions::add);
+
+        return IncomeProfile.builder()
+            .person(survivorProfile)
+            .socialSecurity(survivorSS)
+            .pensions(adjustedPensions)
+            .annuities(survivorIncome.annuities()) // Survivor's annuities
+            .otherIncomes(survivorIncome.otherIncomes())
+            .build();
+    }
+}
+```
+
+**SimulationEngine Integration:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  SimulationEngine detects death (life expectancy reached)       │
+│                           ↓                                     │
+│  SpouseDeathEvent fires → creates SurvivorTransition            │
+│                           ↓                                     │
+│  1. consolidatePortfolios() → survivor has all accounts         │
+│  2. buildSurvivorIncomeProfile() → adjusted SS/pensions         │
+│                           ↓                                     │
+│  Update SimulationState:                                        │
+│    - portfolios = [consolidatedPortfolio]                       │
+│    - incomeProfiles = [survivorIncomeProfile]                   │
+│    - survivorMode = true                                        │
+│                           ↓                                     │
+│  Continue simulation in SURVIVOR phase with single profile      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key Design Decisions:**
+
+| Concern | Decision | Rationale |
+|---------|----------|-----------|
+| Portfolio transfer | Direct ownership transfer | Spouse-to-spouse has no special IRA/401k rollover rules |
+| SS survivor benefit | Use `SpousalBenefitCalculator` | Already implements higher-of logic per SSA rules |
+| Pension survivor | Apply `PensionPaymentForm` multiplier | Standard DB plan survivor options |
+| Annuities | Only survivor's continue | Simplified model; can enhance later for joint annuities |
+
+---
+
 **Decision:** Part-time work in retirement = "other income", not contributions.
 
 - Once retired, contributions stop (no more 401k/IRA contributions)
