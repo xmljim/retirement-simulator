@@ -142,12 +142,24 @@ class SimulationConfigTest {
         }
 
         @Test
-        @DisplayName("should reject null portfolio")
-        void shouldRejectNullPortfolio() {
+        @DisplayName("should reject null portfolios")
+        void shouldRejectNullPortfolios() {
             assertThrows(MissingRequiredFieldException.class, () ->
                 SimulationConfig.builder()
                     .person(primaryPerson)
-                    .portfolio(null)
+                    .portfolios(null)
+                    .startMonth(YearMonth.of(2025, 1))
+                    .endMonth(YearMonth.of(2055, 12))
+                    .build());
+        }
+
+        @Test
+        @DisplayName("should reject empty portfolios list")
+        void shouldRejectEmptyPortfolios() {
+            assertThrows(ValidationException.class, () ->
+                SimulationConfig.builder()
+                    .person(primaryPerson)
+                    .portfolios(List.of())
                     .startMonth(YearMonth.of(2025, 1))
                     .endMonth(YearMonth.of(2055, 12))
                     .build());

@@ -84,8 +84,8 @@ public class SimulationEngine {
     public TimeSeries<MonthlySnapshot> run(SimulationConfig config) {
         MissingRequiredFieldException.requireNonNull(config, "config");
 
-        // Initialize state from portfolio accounts
-        this.state = new SimulationState(config.portfolio().getAccounts());
+        // Initialize state from all portfolio accounts
+        this.state = new SimulationState(config.getAllAccounts());
 
         TimeSeries.Builder<MonthlySnapshot> builder = TimeSeries.builder();
 
