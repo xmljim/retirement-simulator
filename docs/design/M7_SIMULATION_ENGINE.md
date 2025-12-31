@@ -358,6 +358,291 @@ YearMonth getSocialSecurityStartMonth(PersonProfile person) {
 }
 ```
 
+---
+
+### 3a. Survivor Transition
+
+**Discovered Issue:** #293
+
+When one spouse passes, the simulation must handle three concerns:
+1. **Identity** - Track which profile is deceased vs. survivor
+2. **Portfolio consolidation** - Merge deceased's accounts into survivor's portfolio
+3. **Survivor benefits** - Compute adjusted SS and pension amounts
+
+**SurvivorTransition Class:**
+
+```java
+/**
+ * Encapsulates the state transition when one spouse passes.
+ * Created by SimulationEngine when death event fires.
+ */
+public class SurvivorTransition {
+    private final PersonProfile deceasedProfile;
+    private final PersonProfile survivorProfile;
+    private final LocalDate transitionDate;
+    private final SpousalBenefitCalculator ssCalculator;
+
+    // ─── 1. Identity ───────────────────────────────────────────────
+    public PersonProfile getDeceasedProfile() { return deceasedProfile; }
+    public PersonProfile getSurvivorProfile() { return survivorProfile; }
+    public LocalDate getTransitionDate() { return transitionDate; }
+
+    // ─── 2. Portfolio Consolidation ────────────────────────────────
+    /**
+     * Merges deceased's accounts into survivor's portfolio.
+     * Spouse-to-spouse inheritance has no special rollover rules.
+     */
+    public Portfolio consolidatePortfolios(Portfolio deceased, Portfolio survivor) {
+        List<InvestmentAccount> mergedAccounts = new ArrayList<>(survivor.accounts());
+
+        // Transfer ownership of deceased's accounts to survivor
+        deceased.accounts().forEach(account -> {
+            InvestmentAccount transferred = account.withOwner(survivorProfile);
+            mergedAccounts.add(transferred);
+        });
+
+        return Portfolio.builder()
+            .owner(survivorProfile)
+            .accounts(mergedAccounts)
+            .build();
+    }
+
+    // ─── 3. Survivor Social Security ───────────────────────────────
+    /**
+     * Calculates survivor SS benefit: higher of own or deceased's benefit.
+     * Uses SpousalBenefitCalculator.calculateSurvivorBenefit().
+     */
+    public SocialSecurityBenefit calculateSurvivorSS(
+            SocialSecurityBenefit deceasedSS,
+            SocialSecurityBenefit survivorSS) {
+
+        BigDecimal survivorBenefit = ssCalculator.calculateSurvivorBenefit(
+            deceasedSS, survivorSS, transitionDate);
+
+        // Return new SS benefit with survivor amount
+        return SocialSecurityBenefit.builder()
+            .fraBenefit(survivorBenefit)
+            .birthYear(survivorProfile.getBirthYear())
+            .claimingAgeMonths(survivorSS.getClaimingAgeMonths())
+            .startDate(survivorSS.getStartDate())
+            .build();
+    }
+
+    // ─── 4. Survivor Pension ───────────────────────────────────────
+    /**
+     * Calculates survivor pension based on PensionPaymentForm.
+     * - SINGLE_LIFE → $0 (benefit ends with deceased)
+     * - JOINT_50 → 50% of original
+     * - JOINT_75 → 75% of original
+     * - JOINT_100 → 100% of original
+     */
+    public BigDecimal calculateSurvivorPension(Pension pension) {
+        return switch (pension.getPaymentForm()) {
+            case SINGLE_LIFE -> BigDecimal.ZERO;
+            case JOINT_50 -> pension.getMonthlyBenefit().multiply(new BigDecimal("0.50"));
+            case JOINT_75 -> pension.getMonthlyBenefit().multiply(new BigDecimal("0.75"));
+            case JOINT_100 -> pension.getMonthlyBenefit();
+        };
+    }
+
+    /**
+     * Builds a new IncomeProfile for the survivor with adjusted benefits.
+     */
+    public IncomeProfile buildSurvivorIncomeProfile(
+            IncomeProfile deceasedIncome,
+            IncomeProfile survivorIncome) {
+
+        // Calculate survivor SS (higher of own or deceased's)
+        SocialSecurityBenefit survivorSS = calculateSurvivorSS(
+            deceasedIncome.getSocialSecurity().orElse(null),
+            survivorIncome.getSocialSecurity().orElse(null));
+
+        // Adjust pensions based on payment form
+        List<Pension> adjustedPensions = new ArrayList<>();
+
+        // Survivor's own pensions continue at full value
+        adjustedPensions.addAll(survivorIncome.pensions());
+
+        // Deceased's pensions adjusted by payment form
+        deceasedIncome.pensions().stream()
+            .filter(p -> p.getPaymentForm() != PensionPaymentForm.SINGLE_LIFE)
+            .map(p -> p.withMonthlyBenefit(calculateSurvivorPension(p)))
+            .forEach(adjustedPensions::add);
+
+        return IncomeProfile.builder()
+            .person(survivorProfile)
+            .socialSecurity(survivorSS)
+            .pensions(adjustedPensions)
+            .annuities(survivorIncome.annuities()) // Survivor's annuities
+            .otherIncomes(survivorIncome.otherIncomes())
+            .build();
+    }
+}
+```
+
+**SimulationEngine Integration:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  SimulationEngine detects death (life expectancy reached)       │
+│                           ↓                                     │
+│  SpouseDeathEvent fires → creates SurvivorTransition            │
+│                           ↓                                     │
+│  1. consolidatePortfolios() → survivor has all accounts         │
+│  2. buildSurvivorIncomeProfile() → adjusted SS/pensions         │
+│                           ↓                                     │
+│  Update SimulationState:                                        │
+│    - portfolios = [consolidatedPortfolio]                       │
+│    - incomeProfiles = [survivorIncomeProfile]                   │
+│    - survivorMode = true                                        │
+│                           ↓                                     │
+│  Continue simulation in SURVIVOR phase with single profile      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key Design Decisions:**
+
+| Concern | Decision | Rationale |
+|---------|----------|-----------|
+| Portfolio transfer | Direct ownership transfer | Spouse-to-spouse has no special IRA/401k rollover rules |
+| SS survivor benefit | Use `SpousalBenefitCalculator` | Already implements higher-of logic per SSA rules |
+| Pension survivor | Apply `PensionPaymentForm` multiplier | Standard DB plan survivor options |
+| Annuities | Only survivor's continue | Simplified model; can enhance later for joint annuities |
+
+---
+
+### 3b. Simulation Termination
+
+The simulation must know when to stop. `SurvivorTransition` helps track deaths, enabling proper termination logic.
+
+**Termination Conditions:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Simulation Termination Conditions                              │
+├─────────────────────────────────────────────────────────────────┤
+│  Single Person:                                                 │
+│    → End when person reaches life expectancy                    │
+│                                                                 │
+│  Couple:                                                        │
+│    → First death: Create SurvivorTransition, continue           │
+│    → Second death: END SIMULATION                               │
+│                                                                 │
+│  Alternative end conditions:                                    │
+│    → Portfolio depleted (balance ≤ 0)                           │
+│    → Max simulation years reached (configurable cap)            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Implementation:**
+
+```java
+public class SimulationEngine {
+
+    public TimeSeries<MonthlySnapshot> run(SimulationConfig config) {
+        TimeSeries<MonthlySnapshot> timeSeries = new TimeSeries<>();
+
+        for (YearMonth month = config.startMonth();
+             month.isBefore(config.endMonth());
+             month = month.plusMonths(1)) {
+
+            // ... process month (steps 1-7) ...
+
+            // Check termination after recording snapshot
+            TerminationReason reason = checkTermination(month);
+            if (reason != null) {
+                timeSeries.setTerminationReason(reason);
+                break;
+            }
+        }
+        return timeSeries;
+    }
+
+    private TerminationReason checkTermination(YearMonth month) {
+        // All persons deceased
+        boolean allDeceased = state.getAllPersons().stream()
+            .allMatch(p -> p.isDeceasedAt(month));
+        if (allDeceased) {
+            return TerminationReason.ALL_PERSONS_DECEASED;
+        }
+
+        // Portfolio depleted
+        if (state.getTotalBalance().compareTo(BigDecimal.ZERO) <= 0) {
+            return TerminationReason.PORTFOLIO_DEPLETED;
+        }
+
+        // Max years reached (safety cap)
+        if (month.isAfter(config.startMonth().plusYears(config.maxYears()))) {
+            return TerminationReason.MAX_YEARS_REACHED;
+        }
+
+        return null; // Continue simulation
+    }
+}
+
+public enum TerminationReason {
+    ALL_PERSONS_DECEASED("Simulation ended: all persons have passed"),
+    PORTFOLIO_DEPLETED("Simulation ended: portfolio balance exhausted"),
+    MAX_YEARS_REACHED("Simulation ended: maximum simulation years reached"),
+    COMPLETED("Simulation completed through configured end date");
+
+    private final String description;
+
+    TerminationReason(String description) {
+        this.description = description;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+}
+```
+
+**TimeSeries Enhancement:**
+
+```java
+public class TimeSeries<T extends MonthlySnapshot> {
+    private final List<T> snapshots;
+    private TerminationReason terminationReason;
+
+    public void setTerminationReason(TerminationReason reason) {
+        this.terminationReason = reason;
+    }
+
+    public TerminationReason getTerminationReason() {
+        return terminationReason;
+    }
+
+    public boolean wasSuccessful() {
+        return terminationReason == TerminationReason.COMPLETED
+            || terminationReason == TerminationReason.ALL_PERSONS_DECEASED;
+    }
+
+    public boolean ranOutOfMoney() {
+        return terminationReason == TerminationReason.PORTFOLIO_DEPLETED;
+    }
+}
+```
+
+**Key Behaviors:**
+
+| Scenario | Behavior |
+|----------|----------|
+| Single person dies | Simulation ends immediately |
+| First spouse dies | `SurvivorTransition` created, simulation continues in SURVIVOR phase |
+| Second spouse dies | Simulation ends |
+| Portfolio hits $0 | Simulation ends (failure case for Monte Carlo success rate) |
+| Max years (e.g., 50) | Safety cap to prevent runaway simulations |
+
+**Monte Carlo Implications:**
+
+The `TerminationReason` is critical for Monte Carlo analysis:
+- `PORTFOLIO_DEPLETED` → counts as a **failure** in success rate calculation
+- `ALL_PERSONS_DECEASED` with balance > 0 → counts as **success**
+- This enables "probability of not running out of money" metrics
+
+---
+
 **Decision:** Part-time work in retirement = "other income", not contributions.
 
 - Once retired, contributions stop (no more 401k/IRA contributions)
