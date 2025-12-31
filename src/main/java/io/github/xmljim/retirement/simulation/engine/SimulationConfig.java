@@ -3,9 +3,12 @@ package io.github.xmljim.retirement.simulation.engine;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.github.xmljim.retirement.domain.calculator.SpendingStrategy;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
 import io.github.xmljim.retirement.domain.exception.ValidationException;
@@ -13,6 +16,7 @@ import io.github.xmljim.retirement.domain.model.InvestmentAccount;
 import io.github.xmljim.retirement.domain.model.PersonProfile;
 import io.github.xmljim.retirement.domain.model.Portfolio;
 import io.github.xmljim.retirement.domain.value.Budget;
+import io.github.xmljim.retirement.simulation.config.PersonFinancialConfig;
 import io.github.xmljim.retirement.simulation.config.SimulationLevers;
 
 /**
@@ -39,20 +43,23 @@ import io.github.xmljim.retirement.simulation.config.SimulationLevers;
  *     .build();
  * }</pre>
  *
- * @param portfolios the investment portfolios (persons are derived from owners)
- * @param budget     the income and expense budget
- * @param levers     the simulation levers (economic assumptions)
- * @param startMonth the simulation start month
- * @param endMonth   the simulation end month
- * @param strategy   the spending strategy for withdrawals
+ * @param portfolios       the investment portfolios (persons are derived from owners)
+ * @param budget           the income and expense budget
+ * @param levers           the simulation levers (economic assumptions)
+ * @param startMonth       the simulation start month
+ * @param endMonth         the simulation end month
+ * @param strategy         the spending strategy for withdrawals
+ * @param financialConfigs per-person financial configs (keyed by person ID)
  */
+@SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "financialConfigs is unmodifiable via compact constructor")
 public record SimulationConfig(
     List<Portfolio> portfolios,
     Budget budget,
     SimulationLevers levers,
     YearMonth startMonth,
     YearMonth endMonth,
-    SpendingStrategy strategy
+    SpendingStrategy strategy,
+    Map<String, PersonFinancialConfig> financialConfigs
 ) {
 
     /**
@@ -68,6 +75,9 @@ public record SimulationConfig(
 
         portfolios = Collections.unmodifiableList(portfolios);
         levers = levers != null ? levers : SimulationLevers.withDefaults();
+        financialConfigs = financialConfigs != null
+            ? Collections.unmodifiableMap(new HashMap<>(financialConfigs))
+            : Collections.emptyMap();
     }
 
     /**
@@ -133,6 +143,29 @@ public record SimulationConfig(
     }
 
     /**
+     * Returns the financial config for a specific person.
+     *
+     * @param person the person profile
+     * @return optional containing the financial config for this person
+     */
+    public Optional<PersonFinancialConfig> getFinancialConfig(PersonProfile person) {
+        if (person == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(financialConfigs.get(person.getId()));
+    }
+
+    /**
+     * Returns the financial config for a person by ID.
+     *
+     * @param personId the person's ID
+     * @return optional containing the financial config
+     */
+    public Optional<PersonFinancialConfig> getFinancialConfig(String personId) {
+        return Optional.ofNullable(financialConfigs.get(personId));
+    }
+
+    /**
      * Calculates the total number of months in the simulation.
      *
      * @return the month count
@@ -162,6 +195,7 @@ public record SimulationConfig(
         private YearMonth startMonth;
         private YearMonth endMonth;
         private SpendingStrategy strategy;
+        private final Map<String, PersonFinancialConfig> financialConfigs = new HashMap<>();
 
         /**
          * Sets the portfolios.
@@ -241,6 +275,47 @@ public record SimulationConfig(
         }
 
         /**
+         * Adds a financial config for a person.
+         *
+         * @param personId the person's ID
+         * @param config   the financial config
+         * @return this builder
+         */
+        public Builder addFinancialConfig(String personId, PersonFinancialConfig config) {
+            if (personId != null && config != null) {
+                this.financialConfigs.put(personId, config);
+            }
+            return this;
+        }
+
+        /**
+         * Adds a financial config for a person.
+         *
+         * @param person the person profile
+         * @param config the financial config
+         * @return this builder
+         */
+        public Builder addFinancialConfig(PersonProfile person, PersonFinancialConfig config) {
+            if (person != null) {
+                return addFinancialConfig(person.getId(), config);
+            }
+            return this;
+        }
+
+        /**
+         * Sets all financial configs at once.
+         *
+         * @param configs the map of person ID to financial config
+         * @return this builder
+         */
+        public Builder financialConfigs(Map<String, PersonFinancialConfig> configs) {
+            if (configs != null) {
+                this.financialConfigs.putAll(configs);
+            }
+            return this;
+        }
+
+        /**
          * Builds the SimulationConfig.
          *
          * @return a new SimulationConfig
@@ -252,7 +327,8 @@ public record SimulationConfig(
                 levers,
                 startMonth,
                 endMonth,
-                strategy
+                strategy,
+                financialConfigs
             );
         }
     }

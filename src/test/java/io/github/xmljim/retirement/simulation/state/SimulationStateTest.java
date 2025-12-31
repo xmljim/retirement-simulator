@@ -566,4 +566,36 @@ class SimulationStateTest {
             assertEquals(new BigDecimal("200000.00"), account1Snapshot.balance());
         }
     }
+
+    @Nested
+    @DisplayName("Contribution Tracking")
+    class ContributionTrackingTests {
+
+        @Test
+        @DisplayName("depositToAccount should not affect cumulative contributions")
+        void depositToAccountShouldNotAffectCumulativeContributions() {
+            SimulationState state = new SimulationState(testAccounts);
+
+            state.depositToAccount(account1Id, new BigDecimal("1000"));
+
+            // depositToAccount is low-level and doesn't track cumulative contributions
+            assertEquals(BigDecimal.ZERO, state.getCumulativeContributions());
+        }
+
+        @Test
+        @DisplayName("getCumulativeContributions should start at zero")
+        void getCumulativeContributionsShouldStartAtZero() {
+            SimulationState state = new SimulationState(testAccounts);
+
+            assertEquals(BigDecimal.ZERO, state.getCumulativeContributions());
+        }
+
+        @Test
+        @DisplayName("getContributionTracker should return null when not initialized")
+        void getContributionTrackerShouldReturnNullWhenNotInitialized() {
+            SimulationState state = new SimulationState(testAccounts);
+
+            assertEquals(null, state.getContributionTracker());
+        }
+    }
 }
