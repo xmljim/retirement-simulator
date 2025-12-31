@@ -4,6 +4,7 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import io.github.xmljim.retirement.domain.calculator.SpendingStrategy;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
@@ -87,17 +88,19 @@ public record SimulationConfig(
      * @return the primary person profile
      */
     public PersonProfile primaryPerson() {
-        return portfolios.get(0).getOwner();
+        return portfolios.getFirst().getOwner();
     }
 
     /**
      * Returns the spouse (second distinct person) if present.
      *
-     * @return the spouse profile, or null if single simulation
+     * @return optional containing the spouse profile, or empty if single simulation
      */
-    public PersonProfile spouse() {
+    public Optional<PersonProfile> spouse() {
         List<PersonProfile> allPersons = persons();
-        return allPersons.size() > 1 ? allPersons.get(1) : null;
+        return allPersons.size() > 1
+            ? Optional.of(allPersons.getLast())
+            : Optional.empty();
     }
 
     /**
@@ -126,7 +129,7 @@ public record SimulationConfig(
      * @return the primary portfolio
      */
     public Portfolio primaryPortfolio() {
-        return portfolios.get(0);
+        return portfolios.getFirst();
     }
 
     /**

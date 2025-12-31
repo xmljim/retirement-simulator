@@ -3,7 +3,6 @@ package io.github.xmljim.retirement.simulation.engine;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -84,7 +83,8 @@ class SimulationConfigTest {
 
             assertEquals(2, config.persons().size());
             assertEquals(primaryPerson, config.primaryPerson());
-            assertEquals(spouse, config.spouse());
+            assertTrue(config.spouse().isPresent());
+            assertEquals(spouse, config.spouse().get());
         }
 
         @Test
@@ -183,7 +183,8 @@ class SimulationConfigTest {
 
             assertTrue(config.isCoupleSimulation());
             assertEquals(primaryPerson, config.primaryPerson());
-            assertEquals(spouse, config.spouse());
+            assertTrue(config.spouse().isPresent());
+            assertEquals(spouse, config.spouse().get());
         }
 
         @Test
@@ -197,7 +198,7 @@ class SimulationConfigTest {
 
             assertFalse(config.isCoupleSimulation());
             assertEquals(primaryPerson, config.primaryPerson());
-            assertNull(config.spouse());
+            assertTrue(config.spouse().isEmpty());
         }
 
         @Test
@@ -216,7 +217,7 @@ class SimulationConfigTest {
             assertFalse(config.isCoupleSimulation());
             assertEquals(1, config.persons().size());
             assertEquals(primaryPerson, config.primaryPerson());
-            assertNull(config.spouse());
+            assertTrue(config.spouse().isEmpty());
         }
     }
 
