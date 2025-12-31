@@ -34,9 +34,7 @@ public class DefaultIncomeProcessor implements IncomeProcessor {
         MonthlyIncome.Builder builder = MonthlyIncome.builder();
         LocalDate date = month.atDay(1);
 
-        for (IncomeProfile profile : incomeProfiles) {
-            processProfile(profile, date, phase, builder);
-        }
+        incomeProfiles.forEach(profile -> processProfile(profile, date, phase, builder));
 
         return builder.build();
     }
