@@ -150,6 +150,60 @@ class MonthlyIncomeTest {
             assertEquals(new BigDecimal("5000"), income.salaryIncome());
             assertEquals(new BigDecimal("1800"), income.socialSecurityIncome());
         }
+
+        @Test
+        @DisplayName("should accumulate pension income")
+        void shouldAccumulatePensionIncome() {
+            MonthlyIncome income = MonthlyIncome.builder()
+                .addPensionIncome(new BigDecimal("1500"))
+                .addPensionIncome(new BigDecimal("800"))
+                .build();
+
+            assertEquals(new BigDecimal("2300"), income.pensionIncome());
+        }
+
+        @Test
+        @DisplayName("should accumulate annuity income")
+        void shouldAccumulateAnnuityIncome() {
+            MonthlyIncome income = MonthlyIncome.builder()
+                .addAnnuityIncome(new BigDecimal("500"))
+                .addAnnuityIncome(new BigDecimal("300"))
+                .build();
+
+            assertEquals(new BigDecimal("800"), income.annuityIncome());
+        }
+
+        @Test
+        @DisplayName("should accumulate other income")
+        void shouldAccumulateOtherIncome() {
+            MonthlyIncome income = MonthlyIncome.builder()
+                .addOtherIncome(new BigDecimal("400"))
+                .addOtherIncome(new BigDecimal("200"))
+                .addOtherIncome(new BigDecimal("100"))
+                .build();
+
+            assertEquals(new BigDecimal("700"), income.otherIncome());
+        }
+
+        @Test
+        @DisplayName("should accumulate all income types together")
+        void shouldAccumulateAllIncomeTypesTogether() {
+            MonthlyIncome income = MonthlyIncome.builder()
+                .addSalaryIncome(new BigDecimal("5000"))
+                .addSocialSecurityIncome(new BigDecimal("2000"))
+                .addPensionIncome(new BigDecimal("1500"))
+                .addAnnuityIncome(new BigDecimal("500"))
+                .addOtherIncome(new BigDecimal("300"))
+                .build();
+
+            assertEquals(new BigDecimal("5000"), income.salaryIncome());
+            assertEquals(new BigDecimal("2000"), income.socialSecurityIncome());
+            assertEquals(new BigDecimal("1500"), income.pensionIncome());
+            assertEquals(new BigDecimal("500"), income.annuityIncome());
+            assertEquals(new BigDecimal("300"), income.otherIncome());
+            assertEquals(new BigDecimal("9300"), income.total());
+            assertEquals(new BigDecimal("4300"), income.totalNonSalary());
+        }
     }
 
     @Nested
