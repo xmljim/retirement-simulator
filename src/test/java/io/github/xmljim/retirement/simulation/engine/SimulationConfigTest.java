@@ -83,8 +83,7 @@ class SimulationConfigTest {
 
             assertEquals(2, config.persons().size());
             assertEquals(primaryPerson, config.primaryPerson());
-            assertTrue(config.spouse().isPresent());
-            assertEquals(spouse, config.spouse().get());
+            assertEquals(spouse, config.spouse().orElseThrow());
         }
 
         @Test
@@ -183,8 +182,7 @@ class SimulationConfigTest {
 
             assertTrue(config.isCoupleSimulation());
             assertEquals(primaryPerson, config.primaryPerson());
-            assertTrue(config.spouse().isPresent());
-            assertEquals(spouse, config.spouse().get());
+            assertEquals(spouse, config.spouse().orElseThrow());
         }
 
         @Test
