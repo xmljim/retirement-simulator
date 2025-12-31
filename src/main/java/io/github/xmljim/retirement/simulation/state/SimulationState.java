@@ -11,10 +11,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import io.github.xmljim.retirement.domain.calculator.IrsContributionRules;
 import io.github.xmljim.retirement.domain.calculator.SimulationView;
+import io.github.xmljim.retirement.domain.calculator.YTDContributionTracker;
 import io.github.xmljim.retirement.domain.model.InvestmentAccount;
 import io.github.xmljim.retirement.domain.value.AccountSnapshot;
-import io.github.xmljim.retirement.domain.value.AccountWithdrawal;
+import io.github.xmljim.retirement.domain.value.ContributionRecord;
 import io.github.xmljim.retirement.domain.value.SpendingPlan;
 import io.github.xmljim.retirement.simulation.result.AccountMonthlyFlow;
 import io.github.xmljim.retirement.simulation.result.MonthlySnapshot;
@@ -50,8 +52,10 @@ public final class SimulationState {
     private BigDecimal initialPortfolioBalance;
     private BigDecimal highWaterMarkBalance;
     private BigDecimal cumulativeWithdrawals;
+    private BigDecimal cumulativeContributions;
     private Optional<YearMonth> lastRatchetMonth;
     private SimulationFlags flags;
+    private YTDContributionTracker contributionTracker;
 
     /**
      * Creates a new SimulationState with the given accounts.
@@ -62,6 +66,7 @@ public final class SimulationState {
         this.accounts = new HashMap<>();
         this.history = new ArrayList<>();
         this.cumulativeWithdrawals = BigDecimal.ZERO;
+        this.cumulativeContributions = BigDecimal.ZERO;
         this.lastRatchetMonth = Optional.empty();
         this.flags = SimulationFlags.initial();
 
@@ -72,6 +77,20 @@ public final class SimulationState {
         // Calculate initial balances
         this.initialPortfolioBalance = calculateTotalBalance();
         this.highWaterMarkBalance = initialPortfolioBalance;
+    }
+
+    /**
+     * Initializes the contribution tracker with IRS rules.
+     *
+     * <p>Must be called before recording contributions.
+     *
+     * <p>TODO #295: This will be replaced with constructor injection when we
+     * refactor to Spring DI - YTDContributionTracker will be a bean.
+     *
+     * @param irsRules the IRS contribution rules
+     */
+    public void initializeContributionTracker(IrsContributionRules irsRules) {
+        this.contributionTracker = YTDContributionTracker.empty(irsRules);
     }
 
     // ─── Account Operations ─────────────────────────────────────────────────────
@@ -131,6 +150,54 @@ public final class SimulationState {
                 state.deposit(amount);
                 updateHighWaterMark();
             });
+    }
+
+    /**
+     * Records a contribution and deposits to the account.
+     *
+     * <p>This method:
+     * <ol>
+     *   <li>Records the contribution in the YTD tracker (for limit enforcement)</li>
+     *   <li>Deposits the amount to the account</li>
+     *   <li>Updates cumulative contribution totals</li>
+     * </ol>
+     *
+     * @param record the contribution record
+     */
+    public void recordContribution(ContributionRecord record) {
+        if (record == null) {
+            return;
+        }
+
+        // Record in tracker (immutable - returns new instance)
+        // TODO #295: Remove null check after Spring DI refactor - tracker will be injected
+        if (contributionTracker != null) {
+            contributionTracker = contributionTracker.recordContribution(record);
+        }
+
+        // Deposit to account
+        depositToAccount(record.accountId(), record.amount());
+
+        // Track cumulative contributions
+        cumulativeContributions = cumulativeContributions.add(record.amount());
+    }
+
+    /**
+     * Returns the YTD contribution tracker.
+     *
+     * @return the contribution tracker, or null if not initialized
+     */
+    public YTDContributionTracker getContributionTracker() {
+        return contributionTracker;
+    }
+
+    /**
+     * Returns total cumulative contributions since simulation start.
+     *
+     * @return cumulative contributions
+     */
+    public BigDecimal getCumulativeContributions() {
+        return cumulativeContributions;
     }
 
     /**

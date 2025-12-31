@@ -8,13 +8,20 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import io.github.xmljim.retirement.domain.calculator.ContributionAllocation;
 import io.github.xmljim.retirement.domain.calculator.ContributionRouter;
 import io.github.xmljim.retirement.domain.calculator.ReturnCalculator;
 import io.github.xmljim.retirement.domain.calculator.SpendingOrchestrator;
+import io.github.xmljim.retirement.domain.enums.ContributionType;
 import io.github.xmljim.retirement.domain.enums.SimulationPhase;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
 import io.github.xmljim.retirement.domain.model.PersonProfile;
+import io.github.xmljim.retirement.domain.model.Portfolio;
+import io.github.xmljim.retirement.domain.value.RoutingConfiguration;
+import io.github.xmljim.retirement.simulation.config.PersonFinancialConfig;
 import io.github.xmljim.retirement.simulation.result.AccountMonthlyFlow;
 import io.github.xmljim.retirement.simulation.result.MonthlySnapshot;
 import io.github.xmljim.retirement.simulation.result.TimeSeries;
@@ -221,8 +228,6 @@ public class SimulationEngine {
      * <p>During accumulation: process contributions.
      * <p>During distribution/survivor: process withdrawals.
      *
-     * <p>Stub implementation - to be enhanced in later milestones.
-     *
      * @param phase the simulation phase
      * @param income the monthly income
      * @param expenses the monthly expenses
@@ -236,9 +241,95 @@ public class SimulationEngine {
             BigDecimal expenses,
             YearMonth month,
             SimulationConfig config) {
-        // Stub: Return empty map for now
-        // Will be implemented to route contributions or execute withdrawals
+
+        if (phase == SimulationPhase.ACCUMULATION) {
+            return executeContributions(income, expenses, month, config);
+        }
+
+        // DISTRIBUTION/SURVIVOR phases: withdrawals (stub for now)
+        // Will be implemented in #277 (SpendingOrchestrator integration)
         return Collections.emptyMap();
+    }
+
+    /**
+     * Executes contribution routing during accumulation phase.
+     *
+     * <p>Uses the per-person financial configs from SimulationConfig to determine
+     * contribution amounts and routing. Each person's contributions are calculated
+     * based on their individual ContributionConfig and routed via their RoutingConfig.
+     *
+     * <p>Note: Currently routes a fixed amount. Full integration with ContributionCalculator
+     * will be done when IncomeProcessor provides salary amounts.
+     *
+     * @param income the monthly income (currently unused - will be used for salary-based calc)
+     * @param expenses the monthly expenses (currently unused)
+     * @param month the current month
+     * @param config the configuration
+     * @return map of account ID to AccountMonthlyFlow
+     */
+    Map<UUID, AccountMonthlyFlow> executeContributions(
+            BigDecimal income,
+            BigDecimal expenses,
+            YearMonth month,
+            SimulationConfig config) {
+
+        if (contributionRouter == null || income.compareTo(BigDecimal.ZERO) <= 0) {
+            return Collections.emptyMap();
+        }
+
+        return config.portfolios().stream()
+            .filter(portfolio -> hasRoutingConfig(portfolio, config))
+            .flatMap(portfolio -> processPortfolioContributions(portfolio, income, month, config))
+            .collect(Collectors.toMap(AccountMonthlyFlow::accountId, flow -> flow));
+    }
+
+    private boolean hasRoutingConfig(Portfolio portfolio, SimulationConfig config) {
+        return config.getFinancialConfig(portfolio.getOwner())
+            .map(PersonFinancialConfig::hasRoutingConfig)
+            .orElse(false);
+    }
+
+    private Stream<AccountMonthlyFlow> processPortfolioContributions(
+            Portfolio portfolio,
+            BigDecimal income,
+            YearMonth month,
+            SimulationConfig config) {
+
+        PersonProfile owner = portfolio.getOwner();
+        PersonFinancialConfig financialConfig = config.getFinancialConfig(owner).orElseThrow();
+        RoutingConfiguration routingConfig = financialConfig.routingConfig();
+
+        int year = month.getYear();
+        int age = owner.getAge(month.atDay(1));
+        BigDecimal priorYearIncome = BigDecimal.ZERO; // TODO: Get from IncomeProfile
+
+        // TODO: Use ContributionCalculator to calculate contribution amount from salary
+        BigDecimal contributionAmount = income;
+
+        ContributionAllocation allocation = contributionRouter.route(
+            contributionAmount,
+            ContributionType.PERSONAL,
+            portfolio,
+            routingConfig,
+            year,
+            age,
+            priorYearIncome
+        );
+
+        return allocation.allocations().entrySet().stream()
+            .map(entry -> createFlowFromAllocation(entry.getKey(), entry.getValue()));
+    }
+
+    private AccountMonthlyFlow createFlowFromAllocation(String accountId, BigDecimal amount) {
+        UUID uuid = UUID.fromString(accountId);
+        BigDecimal startingBalance = state.getAccountBalance(accountId);
+
+        state.depositToAccount(accountId, amount);
+
+        return AccountMonthlyFlow.builder(uuid, accountId)
+            .startingBalance(startingBalance)
+            .contributions(amount)
+            .build();
     }
 
     // ─── Step 6: Apply Returns ──────────────────────────────────────────────────
