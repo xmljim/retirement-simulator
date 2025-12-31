@@ -1,8 +1,6 @@
 package io.github.xmljim.retirement.simulation.engine;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -12,6 +10,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import io.github.xmljim.retirement.domain.calculator.ContributionRouter;
+import io.github.xmljim.retirement.domain.calculator.ReturnCalculator;
 import io.github.xmljim.retirement.domain.calculator.SpendingOrchestrator;
 import io.github.xmljim.retirement.domain.enums.SimulationPhase;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
@@ -53,12 +52,9 @@ import io.github.xmljim.retirement.simulation.state.SimulationState;
  */
 public class SimulationEngine {
 
-    private static final int SCALE = 6;
-    private static final MathContext MATH_CONTEXT = new MathContext(10, RoundingMode.HALF_UP);
-    private static final int MONTHS_PER_YEAR = 12;
-
     private final SpendingOrchestrator spendingOrchestrator;
     private final ContributionRouter contributionRouter;
+    private final ReturnCalculator returnCalculator;
 
     private SimulationState state;
 
@@ -67,12 +63,15 @@ public class SimulationEngine {
      *
      * @param spendingOrchestrator the orchestrator for withdrawal operations
      * @param contributionRouter the router for contribution operations
+     * @param returnCalculator the calculator for investment returns
      */
     public SimulationEngine(
             SpendingOrchestrator spendingOrchestrator,
-            ContributionRouter contributionRouter) {
+            ContributionRouter contributionRouter,
+            ReturnCalculator returnCalculator) {
         this.spendingOrchestrator = spendingOrchestrator;
         this.contributionRouter = contributionRouter;
+        this.returnCalculator = returnCalculator;
     }
 
     /**
@@ -247,20 +246,14 @@ public class SimulationEngine {
     /**
      * Calculates the monthly return rate from the annual rate.
      *
-     * <p>Uses monthly compounding: (1 + annual)^(1/12) - 1
+     * <p>Delegates to {@link ReturnCalculator#toMonthlyRate(BigDecimal)}.
      *
      * @param config the configuration containing levers
      * @return the monthly return rate
      */
     BigDecimal calculateMonthlyReturn(SimulationConfig config) {
         BigDecimal annualReturn = config.levers().market().expectedReturn();
-
-        // Monthly multiplier = (1 + annual)^(1/12)
-        double annualDouble = annualReturn.doubleValue();
-        double monthlyMultiplier = Math.pow(1.0 + annualDouble, 1.0 / MONTHS_PER_YEAR);
-        double monthlyRate = monthlyMultiplier - 1.0;
-
-        return BigDecimal.valueOf(monthlyRate).setScale(SCALE, RoundingMode.HALF_UP);
+        return returnCalculator.toMonthlyRate(annualReturn);
     }
 
     /**
@@ -348,6 +341,7 @@ public class SimulationEngine {
     public static class Builder {
         private SpendingOrchestrator spendingOrchestrator;
         private ContributionRouter contributionRouter;
+        private ReturnCalculator returnCalculator;
 
         /**
          * Sets the spending orchestrator.
@@ -372,12 +366,23 @@ public class SimulationEngine {
         }
 
         /**
+         * Sets the return calculator.
+         *
+         * @param calculator the calculator
+         * @return this builder
+         */
+        public Builder returnCalculator(ReturnCalculator calculator) {
+            this.returnCalculator = calculator;
+            return this;
+        }
+
+        /**
          * Builds the SimulationEngine.
          *
          * @return a new SimulationEngine
          */
         public SimulationEngine build() {
-            return new SimulationEngine(spendingOrchestrator, contributionRouter);
+            return new SimulationEngine(spendingOrchestrator, contributionRouter, returnCalculator);
         }
     }
 }

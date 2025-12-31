@@ -15,6 +15,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import io.github.xmljim.retirement.domain.calculator.ReturnCalculator;
+import io.github.xmljim.retirement.domain.calculator.impl.DefaultReturnCalculator;
 import io.github.xmljim.retirement.domain.enums.SimulationPhase;
 import io.github.xmljim.retirement.domain.exception.MissingRequiredFieldException;
 import io.github.xmljim.retirement.domain.model.PersonProfile;
@@ -30,10 +32,14 @@ class SimulationEngineTest {
     private SimulationEngine engine;
     private PersonProfile person;
     private Portfolio portfolio;
+    private ReturnCalculator returnCalculator;
 
     @BeforeEach
     void setUp() {
-        engine = SimulationEngine.builder().build();
+        returnCalculator = new DefaultReturnCalculator();
+        engine = SimulationEngine.builder()
+            .returnCalculator(returnCalculator)
+            .build();
 
         person = PersonProfile.builder()
             .name("Test Person")
