@@ -511,6 +511,138 @@ public class SurvivorTransition {
 
 ---
 
+### 3b. Simulation Termination
+
+The simulation must know when to stop. `SurvivorTransition` helps track deaths, enabling proper termination logic.
+
+**Termination Conditions:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Simulation Termination Conditions                              │
+├─────────────────────────────────────────────────────────────────┤
+│  Single Person:                                                 │
+│    → End when person reaches life expectancy                    │
+│                                                                 │
+│  Couple:                                                        │
+│    → First death: Create SurvivorTransition, continue           │
+│    → Second death: END SIMULATION                               │
+│                                                                 │
+│  Alternative end conditions:                                    │
+│    → Portfolio depleted (balance ≤ 0)                           │
+│    → Max simulation years reached (configurable cap)            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Implementation:**
+
+```java
+public class SimulationEngine {
+
+    public TimeSeries<MonthlySnapshot> run(SimulationConfig config) {
+        TimeSeries<MonthlySnapshot> timeSeries = new TimeSeries<>();
+
+        for (YearMonth month = config.startMonth();
+             month.isBefore(config.endMonth());
+             month = month.plusMonths(1)) {
+
+            // ... process month (steps 1-7) ...
+
+            // Check termination after recording snapshot
+            TerminationReason reason = checkTermination(month);
+            if (reason != null) {
+                timeSeries.setTerminationReason(reason);
+                break;
+            }
+        }
+        return timeSeries;
+    }
+
+    private TerminationReason checkTermination(YearMonth month) {
+        // All persons deceased
+        boolean allDeceased = state.getAllPersons().stream()
+            .allMatch(p -> p.isDeceasedAt(month));
+        if (allDeceased) {
+            return TerminationReason.ALL_PERSONS_DECEASED;
+        }
+
+        // Portfolio depleted
+        if (state.getTotalBalance().compareTo(BigDecimal.ZERO) <= 0) {
+            return TerminationReason.PORTFOLIO_DEPLETED;
+        }
+
+        // Max years reached (safety cap)
+        if (month.isAfter(config.startMonth().plusYears(config.maxYears()))) {
+            return TerminationReason.MAX_YEARS_REACHED;
+        }
+
+        return null; // Continue simulation
+    }
+}
+
+public enum TerminationReason {
+    ALL_PERSONS_DECEASED("Simulation ended: all persons have passed"),
+    PORTFOLIO_DEPLETED("Simulation ended: portfolio balance exhausted"),
+    MAX_YEARS_REACHED("Simulation ended: maximum simulation years reached"),
+    COMPLETED("Simulation completed through configured end date");
+
+    private final String description;
+
+    TerminationReason(String description) {
+        this.description = description;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+}
+```
+
+**TimeSeries Enhancement:**
+
+```java
+public class TimeSeries<T extends MonthlySnapshot> {
+    private final List<T> snapshots;
+    private TerminationReason terminationReason;
+
+    public void setTerminationReason(TerminationReason reason) {
+        this.terminationReason = reason;
+    }
+
+    public TerminationReason getTerminationReason() {
+        return terminationReason;
+    }
+
+    public boolean wasSuccessful() {
+        return terminationReason == TerminationReason.COMPLETED
+            || terminationReason == TerminationReason.ALL_PERSONS_DECEASED;
+    }
+
+    public boolean ranOutOfMoney() {
+        return terminationReason == TerminationReason.PORTFOLIO_DEPLETED;
+    }
+}
+```
+
+**Key Behaviors:**
+
+| Scenario | Behavior |
+|----------|----------|
+| Single person dies | Simulation ends immediately |
+| First spouse dies | `SurvivorTransition` created, simulation continues in SURVIVOR phase |
+| Second spouse dies | Simulation ends |
+| Portfolio hits $0 | Simulation ends (failure case for Monte Carlo success rate) |
+| Max years (e.g., 50) | Safety cap to prevent runaway simulations |
+
+**Monte Carlo Implications:**
+
+The `TerminationReason` is critical for Monte Carlo analysis:
+- `PORTFOLIO_DEPLETED` → counts as a **failure** in success rate calculation
+- `ALL_PERSONS_DECEASED` with balance > 0 → counts as **success**
+- This enables "probability of not running out of money" metrics
+
+---
+
 **Decision:** Part-time work in retirement = "other income", not contributions.
 
 - Once retired, contributions stop (no more 401k/IRA contributions)
