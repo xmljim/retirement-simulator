@@ -102,7 +102,6 @@ class SimulationEngineTest {
         @DisplayName("should calculate monthly return from 7% annual")
         void shouldCalculateMonthlyReturnFromSevenPercent() {
             SimulationConfig config = SimulationConfig.builder()
-                .person(person)
                 .portfolio(portfolio)
                 .levers(SimulationLevers.builder()
                     .market(MarketLevers.deterministic(new BigDecimal("0.07")))
@@ -122,7 +121,6 @@ class SimulationEngineTest {
         @DisplayName("should calculate zero return for zero annual rate")
         void shouldCalculateZeroReturnForZeroRate() {
             SimulationConfig config = SimulationConfig.builder()
-                .person(person)
                 .portfolio(portfolio)
                 .levers(SimulationLevers.builder()
                     .market(MarketLevers.deterministic(BigDecimal.ZERO))
@@ -261,7 +259,6 @@ class SimulationEngineTest {
 
     private SimulationConfig createConfig(YearMonth start, YearMonth end) {
         return SimulationConfig.builder()
-            .person(person)
             .portfolio(portfolio)
             .startMonth(start)
             .endMonth(end)

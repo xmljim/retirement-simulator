@@ -19,8 +19,7 @@ import io.github.xmljim.retirement.simulation.config.SimulationLevers;
  *
  * <p>SimulationConfig contains all inputs required to run a simulation:
  * <ul>
- *   <li>Person profiles (one or two for couple simulations)</li>
- *   <li>Portfolios with investment accounts (one per person)</li>
+ *   <li>Portfolios with investment accounts (persons are derived from portfolio owners)</li>
  *   <li>Budget defining income and expenses</li>
  *   <li>Simulation levers controlling economic assumptions</li>
  *   <li>Time period (start and end months)</li>
@@ -30,7 +29,6 @@ import io.github.xmljim.retirement.simulation.config.SimulationLevers;
  * <p>Use the builder for construction:
  * <pre>{@code
  * SimulationConfig config = SimulationConfig.builder()
- *     .persons(List.of(primaryPerson, spouse))
  *     .portfolios(List.of(primaryPortfolio, spousePortfolio))
  *     .budget(budget)
  *     .levers(SimulationLevers.withDefaults())
@@ -40,8 +38,7 @@ import io.github.xmljim.retirement.simulation.config.SimulationLevers;
  *     .build();
  * }</pre>
  *
- * @param persons    the person profiles (1 for single, 2 for couple)
- * @param portfolios the investment portfolios (one per person)
+ * @param portfolios the investment portfolios (persons are derived from owners)
  * @param budget     the income and expense budget
  * @param levers     the simulation levers (economic assumptions)
  * @param startMonth the simulation start month
@@ -49,7 +46,6 @@ import io.github.xmljim.retirement.simulation.config.SimulationLevers;
  * @param strategy   the spending strategy for withdrawals
  */
 public record SimulationConfig(
-    List<PersonProfile> persons,
     List<Portfolio> portfolios,
     Budget budget,
     SimulationLevers levers,
@@ -62,46 +58,55 @@ public record SimulationConfig(
      * Compact constructor with validation and defensive copying.
      */
     public SimulationConfig {
-        MissingRequiredFieldException.requireNonNull(persons, "persons");
         MissingRequiredFieldException.requireNonNull(portfolios, "portfolios");
         MissingRequiredFieldException.requireNonNull(startMonth, "startMonth");
         MissingRequiredFieldException.requireNonNull(endMonth, "endMonth");
 
-        ValidationException.validate("persons", persons, p -> !p.isEmpty(),
-            "At least one person profile is required");
         ValidationException.validate("portfolios", portfolios, p -> !p.isEmpty(),
             "At least one portfolio is required");
 
-        persons = Collections.unmodifiableList(persons);
         portfolios = Collections.unmodifiableList(portfolios);
         levers = levers != null ? levers : SimulationLevers.withDefaults();
     }
 
     /**
-     * Returns the primary person (first in list).
+     * Returns the distinct persons derived from portfolio owners.
+     *
+     * @return list of person profiles (owners of the portfolios)
+     */
+    public List<PersonProfile> persons() {
+        return portfolios.stream()
+            .map(Portfolio::getOwner)
+            .distinct()
+            .toList();
+    }
+
+    /**
+     * Returns the primary person (owner of first portfolio).
      *
      * @return the primary person profile
      */
     public PersonProfile primaryPerson() {
-        return persons.get(0);
+        return portfolios.get(0).getOwner();
     }
 
     /**
-     * Returns the spouse (second person) if present.
+     * Returns the spouse (second distinct person) if present.
      *
      * @return the spouse profile, or null if single simulation
      */
     public PersonProfile spouse() {
-        return persons.size() > 1 ? persons.get(1) : null;
+        List<PersonProfile> allPersons = persons();
+        return allPersons.size() > 1 ? allPersons.get(1) : null;
     }
 
     /**
      * Indicates whether this is a couple simulation.
      *
-     * @return true if two persons are configured
+     * @return true if two distinct persons own the portfolios
      */
     public boolean isCoupleSimulation() {
-        return persons.size() > 1;
+        return persons().size() > 1;
     }
 
     /**
@@ -148,35 +153,12 @@ public record SimulationConfig(
      * Builder for SimulationConfig.
      */
     public static class Builder {
-        private List<PersonProfile> persons;
         private List<Portfolio> portfolios;
         private Budget budget;
         private SimulationLevers levers;
         private YearMonth startMonth;
         private YearMonth endMonth;
         private SpendingStrategy strategy;
-
-        /**
-         * Sets the person profiles.
-         *
-         * @param persons the profiles (1 or 2)
-         * @return this builder
-         */
-        public Builder persons(List<PersonProfile> persons) {
-            this.persons = persons != null ? new ArrayList<>(persons) : null;
-            return this;
-        }
-
-        /**
-         * Sets a single person (convenience method).
-         *
-         * @param person the person profile
-         * @return this builder
-         */
-        public Builder person(PersonProfile person) {
-            this.persons = List.of(person);
-            return this;
-        }
 
         /**
          * Sets the portfolios.
@@ -262,7 +244,6 @@ public record SimulationConfig(
          */
         public SimulationConfig build() {
             return new SimulationConfig(
-                persons,
                 portfolios,
                 budget,
                 levers,

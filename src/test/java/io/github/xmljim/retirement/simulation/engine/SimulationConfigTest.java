@@ -58,7 +58,6 @@ class SimulationConfigTest {
         @DisplayName("should build with all required fields")
         void shouldBuildWithRequiredFields() {
             SimulationConfig config = SimulationConfig.builder()
-                .persons(List.of(primaryPerson))
                 .portfolio(portfolio)
                 .startMonth(YearMonth.of(2025, 1))
                 .endMonth(YearMonth.of(2055, 12))
@@ -66,28 +65,32 @@ class SimulationConfigTest {
 
             assertNotNull(config);
             assertEquals(1, config.persons().size());
+            assertEquals(primaryPerson, config.primaryPerson());
             assertNotNull(config.levers()); // Should default
         }
 
         @Test
-        @DisplayName("should build with single person convenience method")
-        void shouldBuildWithSinglePerson() {
+        @DisplayName("should build with multiple portfolios")
+        void shouldBuildWithMultiplePortfolios() {
+            Portfolio spousePortfolio = Portfolio.builder()
+                .owner(spouse)
+                .build();
+
             SimulationConfig config = SimulationConfig.builder()
-                .person(primaryPerson)
-                .portfolio(portfolio)
+                .portfolios(List.of(portfolio, spousePortfolio))
                 .startMonth(YearMonth.of(2025, 1))
                 .endMonth(YearMonth.of(2055, 12))
                 .build();
 
-            assertEquals(1, config.persons().size());
+            assertEquals(2, config.persons().size());
             assertEquals(primaryPerson, config.primaryPerson());
+            assertEquals(spouse, config.spouse());
         }
 
         @Test
         @DisplayName("should default levers when not provided")
         void shouldDefaultLevers() {
             SimulationConfig config = SimulationConfig.builder()
-                .person(primaryPerson)
                 .portfolio(portfolio)
                 .startMonth(YearMonth.of(2025, 1))
                 .endMonth(YearMonth.of(2055, 12))
@@ -102,7 +105,6 @@ class SimulationConfigTest {
             SimulationLevers customLevers = SimulationLevers.withDefaults();
 
             SimulationConfig config = SimulationConfig.builder()
-                .person(primaryPerson)
                 .portfolio(portfolio)
                 .levers(customLevers)
                 .startMonth(YearMonth.of(2025, 1))
@@ -118,35 +120,10 @@ class SimulationConfigTest {
     class Validation {
 
         @Test
-        @DisplayName("should reject null persons")
-        void shouldRejectNullPersons() {
-            assertThrows(MissingRequiredFieldException.class, () ->
-                SimulationConfig.builder()
-                    .persons(null)
-                    .portfolio(portfolio)
-                    .startMonth(YearMonth.of(2025, 1))
-                    .endMonth(YearMonth.of(2055, 12))
-                    .build());
-        }
-
-        @Test
-        @DisplayName("should reject empty persons list")
-        void shouldRejectEmptyPersons() {
-            assertThrows(ValidationException.class, () ->
-                SimulationConfig.builder()
-                    .persons(List.of())
-                    .portfolio(portfolio)
-                    .startMonth(YearMonth.of(2025, 1))
-                    .endMonth(YearMonth.of(2055, 12))
-                    .build());
-        }
-
-        @Test
         @DisplayName("should reject null portfolios")
         void shouldRejectNullPortfolios() {
             assertThrows(MissingRequiredFieldException.class, () ->
                 SimulationConfig.builder()
-                    .person(primaryPerson)
                     .portfolios(null)
                     .startMonth(YearMonth.of(2025, 1))
                     .endMonth(YearMonth.of(2055, 12))
@@ -158,7 +135,6 @@ class SimulationConfigTest {
         void shouldRejectEmptyPortfolios() {
             assertThrows(ValidationException.class, () ->
                 SimulationConfig.builder()
-                    .person(primaryPerson)
                     .portfolios(List.of())
                     .startMonth(YearMonth.of(2025, 1))
                     .endMonth(YearMonth.of(2055, 12))
@@ -170,7 +146,6 @@ class SimulationConfigTest {
         void shouldRejectNullStartMonth() {
             assertThrows(MissingRequiredFieldException.class, () ->
                 SimulationConfig.builder()
-                    .person(primaryPerson)
                     .portfolio(portfolio)
                     .startMonth(null)
                     .endMonth(YearMonth.of(2055, 12))
@@ -182,7 +157,6 @@ class SimulationConfigTest {
         void shouldRejectNullEndMonth() {
             assertThrows(MissingRequiredFieldException.class, () ->
                 SimulationConfig.builder()
-                    .person(primaryPerson)
                     .portfolio(portfolio)
                     .startMonth(YearMonth.of(2025, 1))
                     .endMonth(null)
@@ -195,11 +169,14 @@ class SimulationConfigTest {
     class CoupleSimulation {
 
         @Test
-        @DisplayName("should identify couple simulation")
+        @DisplayName("should identify couple simulation from multiple portfolios")
         void shouldIdentifyCoupleSimulation() {
+            Portfolio spousePortfolio = Portfolio.builder()
+                .owner(spouse)
+                .build();
+
             SimulationConfig config = SimulationConfig.builder()
-                .persons(List.of(primaryPerson, spouse))
-                .portfolio(portfolio)
+                .portfolios(List.of(portfolio, spousePortfolio))
                 .startMonth(YearMonth.of(2025, 1))
                 .endMonth(YearMonth.of(2055, 12))
                 .build();
@@ -213,13 +190,31 @@ class SimulationConfigTest {
         @DisplayName("should identify single simulation")
         void shouldIdentifySingleSimulation() {
             SimulationConfig config = SimulationConfig.builder()
-                .person(primaryPerson)
                 .portfolio(portfolio)
                 .startMonth(YearMonth.of(2025, 1))
                 .endMonth(YearMonth.of(2055, 12))
                 .build();
 
             assertFalse(config.isCoupleSimulation());
+            assertEquals(primaryPerson, config.primaryPerson());
+            assertNull(config.spouse());
+        }
+
+        @Test
+        @DisplayName("should deduplicate when same person owns multiple portfolios")
+        void shouldDeduplicateSameOwner() {
+            Portfolio secondPortfolio = Portfolio.builder()
+                .owner(primaryPerson)
+                .build();
+
+            SimulationConfig config = SimulationConfig.builder()
+                .portfolios(List.of(portfolio, secondPortfolio))
+                .startMonth(YearMonth.of(2025, 1))
+                .endMonth(YearMonth.of(2055, 12))
+                .build();
+
+            assertFalse(config.isCoupleSimulation());
+            assertEquals(1, config.persons().size());
             assertEquals(primaryPerson, config.primaryPerson());
             assertNull(config.spouse());
         }
@@ -233,7 +228,6 @@ class SimulationConfigTest {
         @DisplayName("should calculate month count for full years")
         void shouldCalculateMonthCountForFullYears() {
             SimulationConfig config = SimulationConfig.builder()
-                .person(primaryPerson)
                 .portfolio(portfolio)
                 .startMonth(YearMonth.of(2025, 1))
                 .endMonth(YearMonth.of(2025, 12))
@@ -246,7 +240,6 @@ class SimulationConfigTest {
         @DisplayName("should calculate month count spanning years")
         void shouldCalculateMonthCountSpanningYears() {
             SimulationConfig config = SimulationConfig.builder()
-                .person(primaryPerson)
                 .portfolio(portfolio)
                 .startMonth(YearMonth.of(2025, 1))
                 .endMonth(YearMonth.of(2055, 12))
@@ -260,7 +253,6 @@ class SimulationConfigTest {
         @DisplayName("should calculate month count for single month")
         void shouldCalculateMonthCountForSingleMonth() {
             SimulationConfig config = SimulationConfig.builder()
-                .person(primaryPerson)
                 .portfolio(portfolio)
                 .startMonth(YearMonth.of(2025, 6))
                 .endMonth(YearMonth.of(2025, 6))
@@ -275,17 +267,20 @@ class SimulationConfigTest {
     class Immutability {
 
         @Test
-        @DisplayName("persons list should be unmodifiable")
-        void personsListShouldBeUnmodifiable() {
+        @DisplayName("portfolios list should be unmodifiable")
+        void portfoliosListShouldBeUnmodifiable() {
+            Portfolio spousePortfolio = Portfolio.builder()
+                .owner(spouse)
+                .build();
+
             SimulationConfig config = SimulationConfig.builder()
-                .persons(List.of(primaryPerson))
                 .portfolio(portfolio)
                 .startMonth(YearMonth.of(2025, 1))
                 .endMonth(YearMonth.of(2055, 12))
                 .build();
 
             assertThrows(UnsupportedOperationException.class, () ->
-                config.persons().add(spouse));
+                config.portfolios().add(spousePortfolio));
         }
     }
 }
